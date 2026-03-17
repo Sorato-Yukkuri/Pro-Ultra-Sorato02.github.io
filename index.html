@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="DeviceCheck">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <link rel="icon" type="image/x-icon" href="favicon.ico">
+    <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="android-chrome-192x192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="android-chrome-512x512.png">
+    <title>精密デバイス診断 Pro Ultra Beta1.5.2</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- ============================================
+     【メンテナンス・切り替え管理コード】
+    こっから
+     ============================================ -->
+<script>
+  /* 
+     【1. オン・オフの切り替え設定】
+     true  => 閉鎖モード（メッセージを表示して他を止める）
+     false => 通常モード（サイトを普通に表示する）
+  */
+  const isMaintenance = false; 
+
+  /* 
+     【2. 見た目のカスタマイズ設定】
+     ここを書き換えるだけで、サイズや色を調整できます
+  */
+  const config = {
+    fontSize:   "32px",          // 文字の大きさ（例: 24px, 48px, 3rem）
+    fontColor:  "red",           // 文字の色（例: red, #ff0000, black）
+    bgColor:    "white",         // 背景の色（例: white, #eeeeee, black）
+    fontWeight: "bold",          // 文字の太さ（例: bold, normal）
+    message:    "申し訳ございません。 <br> 現在サーバー負荷軽減などのため <br> 一時的に閉鎖しています。 <br> 本日21:40頃に再開します。 <br>  ご協力お願いします。" // 表示する文章
+  };
+
+
+  // 【3. 実際の処理】（ここから下は、基本的に触らなくてOKです）
+  if (isMaintenance) {
+    // 画面全体を覆い隠すスタイルとメッセージを書き込みます
+    document.write(`
+      <div style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: ${config.bgColor}; 
+        z-index: 9999999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 0;
+        padding: 0;
+        text-align: center;
+      ">
+        <h1 style="
+          color: ${config.fontColor}; 
+          font-size: ${config.fontSize}; 
+          font-weight: ${config.fontWeight};
+          font-family: sans-serif;
+          padding: 20px;
+        ">
+          ${config.message}
+        </h1>
+      </div>
+    `);
+
+    // 4. 他のコード（JavaScriptや画像読み込み）を強制停止します
+    window.stop();
+  }
+</script>
+<!-- ============================================
+     【切り替え管理コードここまで】
+     ============================================ -->
+
+<!-- ログインバー（capture-area外） -->
+<div id="auth-bar" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9000;background:rgba(5,5,5,0.95);backdrop-filter:blur(10px);border-bottom:1px solid #282828;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;box-sizing:border-box;">
+    <div id="auth-user-info" style="display:flex;align-items:center;gap:10px;">
+        <img id="auth-avatar" src="" style="width:28px;height:28px;border-radius:50%;display:none;">
+        <span id="auth-username" style="color:#fff;font-size:0.88rem;font-weight:700;"></span>
+        <span id="auth-sync-status" style="color:#34c759;font-size:0.75rem;"></span>
+    </div>
+    <div style="display:flex;gap:8px;">
+        <button id="auth-logout-btn" onclick="signOut()" style="display:none;background:rgba(255,59,48,0.15);border:1px solid rgba(255,59,48,0.3);color:#ff6b6b;padding:6px 14px;border-radius:10px;font-size:0.82rem;font-weight:700;cursor:pointer;">ログアウト</button>
+        <button id="auth-friend-btn" onclick="document.getElementById('friend-modal').style.display='flex'" style="background:linear-gradient(135deg,#ff9500,#ff6b00);color:#fff;border:none;padding:6px 12px;border-radius:10px;font-size:0.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;"><svg width="18" height="18" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg"><g transform="translate(70,70)"><circle cx="-30" cy="-20" r="15" fill="#fff"/><rect x="-43" y="-3" width="24" height="28" rx="7" fill="#fff"/><circle cx="30" cy="-20" r="15" fill="#fff"/><rect x="19" y="-3" width="24" height="28" rx="7" fill="#fff"/><path d="M -18 6 C -10 -12, -4 -18, 0 -6 C 4 -18, 10 -12, 18 6" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/><path d="M 0 -5 C 0 -16, -12 -20, -12 -10 C -12 -2, 0 6, 0 6 C 0 6, 12 -2, 12 -10 C 12 -20, 0 -16, 0 -5 Z" fill="#ffe000"/><circle cx="0" cy="-7" r="46" fill="none" stroke="#fff" stroke-width="3"/><circle cx="0" cy="-53" r="4" fill="#fff"/><circle cx="37" cy="-36" r="3" fill="#fff"/><circle cx="-37" cy="-36" r="3" fill="#fff"/><circle cx="37" cy="22" r="2.5" fill="#fff" opacity="0.7"/><circle cx="-37" cy="22" r="2.5" fill="#fff" opacity="0.7"/></g></svg> 親友コード</button>
+        <button id="auth-login-btn" onclick="signInWithGoogle()" style="background:linear-gradient(135deg,#4285f4,#34a853);color:#fff;border:none;padding:6px 16px;border-radius:10px;font-size:0.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 48 48"><path fill="#fff" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/></svg>
+            Googleでログイン
+        </button>
+    </div>
+</div>
+
+<!-- ログインモーダル -->
+<div id="auth-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:99999;justify-content:center;align-items:center;padding:20px;box-sizing:border-box;">
+    <div style="background:#1a1a2e;border:1px solid #6366f1;border-radius:24px;padding:32px;width:100%;max-width:400px;text-align:center;">
+        <div style="font-size:2.5rem;margin-bottom:12px;">🔐</div>
+        <h2 style="margin:0 0 8px;font-size:1.2rem;font-weight:800;color:#fff;">ログインが必要です</h2>
+        <p id="auth-modal-msg" style="color:#888;font-size:0.88rem;margin:0 0 24px;line-height:1.6;"></p>
+        <button onclick="signInWithGoogle()" style="width:100%;padding:14px;border-radius:14px;background:linear-gradient(135deg,#4285f4,#34a853);color:#fff;border:none;font-size:1rem;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;">
+            <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#fff" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/></svg>
+            Googleでログイン
+        </button>
+        <button onclick="document.getElementById('auth-modal').style.display='none'" style="width:100%;padding:12px;border-radius:14px;background:#222;color:#888;border:1px solid #333;font-size:0.9rem;cursor:pointer;">キャンセル</button>
+    </div>
+</div>
+
+<div class="app" id="capture-area">
+    <header>
+        <div class="main-rank-card">
+            <div id="rank-letter" class="rank-D">?</div>
+            <div class="rank-info">
+                <h1 id="status-title">ハードウェア精密スキャン中...</h1>
+                <p id="eval-msg">各コンポーネントの整合性を検証しています</p>
+                <p id="time-remaining" style="color:var(--accent);font-size:0.85rem;font-weight:700;margin-top:6px;font-variant-numeric:tabular-nums;"></p>
+            </div>
+        </div>
+    </header>
+    <section class="browser-info-area">
+        <div class="info-panel"><label>実測平均フレームレート</label><span id="b-fps-avg" class="val">-- FPS</span></div>
+        <div class="info-panel"><label>1% LOW フレームレート</label><span id="b-fps-low" class="val">-- FPS</span></div>
+        <div class="info-panel full-width"><label>ユーザーエージェント詳細スタック</label><span id="b-ua" class="val" style="font-size:0.75rem;line-height:1.5;color:#34c759;">--</span></div>
+    </section>
+    <main class="spec-list">
+        <div class="spec-row" id="row-1"><span class="label">CPU 論理コア数</span><span id="v-1" class="val">--</span></div>
+        <div class="spec-row" id="row-2"><span class="label">システムメモリ容量</span><span id="v-2" class="val">--</span></div>
+        <div class="spec-row" id="row-3"><span class="label">GPU レンダラー</span><span id="v-3" class="val">--</span></div>
+        <div class="spec-row" id="row-4"><span class="label">GPU 最大テクスチャサイズ</span><span id="v-4" class="val">--</span></div>
+        <div class="spec-row" id="row-5"><span class="label">実測 CPU ベンチスコア</span><span id="v-5" class="val">--</span></div>
+        <div class="spec-row" id="row-6"><span class="label">実測 GPU 描画スコア</span><span id="v-6" class="val">--</span></div>
+        <div class="spec-row" id="row-7"><span class="label">実測メモリ帯域スコア</span><span id="v-7" class="val">--</span></div>
+        <div class="spec-row" id="row-8"><span class="label">実測平均フレームレート</span><span id="v-8" class="val">--</span></div>
+        <div class="spec-row" id="row-9"><span class="label">実測 1% LOW フレームレート</span><span id="v-9" class="val">--</span></div>
+        <div class="spec-row" id="row-10"><span class="label">画面リフレッシュレート(推定)</span><span id="v-10" class="val">--</span></div>
+        <div class="spec-row" id="row-11"><span class="label">画面解像度 (物理ピクセル)</span><span id="v-11" class="val">--</span></div>
+        <div class="spec-row" id="row-12"><span class="label">デバイスピクセル比 (DPR)</span><span id="v-12" class="val">--</span></div>
+        <div class="spec-row" id="row-13"><span class="label">カラー深度 / HDR 対応</span><span id="v-13" class="val">--</span></div>
+        <div class="spec-row" id="row-14"><span class="label">JS ヒープ上限</span><span id="v-14" class="val">--</span></div>
+        <div class="spec-row" id="row-15"><span class="label">UIスレッド応答レイテンシ</span><span id="v-15" class="val">--</span></div>
+        <div class="spec-row" id="row-16"><span class="label">ネットワーク速度 (実測)</span><span id="v-16" class="val">--</span></div>
+        <div class="spec-row" id="row-17"><span class="label">回線種別 / API 実効帯域</span><span id="v-17" class="val">--</span></div>
+        <div class="spec-row" id="row-18"><span class="label">バッテリー残量 / 充電状態</span><span id="v-18" class="val">--</span></div>
+        <div class="spec-row" id="row-19"><span class="label">タッチポイント数</span><span id="v-19" class="val">--</span></div>
+        <div class="spec-row" id="row-20"><span class="label">ダークモード / ハイコントラスト</span><span id="v-20" class="val">--</span></div>
+        <div class="spec-row" id="row-21"><span class="label">セキュア通信 (HTTPS)</span><span id="v-21" class="val">--</span></div>
+        <div class="spec-row" id="row-22"><span class="label">Cookie / IndexedDB</span><span id="v-22" class="val">--</span></div>
+        <div class="spec-row" id="row-23"><span class="label">WebGL バージョン</span><span id="v-23" class="val">--</span></div>
+        <div class="spec-row" id="row-24"><span class="label">WebGL 最大頂点属性数</span><span id="v-24" class="val">--</span></div>
+        <div class="spec-row" id="row-25"><span class="label">WakeLock / 振動 API</span><span id="v-25" class="val">--</span></div>
+        <div class="spec-row" id="row-26"><span class="label">PWA / Service Worker</span><span id="v-26" class="val">--</span></div>
+        <div class="spec-row" id="row-27"><span class="label">自動操縦検知 (WebDriver)</span><span id="v-27" class="val">--</span></div>
+        <div class="spec-row" id="row-28"><span class="label">FPS ジッタースコア</span><span id="v-28" class="val">--</span></div>
+        <div class="spec-row" id="row-29"><span class="label">システム言語 / タイムゾーン</span><span id="v-29" class="val">--</span></div>
+        <div class="spec-row" id="row-30"><span class="label">診断エンジンバージョン</span><span id="v-30" class="val">--</span></div>
+        <div class="spec-row" id="row-31"><span class="label">IP アドレス (WebRTC)</span><span id="v-31" class="val">取得中...</span></div>
+        <div class="spec-row" id="row-32"><span class="label">ダークモード / ハイコントラスト</span><span id="v-32" class="val">--</span></div>
+        <div class="spec-row" id="row-33"><span class="label">使用ブラウザ</span><span id="v-33" class="val">--</span></div>
+        <div class="spec-row" id="row-34"><span class="label">デバイス名</span><span id="v-34" class="val">--</span></div>
+    </main>
+</div>
+<div id="device-warn-overlay" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:999999;justify-content:center;align-items:center;padding:20px;box-sizing:border-box;">
+    <div id="ip-warn-box">
+        <h3>📱 デバイス名をそのまま含めますか？</h3>
+        <p id="device-warn-msg"></p>
+        <div class="ip-warn-btns">
+            <button style="background:#34c759;color:#fff;width:100%;padding:14px;border-radius:14px;border:none;font-size:0.95rem;font-weight:800;cursor:pointer;margin-bottom:8px;" onclick="deviceChosen('show')">そのまま含めて保存</button>
+            <button style="background:var(--accent);color:#fff;width:100%;padding:14px;border-radius:14px;border:none;font-size:0.95rem;font-weight:800;cursor:pointer;" onclick="deviceChosen('hide')">🔒 デバイス名を * に変更して保存</button>
+        </div>
+        <p class="ip-note">※ デバイス名はUA文字列から取得しており、サーバーには送信されません。</p>
+        <button onclick="goBackToIP()" style="background:rgba(255,59,48,0.15);border:1px solid rgba(255,59,48,0.3);color:#ff6b6b;font-size:0.85rem;font-weight:700;cursor:pointer;margin-top:12px;width:100%;text-align:center;padding:10px;border-radius:10px;">← 戻る（IPアドレスの選択に戻る）</button>
+    </div>
+</div>
+<!-- 親友コードモーダル -->
+<div id="friend-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:999999;justify-content:center;align-items:center;padding:20px;box-sizing:border-box;">
+    <div style="background:#1a1a2e;border:1px solid #ff9500;border-radius:24px;padding:32px;width:100%;max-width:360px;text-align:center;">
+        <div style="margin-bottom:10px;"><svg width="48" height="48" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg"><g transform="translate(70,70)"><circle cx="-30" cy="-20" r="14" fill="#ffb84d"/><rect x="-42" y="-4" width="22" height="26" rx="6" fill="#ff9500"/><circle cx="30" cy="-20" r="14" fill="#ffb84d"/><rect x="20" y="-4" width="22" height="26" rx="6" fill="#ff9500"/><path d="M -18 4 C -10 -10, -4 -16, 0 -8 C 4 -16, 10 -10, 18 4" fill="none" stroke="#ff9500" stroke-width="2.5" stroke-linecap="round"/><path d="M 0 -6 C 0 -14, -10 -17, -10 -9 C -10 -3, 0 4, 0 4 C 0 4, 10 -3, 10 -9 C 10 -17, 0 -14, 0 -6 Z" fill="#ff3b30"/><circle cx="0" cy="-7" r="44" fill="none" stroke="#ff9500" stroke-width="2"/><circle cx="0" cy="-51" r="3" fill="#ff9500" opacity="0.6"/><circle cx="36" cy="-35" r="2.5" fill="#ff9500" opacity="0.4"/><circle cx="-36" cy="-35" r="2.5" fill="#ff9500" opacity="0.4"/><circle cx="36" cy="21" r="2" fill="#ff9500" opacity="0.3"/><circle cx="-36" cy="21" r="2" fill="#ff9500" opacity="0.3"/></g></svg></div>
+        <h2 style="margin:0 0 8px;font-size:1.1rem;font-weight:800;color:#fff;">親友コードでログイン</h2>
+        <p style="color:#888;font-size:0.85rem;margin:0 0 20px;line-height:1.6;">親友から教えてもらったコードを入力してください</p>
+        <input id="friend-code-input" type="password" placeholder="コードを入力..." maxlength="20"
+            style="width:100%;background:#111;border:1px solid #ff9500;border-radius:12px;padding:12px 16px;color:#fff;font-size:1.1rem;outline:none;box-sizing:border-box;text-align:center;letter-spacing:0.2em;margin-bottom:12px;">
+        <div id="friend-code-error" style="color:#ff3b30;font-size:0.82rem;margin-bottom:10px;display:none;">コードが違います</div>
+        <button onclick="checkFriendCode()" style="width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,#ff9500,#ff6b00);color:#fff;border:none;font-weight:800;cursor:pointer;font-size:0.95rem;margin-bottom:10px;">ログイン</button>
+        <button onclick="document.getElementById('friend-modal').style.display='none'" style="width:100%;padding:12px;border-radius:12px;background:#222;color:#888;border:1px solid #333;font-size:0.88rem;cursor:pointer;">キャンセル</button>
+    </div>
+</div>
+
+<!-- AIチャットモーダル -->
+<div id="ai-modal">
+    <div id="ai-modal-box">
+        <div id="ai-header">
+            <h2>🤖 AIアドバイザー</h2>
+            <div style="display:flex;gap:8px;align-items:center;">
+                <button onclick="showAIConvManager()" style="background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a78bfa;border-radius:10px;padding:6px 12px;font-size:0.82rem;font-weight:700;cursor:pointer;">📂 保存した会話</button>
+                <button onclick="(()=>{const n=document.getElementById('ai-save-name').value.trim();saveCurrentConv(n);document.getElementById('ai-save-name').value='';alert('保存しました！');})()" style="background:rgba(0,122,255,0.2);border:1px solid rgba(0,122,255,0.4);color:#6bb5ff;border-radius:10px;padding:6px 12px;font-size:0.82rem;font-weight:700;cursor:pointer;">💾 保存</button>
+                <button onclick="resetAPIKey()" style="background:rgba(255,59,48,0.15);border:1px solid rgba(255,59,48,0.3);color:#ff6b6b;border-radius:10px;padding:6px 10px;font-size:0.78rem;font-weight:700;cursor:pointer;" title="APIキーをリセット">🔑</button>
+                <button id="ai-close" onclick="closeAIChat()">✕</button>
+            </div>
+        </div>
+        <div style="padding:8px 16px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-shrink:0;">
+            <input id="ai-save-name" type="text" placeholder="会話に名前をつけて保存（任意）"
+                style="flex:1;background:#1a1a1a;border:1px solid var(--border);border-radius:10px;padding:8px 12px;color:#fff;font-size:0.85rem;outline:none;">
+        </div>
+        <div id="ai-messages"></div>
+        <div id="ai-input-area">
+            <textarea id="ai-input" rows="2" placeholder="診断結果について質問してみてください..."></textarea>
+            <button id="ai-send" onclick="sendAIMessage()">送信</button>
+        </div>
+    </div>
+</div>
+
+<!-- AI会話管理モーダル -->
+<div id="ai-conv-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:999999;justify-content:center;align-items:center;padding:20px;box-sizing:border-box;overflow-y:auto;">
+    <div style="background:var(--card);border:1px solid #6366f1;border-radius:24px;width:100%;max-width:560px;padding:24px;max-height:85vh;overflow-y:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+            <h2 style="margin:0;font-size:1.1rem;font-weight:800;background:linear-gradient(135deg,#6366f1,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">📂 保存した会話（最大5件）</h2>
+            <button onclick="document.getElementById('ai-conv-modal').style.display='none'" style="background:none;border:none;color:var(--sub-text);font-size:1.4rem;cursor:pointer;">✕</button>
+        </div>
+        <div id="ai-conv-list"></div>
+    </div>
+</div>
+
+<button id="legend-btn" onclick="document.getElementById('legend-overlay').style.display='flex'">🎨 色の基準を確認する</button>
+
+<!-- IP警告モーダル -->
+<div id="ip-warn-overlay">
+    <div id="ip-warn-box">
+        <h3>⚠️ IPアドレスをスクリーンショットに含めますか？</h3>
+        <p>IPアドレスをSNSなどで公開すると、おおよその居住地域や利用プロバイダが特定される危険があります。<br>公開する予定がある場合は「IPアドレスを非表示にして保存」をおすすめします。</p>
+        <div class="ip-warn-btns">
+            <button id="ip-hide-btn"  onclick="ipChosen('hide')">🔒 IPアドレスを非表示にして保存（推奨）</button>
+            <button id="ip-mask-btn"  onclick="ipChosen('mask')">⚠️ 一部を * で隠して保存</button>
+            <button id="ip-include-btn" onclick="ipChosen('show')">そのまま含めて保存</button>
+        </div>
+        <p class="ip-note">※ IPアドレスの取得は外部API（ipify.org）への問い合わせのみで行われます。<br>取得した値はブラウザ内でのみ使用され、当診断ツールのサーバーには一切送信されません。</p>
+        <button onclick="document.getElementById('ip-warn-overlay').style.display='none'" style="background:rgba(255,59,48,0.15);border:1px solid rgba(255,59,48,0.3);color:#ff6b6b;font-size:0.85rem;font-weight:700;cursor:pointer;margin-top:12px;width:100%;text-align:center;padding:10px;border-radius:10px;">← 戻る（保存をキャンセル）</button>
+    </div>
+</div>
+
+<!-- 色の基準モーダル -->
+<div id="legend-overlay">
+    <div id="legend-box">
+        <h2>🎨 インジケーターの色の基準</h2>
+        <div class="legend-row">
+            <div class="legend-dot ok"></div>
+            <div class="legend-label">青 ／ 正常</div>
+            <div class="legend-desc">推奨水準を満たしています。高性能・最適な状態です。</div>
+        </div>
+        <div class="legend-row">
+            <div class="legend-dot warn"></div>
+            <div class="legend-label">黄 ／ 注意</div>
+            <div class="legend-desc">最低水準はクリアしていますが、より高い性能が望ましい状態です。</div>
+        </div>
+        <div class="legend-row">
+            <div class="legend-dot bad"></div>
+            <div class="legend-label">赤 ／ 警告</div>
+            <div class="legend-desc">推奨水準を下回っています。動作に支障が出る可能性があります。</div>
+        </div>
+        <div class="legend-row">
+            <div class="legend-dot good"></div>
+            <div class="legend-label">緑 ／ 情報</div>
+            <div class="legend-desc">良し悪しではなく、環境情報として表示している項目です。</div>
+        </div>
+        <button id="legend-close" onclick="document.getElementById('legend-overlay').style.display='none'">閉じる</button>
+    </div>
+</div>
+
+<!-- アップデート情報モーダル-->
+<div id="update-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); z-index: 999999; align-items: center; justify-content: center; padding: 20px;">
+    <div id="update-box" style="background: var(--card); border: 1px solid var(--border); border-radius: 24px; width: 100%; max-width: 500px; padding: 30px; box-shadow: 0 25px 70px rgba(0,0,0,0.9);">
+        
+        <!-- バージョンタイトル -->
+        <h2 style="margin: 0 0 20px; font-size: 1.4rem; font-weight: 900; color: var(--text); border-bottom: 2px solid var(--border); padding-bottom: 15px;">
+            🚀 Update Beta 1.5.2
+        </h2>
+        
+        <!-- 【自由記述エリア】ここを書き換えるだけでOK -->
+        <div id="update-text-area" style="font-size: 1rem; color: var(--text); line-height: 1.8; max-height: 450px; overflow-y: auto; margin-bottom: 25px; padding-right: 10px;">
+            
+            <strong>【前回アプデBeta1.5の追加機能】<br>「友達コード」(現在は親友コードと変更しています。)機能を追加！</strong><br>
+            パスワードと好きな名前（ニックネーム）を入力するだけで、特定のグループとしてサインインできるようになりました。<br>サインイン状態はCookieに保存されます。保持期間は<strong>1ヶ月間</strong>です。期限が切れた場合は再度ログインしてください。(Beta1.6で自分でアカウントを作成できるように変更予定)<br><br>【今回アプデBeta1.5.2の修正】<br>・Beta1.6への告知を記入していなかったため修正<br>・AI機能でAIのモデルを聞くと拒否される仕様に変更<br>・アップデート情報機能のコードの書き直し<br>
+
+            <br><br>
+
+            【バグ修正】<br>現在iPhoneSEなどのiPhone機種でダウンロードしようとするとダウンロードボタンを押しても何もならないバグを修正しました。<br>なおiPhoneでダウンロードする際、｢ダウンロードしますか｣という画面が表示されない場合、画像を長押しして、｢写真に保存｣を押してください。<br>スマートフォンでアップデート更新内容を見終わって閉じ、再読込すると再び表示される問題＜修正済み＞<br><br>【現状確認されているバグ】<br>・iPhoneで診断結果をXでシェアすると、ダウンロードがされない問題<br>・AI機能にて本アプリ以外のプロンクトを入れると返答しない問題<br><br>
+            【Beta1.6の告知】<br>Beta1.6のアップデートでは、「親友コード」の応募を開始します。これにより、管理者でなくてもグループを作れるようになります。
+                
+                
+            
+            <!-- 次のアプデ文はこの下に追加していくだけでOK -->
+
+        </div>
+        <!-- 記述エリアここまで -->
+
+        <!-- 確認ボタン（薄い緑） -->
+        <button id="update-close-btn" onclick="execUpdateClose()" style="width: 100%; padding: 18px; border-radius: 20px; background: rgba(52, 199, 89, 0.12); color: #4ade80; border: 1px solid rgba(52, 199, 89, 0.3); font-size: 1.1rem; font-weight: 800; cursor: pointer; transition: 0.2s;">
+            確認しました
+        </button>
+    </div>
+</div>
+
+<script>
+    // バージョン識別キー（アプデのたびに末尾の数字などを変えてください）
+    const CURRENT_UPDATE_ID = "Beta_1.5.2.2";
+
+    // 読み込み時に表示を判定
+    window.addEventListener('DOMContentLoaded', () => {
+        const hasRead = localStorage.getItem(CURRENT_UPDATE_ID);
+        const modal = document.getElementById('update-overlay');
+        if (!hasRead && modal) {
+            modal.style.display = 'flex';
+        }
+    });
+
+    // 閉じる処理（既読を記録して要素を完全抹消）
+    function execUpdateClose() {
+        localStorage.setItem(CURRENT_UPDATE_ID, 'true');
+        const modal = document.getElementById('update-overlay');
+        if (modal) {
+            modal.remove(); // 物理的に削除して他のボタンとの干渉を防ぐ
+        }
+    }
+</script>
+<!-- アップデート情報モーダル（ここまでコピー） -->
+
+
+
+<div class="action-zone">
+
+    <div id="auth-status-badge" style="display:none;background:#1a1a2e;border:1px solid #6366f1;border-radius:14px;padding:10px 16px;text-align:center;font-size:0.82rem;color:#a78bfa;margin-bottom:4px;"></div>
+    <button id="save-btn" onclick="triggerReportCapture()">診断レポートを画像で保存する</button>
+    <p id="share-hint" style="display:none;color:var(--sub-text);font-size:0.8rem;text-align:center;margin:8px 0 0;">💡 プレビュー画面のダウンロードボタン下からXにシェアできます</p>
+    <button id="ai-btn" onclick="openAIChat()">🤖 AIアドバイザーに相談する</button>
+    <button id="history-btn" onclick="showHistoryModal()">📊 過去の診断結果を見る</button>
+    <button id="speed-btn"   onclick="showSpeedModal()">⚡ ページ読み込み速度テスト</button>
+    <button id="retry-btn"   onclick="retryDiagnostic()">🔄 再診断する</button>
+</div>
+
+<!-- 履歴モーダル -->
+<div id="history-modal" class="extra-modal">
+    <div class="extra-modal-box">
+        <h2>📊 過去の診断結果（最大3回）</h2>
+        <div id="history-content"></div>
+        <button class="modal-close-btn" onclick="document.getElementById('history-modal').style.display='none'">閉じる</button>
+    </div>
+</div>
+
+<!-- 速度テストモーダル -->
+<div id="speed-modal" class="extra-modal">
+    <div class="extra-modal-box">
+        <h2>⚡ ページ読み込み速度テスト</h2>
+        <p style="color:var(--sub-text);font-size:0.9rem;margin:0 0 18px;">主要サイトへの接続時間を計測します。<span style="color:var(--st-warn);font-weight:700;">※ブラウザ制限により参考値です。</span></p>
+        <div id="speed-results"></div>
+        <button id="speed-run-btn" onclick="runSpeedTest()" style="width:100%;padding:14px;border-radius:14px;background:#7c3aed;color:#fff;border:none;font-size:1rem;font-weight:800;cursor:pointer;margin-bottom:12px;">🚀 テスト開始</button>
+        <button class="modal-close-btn" onclick="document.getElementById('speed-modal').style.display='none'">閉じる</button>
+    </div>
+</div>
+<div id="modal-overlay">
+    <div id="result-img-wrap"></div>
+    <div class="modal-footer">
+        <p class="modal-hint">プレビューを確認して「画像をダウンロード」を押すか、長押し／右クリックで保存してください</p>
+        <div class="modal-actions" style="flex-direction:column;gap:10px;">
+            <div style="display:flex;gap:12px;width:100%;">
+                <button id="dl-btn" style="flex:1;">⬇ 画像をダウンロード</button>
+                <button class="close-btn" onclick="closeModal()" style="flex:1;">診断に戻る</button>
+            </div>
+            <button id="modal-share-x-btn" onclick="modalShareToX()" style="width:100%;padding:14px;border-radius:14px;background:transparent;color:#fff;border:2px solid #fff;font-size:1rem;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.742l7.737-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                X (Twitter) にシェアする
+            </button>
+            <p style="color:var(--sub-text);font-size:0.75rem;margin:4px 0 0;text-align:center;">※ 画像は自身で添付していただく形です</p>
+        </div>
+    </div>
+</div>
+<script src="script.js"></script>
+</body>
+</html>
