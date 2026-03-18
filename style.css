@@ -260,6 +260,30 @@
 }
 #update-close:hover { background: #243d24; }
 #update-close:active { transform: scale(0.98); }
+/* ──────────────────────────────────────────
+   auth-bar対応: 未ログイン時の余白確保
+   JSがbody.paddingTop='0'をセットするため
+   margin-topだけでauth-bar分をカバーする
+────────────────────────────────────────── */
 .app {
-  margin-top: 75px;
+  margin-top: 90px;  /* 75px → 90px に増量 */
+}
+
+/* スマホ向け: 小画面でボタン折り返し発生時も対応 */
+@media (max-width: 480px) {
+  .app {
+    margin-top: 95px;
+  }
+}
+
+/* iPhone ノッチ / Dynamic Island 対応 (PWAモード) */
+@supports (padding-top: env(safe-area-inset-top)) {
+  #auth-bar {
+    /* ノッチ分の高さを自動で上乗せ */
+    padding-top: max(10px, env(safe-area-inset-top)) !important;
+  }
+  .app {
+    /* auth-barの高さ + ノッチ分を余白に加算 */
+    margin-top: max(90px, calc(env(safe-area-inset-top) + 55px));
+  }
 }
