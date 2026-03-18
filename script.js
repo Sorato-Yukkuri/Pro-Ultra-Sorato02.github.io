@@ -1417,6 +1417,8 @@ async function sendAIMessage() {
         { role: 'system', content: _aiHistory._sys },
         ...recent
     ];
+    const body = JSON.stringify({ messages });
+
     const models = [
         'openai'
     ];
