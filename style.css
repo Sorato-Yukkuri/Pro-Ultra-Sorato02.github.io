@@ -1,8 +1,5 @@
 :root {
-    .ai-msg {
-  white-space: pre-wrap;
-}        
-    --bg:#050505;--card:#121212;--border:#282828;--text:#ffffff;--sub-text:#888888;
+            --bg:#050505;--card:#121212;--border:#282828;--text:#ffffff;--sub-text:#888888;
             --accent:#007aff;--S-color:#ff3b30;--A-color:#ff9500;--B-color:#34c759;
             --C-color:#007aff;--D-color:#8e8e93;--st-ok:#007aff;--st-warn:#ffcc00;--st-bad:#ff3b30;
         }
