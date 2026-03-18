@@ -260,3 +260,6 @@
 }
 #update-close:hover { background: #243d24; }
 #update-close:active { transform: scale(0.98); }
+.app {
+  margin-top: 60px;
+}
