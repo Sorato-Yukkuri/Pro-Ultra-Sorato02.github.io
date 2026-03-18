@@ -1413,25 +1413,24 @@ async function sendAIMessage() {
 
     // ── メッセージ構築（直近6件に制限） ────────────────────────
     const recent   = _aiHistory.filter(m => m.role).slice(-6);
-    // ── 修正後 ──
-const messages = [ { role: 'system', content: _aiHistory._sys }, ...recent ];
+    const messages = [
+        { role: 'system', content: _aiHistory._sys },
+        ...recent
+    ];
+    const models = [
+        'openai'
+    ];
 
-const models = [ 'openai' ]; // もし他のモデル（'mistral'など）を追加したければここに入れます
-let reply = null;
-let lastErr = '';
+    let reply   = null;
+    let lastErr = '';
 
-for (let mi = 0; mi < models.length; mi++) {
-    const model = models[mi];
-    
-    // 【重要】ループの中で、現在の model 名を含めて JSON を作成します
-    const body = JSON.stringify({ 
-        model: model, 
-        messages: messages 
-    });
-
-    if (mi > 0) {
-        _resetTimer(Math.floor(Math.random()*11)+12, '別モデルで再試行中 ('+model+')...');
-    }
+    for (let mi = 0; mi < models.length; mi++) {
+        const model = models[mi];
+        if (mi > 0) {
+            _resetTimer(
+                Math.floor(Math.random() * 11) + 12,
+                '別モデルで再試行中 (' + model + ')...'
+            );
             // 429対策：少し待つ
             await new Promise(r => setTimeout(r, 2500));
         }
