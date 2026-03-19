@@ -32,24 +32,71 @@ function getGPUInfo() {
 }
 
 /* ── ① CPU ベンチ（素数・行列積・疑似SHA） ── */
-function benchCPU() {
-    const t0 = performance.now();
-    // A) 素数カウント
-    let primes = 0;
-    for (let n=2;n<25000;n++){let ok=true;for(let i=2;i*i<=n;i++){if(n%i===0){ok=false;break;}}if(ok)primes++;}
-    // B) 4x4 行列積 x8000
-    const A=new Float64Array([1.1,2.2,3.3,4.4,5.5,6.6,7.7,8.8,9.9,1.1,2.2,3.3,4.4,5.5,6.6,7.7]);
-    const B=new Float64Array([8.8,7.7,6.6,5.5,4.4,3.3,2.2,1.1,9.9,8.8,7.7,6.6,5.5,4.4,3.3,2.2]);
-    const C=new Float64Array(16);
-    for(let r=0;r<8000;r++){for(let i=0;i<4;i++)for(let j=0;j<4;j++){let s=0;for(let k=0;k<4;k++)s+=A[i*4+k]*B[k*4+j];C[i*4+j]=s;}}
-    // C) 疑似SHA-256ビット演算
-    const K=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5];
-    let h=0x6a09e667;
-    for(let i=0;i<50000;i++){const w=(i*0x9e3779b9)>>>0;h=(h+((w>>>7|w<<25)^(w>>>18|w<<14)^(w>>>3))+K[i&3])>>>0;}
-    if(h===0)C[0]=1;
-    const ms = performance.now()-t0;
-    // 基準: ハイエンドPC~20ms, 高性能スマホ~55ms, ミドル~130ms, ロー~350ms+
-    return Math.max(0,Math.min(100,Math.round((350-ms)/3.4)));
+/* ── CPU ベンチ（高精度版） ── */
+async function benchCPU_pro() {
+    const DURATION = 1000;
+    const workers = Math.min(4, navigator.hardwareConcurrency || 4);
+
+    const workerCode = `
+        const size = 512 * 1024;
+        const arr = new Float64Array(size);
+
+        for (let i = 0; i < size; i++) {
+            arr[i] = i % 1000;
+        }
+
+        function heavyTask() {
+            let sum = 0;
+            for (let i = 0; i < size; i++) {
+                const v = arr[i];
+                sum += Math.sqrt(v * 1.001) * Math.sin(v);
+            }
+            return sum;
+        }
+
+        onmessage = () => {
+            for (let i = 0; i < 5; i++) heavyTask();
+
+            const start = performance.now();
+            let count = 0;
+
+            while (performance.now() - start < ${DURATION}) {
+                heavyTask();
+                count++;
+            }
+
+            postMessage(count);
+        }
+    `;
+
+    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    const url = URL.createObjectURL(blob);
+
+    const results = await Promise.all(
+        Array.from({ length: workers }, () =>
+            new Promise(resolve => {
+                const w = new Worker(url);
+                w.onmessage = e => {
+                    resolve(e.data);
+                    w.terminate();
+                };
+                w.postMessage(0);
+            })
+        )
+    );
+
+    URL.revokeObjectURL(url);
+
+    const total = results.reduce((a, b) => a + b, 0);
+    const normalized = total / workers;
+
+    let factor = 1.5;
+
+if (/iPhone|iPad/.test(navigator.userAgent)) factor = 1.85;
+else if (/Android/.test(navigator.userAgent)) factor = 1.65;
+else factor = 1.45;
+
+    return Math.min(100, Math.round(normalized * factor));
 }
 
 /* ── ② GPU ベンチ（WebGL シェーダー + Canvas 2D 合成） ── */
@@ -326,33 +373,98 @@ function detectBrowser() {
 
 function detectDeviceName() {
     const ua = navigator.userAgent;
-    // iPhone
-    let m = ua.match(/iPhone/);
+
+    // ===== iPhone =====
+    if (/iPhone/.test(ua)) {
+        const w = screen.width;
+        const h = screen.height;
+        const dpr = window.devicePixelRatio;
+        const key = `${w}x${h}@${dpr}`;
+
+        const map = {
+            // SE系
+            "320x568@2": "iPhone SE",
+            "375x667@2": "iPhone SE (第2/3世代)",
+
+            // X〜11系
+            "375x812@3": "iPhone X / XS / 11 Pro",
+
+            // XR / 11
+            "414x896@2": "iPhone XR / 11",
+
+            // Max系（古）
+            "414x896@3": "iPhone XS Max / 11 Pro Max",
+
+            // 12〜14（標準）
+            "390x844@3": "iPhone 12 / 13 / 14",
+
+            // mini
+            "360x780@3": "iPhone 12 / 13 mini",
+
+            // Pro（6.1）
+            "393x852@3": "iPhone 14 Pro",
+
+            // Pro Max（〜14）
+            "430x932@3": "iPhone 14 Pro Max",
+
+            // ===== ここから追加 =====
+
+            // 15 / 16 / 17（標準）
+            "393x852@3": "iPhone 15 / 16 / 17",
+
+            // Plus系
+            "430x932@3": "iPhone 15 Plus / 16 Plus / 17 Plus",
+
+            // Pro系
+            "393x852@3": "iPhone 15 Pro / 16 Pro / 17 Pro",
+
+            // Pro Max系
+            "430x932@3": "iPhone 15 Pro Max / 16 Pro Max / 17 Pro Max"
+        };
+
+        return map[key] || "iPhone";
+    }
+
+    // ===== iPad =====
+    if (/iPad/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) {
+        const w = screen.width;
+        const h = screen.height;
+
+        if (w === 1024 && h === 1366) return "iPad Pro 12.9";
+        if (w === 834 && h === 1194) return "iPad Pro 11";
+        if (w === 820 && h === 1180) return "iPad Air";
+        if (w === 810 && h === 1080) return "iPad (第10世代)";
+        if (w === 768 && h === 1024) return "iPad mini";
+
+        return "iPad";
+    }
+
+    // ===== Android =====
+    let m = ua.match(/Android[^;]*;\s*([^)]+)\)/);
     if (m) {
-        // iOS端末名はUAに含まれないが機種判別できる場合
-        return 'iPhone';
+        let name = m[1].trim().replace(/Build\/.*$/, '').trim();
+        name = name.replace(/_/g, " ").replace(/\s+/g, " ");
+        return name;
     }
-    // iPad
-    if (/iPad/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'iPad';
-    // Android デバイス名
-    m = ua.match(/Android[^;]*;\s*([^)]+)\)/);
-    if (m) return m[1].trim().replace(/Build\/.*$/, '').trim();
-    // ChromeOS
+
+ 　 // ===== Chromebook =====
     if (/CrOS/.test(ua)) {
-        m = ua.match(/CrOS\s+\S+\s+(\d+)/);
-        return 'Chromebook' + (m ? ' (ChromeOS ' + m[1] + ')' : '');
+        return "Chromebook";
     }
-    // Windows
-    if (/Windows NT/.test(ua)) {
-        m = ua.match(/Windows NT ([\d.]+)/);
-        const ver = {'10.0':'10/11','6.3':'8.1','6.2':'8','6.1':'7'}[m&&m[1]] || m&&m[1];
-        return 'Windows PC' + (ver ? ' (Windows ' + ver + ')' : '');
+    
+    // ===== Windows =====
+    if (/Windows NT/.test(ua)) return "Windows";
+
+    // ===== Mac =====
+    if (/Macintosh/.test(ua)) {
+        const isARM = navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+        return isARM ? "Mac (Apple Silicon)" : "Mac (Intel)";
     }
-    // Mac
-    if (/Macintosh/.test(ua)) return 'Mac';
-    // Linux
-    if (/Linux/.test(ua)) return 'Linux PC';
-    return '不明';
+
+    // ===== Linux =====
+    if (/Linux/.test(ua)) return "Linux";
+
+    return "";
 }
 
 /* ── ⑥-a IP取得（WebRTC + 外部API フォールバック） ── */
@@ -529,7 +641,17 @@ async function runBenchmark() {
     el.textContent='CPU 演算性能を計測中...';
     msg.textContent='素数計算・行列積・ビット演算を実行しています';
     await wait(80);
-    scores.cpu=benchCPU();
+
+// ウォームアップ（捨て）
+await benchCPU_pro();
+
+// 本番2回
+const s1 = await benchCPU_pro();
+const s2 = await benchCPU_pro();
+const s3 = await benchCPU_pro();
+// 平均
+const arr = [s1, s2, s3].sort((a, b) => a - b);
+scores.cpu = arr[1]; // 真ん中だけ採用（中央値）
 
     el.textContent='GPU 描画性能を計測中...';
     msg.textContent='WebGL シェーダー・Canvas 2D 合成描画を負荷試験中';
@@ -1033,7 +1155,7 @@ function ipChosen(mode) {
 function showDeviceWarn() {
     const name = diag.deviceName || '不明';
     document.getElementById('device-warn-msg').textContent =
-        '「' + name + '」というデバイス名が含まれています。SNSに公開しても問題ないことが多いですが、個人を特定されたくない場合は ** への変更を推奨します。';
+        '「' + name + '」というデバイス機種が含まれています。SNSに公開しても問題ないですが、見られたら不快なのであれば隠すことをおすすめします。';
     document.getElementById('device-warn-overlay').style.display = 'flex';
 }
 
