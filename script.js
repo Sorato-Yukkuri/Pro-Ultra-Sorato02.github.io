@@ -854,7 +854,7 @@ function processFinalReport() {
     setRow(34, diag.deviceName, 'good');
 
     // 30. 診断エンジン
-    setRow(30,'Pro Ultra Beta 1.0','good');
+    setRow(30,'Pro Ultra Beta 1.6.2','good');
 
     // 31. IPアドレス（WebRTC取得 or 外部API）
     const ipEl31 = document.getElementById('v-31');
