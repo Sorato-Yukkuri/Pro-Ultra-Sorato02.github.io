@@ -743,8 +743,11 @@ function processFinalReport() {
         row31.className = 'spec-row st-good';
         row31.style.display = '';
     } else {
-        row31.style.display = 'none';
-    }
+    row31.style.display = 'none';
+}
+
+initHelpIcons();
+
 
     // ── スコアリング（CPU32/GPU23/MEM帯域10/FPS15/RAM12/NET8） ──
     const ramScore=Math.min(100,Math.round((ramGB/64)*100));
@@ -2165,4 +2168,77 @@ window.addEventListener('load',()=>{
         if (e.key === 'Enter') checkFriendCode();
     });
     runBenchmark();
+});
+
+function initHelpIcons() {
+    document.querySelectorAll('.label').forEach(el => {
+        if (el.querySelector('.help')) return;
+
+        const help = document.createElement('span');
+        help.className = 'help';
+        help.textContent = '＊';
+
+        const text = el.textContent;
+
+        if (text.includes('CPU')) help.dataset.key = 'cpu';
+        else if (text.includes('メモリ')) help.dataset.key = 'ram';
+        else if (text.includes('GPU')) help.dataset.key = 'gpu';
+        else if (text.includes('フレーム') || text.includes('FPS')) help.dataset.key = 'fps';
+        else if (text.includes('画面') || text.includes('解像度')) help.dataset.key = 'display';
+        else if (text.includes('ネットワーク') || text.includes('回線')) help.dataset.key = 'network';
+        else if (text.includes('バッテリー')) help.dataset.key = 'battery';
+        else help.dataset.key = 'other';
+
+        el.appendChild(help);
+    });
+}
+
+const helpText = {
+  "CPU 論理コア数": "CPUのコア数です。多いほど同時に多くの処理を行えます。",
+  "システムメモリ容量": "端末のメモリ容量です。多いほど複数アプリを快適に動かせます。",
+  "GPU レンダラー": "GPUの種類です。グラフィック性能の目安になります。",
+  "GPU 最大テクスチャサイズ": "扱える画像サイズの上限です。大きいほど高精細描画が可能です。",
+  "実測 CPU ベンチスコア": "CPU性能を数値化したものです。",
+  "実測 GPU 描画スコア": "GPUの描画性能を示します。",
+  "実測メモリ帯域スコア": "メモリの転送速度の指標です。",
+  "実測平均フレームレート": "平均FPSです。高いほど滑らかに動作します。",
+  "実測 1% LOW フレームレート": "最低に近いFPSです。安定性を示します。",
+  "画面リフレッシュレート": "1秒間の画面更新回数です。",
+  "画面解像度": "画面のピクセル数です。",
+  "デバイスピクセル比": "画面の精細さを表します。",
+  "カラー深度 / HDR 対応": "色の表現力とHDR対応の有無です。",
+  "JS ヒープ上限": "JavaScriptが使える最大メモリ量です。",
+  "UIスレッド応答レイテンシ": "操作に対する反応速度です。",
+  "ネットワーク速度": "実際の通信速度です。",
+  "回線種別": "接続されているネットワークの種類です。",
+  "バッテリー残量": "現在の電池残量と状態です。",
+  "タッチポイント数": "同時に認識できるタッチ数です。",
+  "セキュア通信": "通信が暗号化されているかどうかです。",
+  "Cookie / IndexedDB": "データ保存機能の対応状況です。",
+  "WebGL バージョン": "3D描画機能のバージョンです。",
+  "WebGL 最大頂点属性数": "GPUの処理能力の指標の一つです。",
+  "WakeLock / 振動 API": "画面維持や振動機能の対応です。",
+  "PWA / Service Worker": "アプリ化やバックグラウンド処理機能です。",
+  "自動操縦検知": "ボット操作かどうかの判定です。",
+  "FPS ジッタースコア": "フレームの安定性を示します。",
+  "システム言語": "端末の言語設定です。",
+  "診断エンジンバージョン": "この診断ツールのバージョンです。",
+  "IP アドレス": "インターネット上の識別番号です。",
+  "ダークモード": "画面テーマ設定です。",
+  "使用ブラウザ": "現在使っているブラウザです。",
+  "デバイス名": "端末の種類やモデルです。"
+};
+
+document.addEventListener('click', e => {
+    if (!e.target.classList.contains('help')) return;
+
+    const label = e.target.closest('.label').textContent
+    .replace(/[＊*]/g,'')
+    .trim();
+
+console.log(label); // ←追加
+
+    const found = Object.keys(helpText).find(k => label.includes(k));
+
+    alert(helpText[found] || "この項目の説明は準備中です。");
 });

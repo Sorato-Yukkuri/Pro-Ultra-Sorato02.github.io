@@ -265,8 +265,17 @@
    JSがbody.paddingTop='0'をセットするため
    margin-topだけでauth-bar分をカバーする
 ────────────────────────────────────────── */
+
+
 .app {
   margin-top: 90px;  /* 75px → 90px に増量 */
+}
+
+.help {
+  margin-left:6px;
+  font-size:0.8rem;
+  color:#888;
+  cursor:pointer;
 }
 
 /* スマホ向け: 小画面でボタン折り返し発生時も対応 */
