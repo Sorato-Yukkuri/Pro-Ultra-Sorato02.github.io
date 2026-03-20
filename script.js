@@ -305,16 +305,9 @@ function runFPSBench(onComplete) {
         requestAnimationFrame(tickPhase2);
     }
 }
-/* ── ⑤ メモリ推定（安全のため特定機能を停止） ── */
+/* ── メモリ推定（修正版フル） ── */
 async function estimateMemoryPrecise() {
-    // 全ての実測と判定ロジックを削除
-    return { 
-        gb: 0, 
-        label: 'メモリーを特定できません', 
-        confLabel: '非公開', 
-        detail: 'プライバシー保護またはデバイス制限により特定をスキップしました' 
-    };
-}
+    const ev = [];
 
     // ── CPUコア数からの推定 ──
     const cores = navigator.hardwareConcurrency || 2;
@@ -322,24 +315,75 @@ async function estimateMemoryPrecise() {
     const cEst = (cMap.find(([th]) => cores >= th) || [0, 1])[1];
     ev.push({ v: cEst, w: 1, src: `cores:${cores}→${cEst}GB` });
 
-    // ── GPU判定へ続く ──
-    const gpuStr = getGPUInfo().renderer.toLowerCase();height*((window.devicePixelRatio||1)**2);
-    let bonus=0;
-    if(/apple m[3-9]|a18|snapdragon 8 gen [3-9]|dimensity 9[3-9]|rtx [4-9]|rx 79/.test(gpuStr)) bonus=32;
-    else if(/apple m[12]|a17|a16|snapdragon 8 gen [12]|dimensity 9[012]|rtx [123]|rx 6[7-9]/.test(gpuStr)) bonus=16;
-    else if(/a15|a14|snapdragon [78][0-9][0-9]|adreno 7|mali-g[7-9]/.test(gpuStr)) bonus=8;
-    else if(/adreno 6[5-9]|mali-g[5-6]/.test(gpuStr)) bonus=6;
-    if(pixels>=3840*2160) bonus=Math.max(bonus,8);
-    else if(pixels>=2560*1440) bonus=Math.max(bonus,4);
-    if(bonus>0) ev.push({v:bonus,w:2,src:`gpu→${bonus}GB`});
-    if(ev.length===0) return {gb:2,label:'2 GB',confLabel:'低信頼',detail:''};
-    const totalW=ev.reduce((s,e)=>s+e.w,0);
-    const raw=ev.reduce((s,e)=>s+e.v*e.w,0)/totalW;
-    const tiers=[1,2,3,4,6,8,12,16,24,32,48,64];
-    const snapped=tiers.reduce((p,c)=>Math.abs(c-raw)<Math.abs(p-raw)?c:p);
-    const conf=totalW>=12?'高精度':totalW>=7?'精度中':'推定';
-    const detail=ev.map(e=>e.src).join(' | ');
-    return {gb:snapped,label:`${snapped} GB`,confLabel:conf,detail};
+    // ── GPU情報取得（安全版） ──
+    function getGPUInfoSafe() {
+        try {
+            const canvas = document.createElement('canvas');
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (!gl) return { renderer: "" };
+
+            const ext = gl.getExtension('WEBGL_debug_renderer_info');
+            if (!ext) return { renderer: "" };
+
+            const renderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL);
+            return { renderer: renderer || "" };
+        } catch {
+            return { renderer: "" };
+        }
+    }
+
+    const gpuStr = getGPUInfoSafe().renderer.toLowerCase();
+
+    // ── 画面解像度から補正 ──
+    const width = window.screen.width;
+    const height = window.screen.height;
+    const pixels = width * height * ((window.devicePixelRatio || 1) ** 2);
+
+    let bonus = 0;
+
+    if (/apple m[3-9]|a18|snapdragon 8 gen [3-9]|dimensity 9[3-9]|rtx [4-9]|rx 79/.test(gpuStr)) bonus = 32;
+    else if (/apple m[12]|a17|a16|snapdragon 8 gen [12]|dimensity 9[012]|rtx [123]|rx 6[7-9]/.test(gpuStr)) bonus = 16;
+    else if (/a15|a14|snapdragon [78][0-9][0-9]|adreno 7|mali-g[7-9]/.test(gpuStr)) bonus = 8;
+    else if (/adreno 6[5-9]|mali-g[5-6]/.test(gpuStr)) bonus = 6;
+
+    if (pixels >= 3840 * 2160) bonus = Math.max(bonus, 8);
+    else if (pixels >= 2560 * 1440) bonus = Math.max(bonus, 4);
+
+    if (bonus > 0) {
+        ev.push({ v: bonus, w: 2, src: `gpu→${bonus}GB` });
+    }
+
+    // ── fallback ──
+    if (ev.length === 0) {
+        return {
+            gb: 2,
+            label: '2 GB',
+            confLabel: '低信頼',
+            detail: ''
+        };
+    }
+
+    // ── 重み付き平均 ──
+    const totalW = ev.reduce((s, e) => s + e.w, 0);
+    const raw = ev.reduce((s, e) => s + e.v * e.w, 0) / totalW;
+
+    const tiers = [1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64];
+    const snapped = tiers.reduce((p, c) =>
+        Math.abs(c - raw) < Math.abs(p - raw) ? c : p
+    );
+
+    const conf =
+        totalW >= 12 ? '高精度' :
+        totalW >= 7 ? '精度中' : '推定';
+
+    const detail = ev.map(e => e.src).join(' | ');
+
+    return {
+        gb: snapped,
+        label: `${snapped} GB`,
+        confLabel: conf,
+        detail
+    };
 }
 
 /* ── ブラウザ名・デバイス名取得 ── */
