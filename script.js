@@ -274,30 +274,33 @@ function runFPSBench(onComplete) {
                 return;
             }
 
-            // ── 集計 ──
+// ── 集計 ──
             if (frameTimes.length < 30) { onComplete(30, 20, 30, rr); return; }
 
-            const sorted  = [...frameTimes].sort((a,b)=>a-b);
-            const lo      = Math.floor(sorted.length * 0.02);
-            const hi      = Math.ceil(sorted.length  * 0.98);
-            const trimmed = sorted.slice(lo, hi);
+            // 1. 全フレームの合計時間から平均を算出（カクつきを反映させる）
+            const sumTimes = frameTimes.reduce((a, b) => a + b, 0);
+            const avgTime  = sumTimes / frameTimes.length;
 
-            const p50    = trimmed[Math.floor(trimmed.length * 0.50)];
-            const p97    = trimmed[Math.floor(trimmed.length * 0.97)];
-            const avgFps = Math.min(rr, Math.round(1000 / p50));
+            // 2. 1% Lowに近い値（下位3%）を出すためにソート
+            const sorted  = [...frameTimes].sort((a,b)=>a-b);
+            const p97     = sorted[Math.floor(sorted.length * 0.97)];
+            
+            const avgFps = Math.min(rr, Math.round(1000 / avgTime));
             const lowFps = Math.min(rr, Math.round(1000 / p97));
 
-            // ジッター: スケジューリング遅延の中央値と標準偏差を使う
+            // 3. ジッター（安定性）スコアの計算
             const gapMed  = gaps.length > 0
-                ? gaps.sort((a,b)=>a-b)[Math.floor(gaps.length*0.5)] : 0;
+                ? [...gaps].sort((a,b)=>a-b)[Math.floor(gaps.length*0.5)] : 0;
             const gapMean = gaps.reduce((a,b)=>a+b,0) / (gaps.length||1);
             const gapSd   = Math.sqrt(gaps.reduce((a,b)=>a+(b-gapMean)**2,0)/(gaps.length||1));
-            // スケジュール遅延0ms=100点, 10ms以上=0点
             const jScore  = Math.max(0, Math.min(100, Math.round(100 - (gapMed + gapSd) * 6)));
 
+            // 4. 不要な要素の削除とジャンクフレーム数のカウント
             try{document.body.removeChild(_pcv);}catch(e){}
             const _j32 = frameTimes.filter(d=>d>32).length;
             const _j17 = frameTimes.filter(d=>d>16.7).length;
+
+            // 5. 結果を返して終了
             onComplete(avgFps, lowFps, jScore, rr, _j32, _j17);
         }
 
@@ -305,84 +308,74 @@ function runFPSBench(onComplete) {
         requestAnimationFrame(tickPhase2);
     }
 }
-/* ── メモリ推定（修正版フル） ── */
+
+/* ── ⑤ 高精度メモリ推定（安全・高速・実測なし版） ── */
 async function estimateMemoryPrecise() {
     const ev = [];
 
-    // ── CPUコア数からの推定 ──
+    // 1. 標準APIから取得 (AndroidやPCなどで有効)
+    if (navigator.deviceMemory) {
+        const raw = navigator.deviceMemory;
+        ev.push({ v: raw, w: 5, src: `API:${raw}GB` });
+    }
+
+    // 2. JSヒープ上限から推定 (iOSなどで有効)
+    if (window.performance?.memory?.jsHeapSizeLimit) {
+        const mb = performance.memory.jsHeapSizeLimit / 1048576;
+        const tbl = [[14000, 32], [7000, 16], [3500, 8], [1800, 4], [900, 2], [0, 1]];
+        const est = (tbl.find(([th]) => mb >= th) || [0, 1])[1];
+        ev.push({ v: est, w: 5, src: `heap:${Math.round(mb)}MB→${est}GB` });
+    }
+
+    // 3. CPUコア数からの推定
     const cores = navigator.hardwareConcurrency || 2;
     const cMap = [[24, 64], [16, 32], [12, 16], [8, 8], [6, 6], [4, 4], [2, 2], [0, 1]];
     const cEst = (cMap.find(([th]) => cores >= th) || [0, 1])[1];
     ev.push({ v: cEst, w: 1, src: `cores:${cores}→${cEst}GB` });
 
-    // ── GPU情報取得（安全版） ──
-    function getGPUInfoSafe() {
-        try {
-            const canvas = document.createElement('canvas');
-            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-            if (!gl) return { renderer: "" };
-
-            const ext = gl.getExtension('WEBGL_debug_renderer_info');
-            if (!ext) return { renderer: "" };
-
-            const renderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL);
-            return { renderer: renderer || "" };
-        } catch {
-            return { renderer: "" };
-        }
-    }
-
-    const gpuStr = getGPUInfoSafe().renderer.toLowerCase();
-
-    // ── 画面解像度から補正 ──
-    const width = window.screen.width;
-    const height = window.screen.height;
-    const pixels = width * height * ((window.devicePixelRatio || 1) ** 2);
-
+    // 4. GPUの種類から極限まで正確に推測する
+    const gpuInfo = getGPUInfo();
+    const gpuStr = (gpuInfo.renderer || "").toLowerCase();
+    
     let bonus = 0;
+    let weight = 0;
 
-    if (/apple m[3-9]|a18|snapdragon 8 gen [3-9]|dimensity 9[3-9]|rtx [4-9]|rx 79/.test(gpuStr)) bonus = 32;
-    else if (/apple m[12]|a17|a16|snapdragon 8 gen [12]|dimensity 9[012]|rtx [123]|rx 6[7-9]/.test(gpuStr)) bonus = 16;
-    else if (/a15|a14|snapdragon [78][0-9][0-9]|adreno 7|mali-g[7-9]/.test(gpuStr)) bonus = 8;
-    else if (/adreno 6[5-9]|mali-g[5-6]/.test(gpuStr)) bonus = 6;
+    // --- Apple デバイス（iPhone / iPad / Mac）の精密判定 ---
+    if (/a18/.test(gpuStr)) { bonus = 8; weight = 15; } // iPhone 16シリーズは全機種8GB確定
+    else if (/a17/.test(gpuStr)) { bonus = 8; weight = 15; } // iPhone 15 Pro は8GB確定
+    else if (/a16/.test(gpuStr)) { bonus = 6; weight = 10; } // iPhone 14 Pro / 15 は6GB
+    else if (/a15/.test(gpuStr)) { bonus = 4; weight = 10; } // iPhone 13 等
+    else if (/apple m[3-9]/.test(gpuStr)) { bonus = 16; weight = 8; } // 最新Mac/iPad Pro
+    else if (/apple m[12]/.test(gpuStr)) { bonus = 8; weight = 8; } // 初期M1/M2
 
-    if (pixels >= 3840 * 2160) bonus = Math.max(bonus, 8);
-    else if (pixels >= 2560 * 1440) bonus = Math.max(bonus, 4);
+    // --- Android ハイエンドの精密判定 ---
+    else if (/snapdragon 8 gen [3-9]|dimensity 9[3-9]/.test(gpuStr)) { bonus = 12; weight = 6; } // 最新ハイエンドは12GB〜16GBが多い
+    else if (/snapdragon 8 gen [12]|dimensity 9[012]/.test(gpuStr)) { bonus = 8; weight = 6; }
+
+    // --- PC用グラボの精密判定 ---
+    else if (/rtx [4-9]|rx 7[89]/.test(gpuStr)) { bonus = 32; weight = 6; } // ハイエンドPC
 
     if (bonus > 0) {
-        ev.push({ v: bonus, w: 2, src: `gpu→${bonus}GB` });
+        ev.push({ v: bonus, w: weight, src: `gpu→${bonus}GB` });
     }
 
-    // ── fallback ──
-    if (ev.length === 0) {
-        return {
-            gb: 2,
-            label: '2 GB',
-            confLabel: '低信頼',
-            detail: ''
-        };
-    }
-
-    // ── 重み付き平均 ──
+    // ── 最終集計 ──
+    if (ev.length === 0) return { gb: 4, label: '4 GB', confLabel: '推定', detail: 'no data' };
+    
     const totalW = ev.reduce((s, e) => s + e.w, 0);
-    const raw = ev.reduce((s, e) => s + e.v * e.w, 0) / totalW;
-
+    const rawAvg = ev.reduce((s, e) => s + e.v * e.w, 0) / totalW;
+    
     const tiers = [1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64];
-    const snapped = tiers.reduce((p, c) =>
-        Math.abs(c - raw) < Math.abs(p - raw) ? c : p
-    );
+    const snapped = tiers.reduce((p, c) => Math.abs(c - rawAvg) < Math.abs(p - rawAvg) ? c : p);
+    
+    const conf = totalW >= 12 ? '高精度' : totalW >= 7 ? '精度中' : '推定';
+    const detailText = ev.map(e => e.src).join(' | ');
 
-    const conf =
-        totalW >= 12 ? '高精度' :
-        totalW >= 7 ? '精度中' : '推定';
-
-    const detail = ev.map(e => e.src).join(' | ');
-
-    return {
-        gb: snapped,
-        label: `${snapped} GB`,
-        confLabel: conf,
-        detail
+    return { 
+        gb: snapped, 
+        label: `${snapped} GB`, 
+        confLabel: conf, 
+        detail: detailText 
     };
 }
 
@@ -885,7 +878,7 @@ function processFinalReport() {
     setRow(34, diag.deviceName, 'good');
 
     // 30. 診断エンジン
-    setRow(30,'Pro Ultra Beta 1.6.2','good');
+    setRow(30,'Pro Ultra Beta 1.6.93','good');
 
     // 31. IPアドレス（WebRTC取得 or 外部API）
     const ipEl31 = document.getElementById('v-31');
@@ -1477,7 +1470,7 @@ function openAIChat() {
 ・「🎨 色の基準を確認する」→ 青/黄/赤/緑の意味を確認
 ・manifest.json対応。PWAとしてホーム画面に追加してアプリとして使用可能
 ・IPはブラウザ内のみで処理。サーバー送信なし（AI回答を除く）
-・正式名称：精密デバイス診断 Pro Ultra / バージョン：Beta 1.5.9 / Chrome推奨 /初リリース2026年3月15日 /15日に合計3回中/小アップデートを配信済み
+・正式名称：精密デバイス診断 Pro Ultra / バージョン：Beta 1.5.93 / Chrome推奨 /初リリース2026年3月15日 /15日に合計3回中/小アップデートを配信済み
 
 ■ ランク判定の詳細
 基本：S=総合80以上かつ1%LOW 55fps以上かつCPU 78以上かつRAM 12GB以上 / A=総合65以上かつ1%LOW 45以上かつRAM 8GB以上 / B=総合48以上かつ1%LOW 25以上 / C=30以上 / D=30未満
