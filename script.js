@@ -319,18 +319,35 @@ async function estimateMemoryPrecise() {
         ev.push({v:est,w:5,src:`heap:${Math.round(mb)}MB→${est}GB`});
     }
     try {
-        const probes=[48,32,24,20,16,12,8,6,4,3,2,1.5,1,0.75,0.5];
-        for(const gb of probes){
+        let allocated = [];
+        let currentGB = 0;
+        const step = 0.5; // 0.5GBずつ積み上げる
+        
+        // 最大16GBまで、0.5GBずつ追加していく
+        for (let i = 0; i < 32; i++) {
             try {
-                const ab=new ArrayBuffer(gb*873741824);
-                new Uint8Array(ab,0,1)[0]=1;
-                const tbl=[[24,64],[14,32],[7,16],[5,12],[3,8],[1.5,4],[0.7,2],[0,1]];
-                const est=(tbl.find(([th])=>gb>=th)||[0,1])[1];
-                ev.push({v:est,w:7,src:`alloc:${gb}GB→${est}GB`});
+                // 小刻みに確保することでOSの強制終了を回避
+                allocated.push(new Uint8Array(step * 1024 * 1024 * 1024));
+                currentGB += step;
+                
+                // 1GBごとに、OSに「生きてますよ」と伝えるための短い休憩
+                if (i % 2 === 0) await new Promise(r => setTimeout(r, 1));
+            } catch (e) {
+                // メモリ上限に達したらループを抜ける
                 break;
-            } catch(e){}
+            }
         }
-    } catch(e){}
+
+        if (currentGB > 0) {
+            // あなたの既存の判定テーブルを、実測値(currentGB)に合わせて適用
+            const tbl = [[12, 64], [8, 32], [6, 16], [4, 12], [2, 8], [1.5, 4], [0.7, 2], [0, 1]];
+            const est = (tbl.find(([th]) => currentGB >= th) || [0, 1])[1];
+            ev.push({ v: est, w: 7, src: `alloc:${currentGB}GB→${est}GB` });
+        }
+        
+        // 計測が終わったら即座にメモリを解放
+        allocated = null; 
+    } catch (e) {}
     const cores=navigator.hardwareConcurrency||2;
     const cMap=[[24,64],[16,32],[12,16],[8,8],[6,6],[4,4],[2,2],[0,1]];
     const cEst=(cMap.find(([th])=>cores>=th)||[0,1])[1];
@@ -1446,7 +1463,7 @@ function openAIChat() {
 ・「🎨 色の基準を確認する」→ 青/黄/赤/緑の意味を確認
 ・manifest.json対応。PWAとしてホーム画面に追加してアプリとして使用可能
 ・IPはブラウザ内のみで処理。サーバー送信なし（AI回答を除く）
-・正式名称：精密デバイス診断 Pro Ultra / バージョン：Beta 1.5.2 / Chrome推奨 /初リリース2026年3月15日 /15日に合計3回中/小アップデートを配信済み
+・正式名称：精密デバイス診断 Pro Ultra / バージョン：Beta 1.5.9 / Chrome推奨 /初リリース2026年3月15日 /15日に合計3回中/小アップデートを配信済み
 
 ■ ランク判定の詳細
 基本：S=総合80以上かつ1%LOW 55fps以上かつCPU 78以上かつRAM 12GB以上 / A=総合65以上かつ1%LOW 45以上かつRAM 8GB以上 / B=総合48以上かつ1%LOW 25以上 / C=30以上 / D=30未満

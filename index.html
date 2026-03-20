@@ -15,7 +15,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
     <link rel="icon" type="image/png" sizes="192x192" href="android-chrome-192x192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="android-chrome-512x512.png">
-    <title>精密デバイス診断 Pro Ultra Beta1.5.2</title>
+    <title>精密デバイス診断 Pro Ultra Beta1.5.9</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -295,7 +295,8 @@
 
             <br><br>
 
-            【バグ修正】<br>現在iPhoneSEなどのiPhone機種でダウンロードしようとするとダウンロードボタンを押しても何もならないバグを修正しました。<br>なおiPhoneでダウンロードする際、｢ダウンロードしますか｣という画面が表示されない場合、画像を長押しして、｢写真に保存｣を押してください。<br>スマートフォンでアップデート更新内容を見終わって閉じ、再読込すると再び表示される問題＜修正済み＞<br><br>【現状確認されているバグ】<br>・iPhoneで診断結果をXでシェアすると、ダウンロードがされない問題<br>・AI機能にて本アプリ以外のプロンクトを入れると返答しない問題<br><br>
+            【バグ修正】<br>巨大な ArrayBuffer を一括確保する処理が iOS のメモリ制限（Jetsam）に抵触し、<br>Safari が強制終了する問題を解決しました。
+<br>メモリ確保を小刻みなステップ（256MB/0.5GB単位）に変更し、安定性を向上させました。<br><br>【現状確認されているバグ】<br>・AI機能がエラーになる問題<br>・AI機能にて本アプリ以外のプロンクトを入れると返答しない問題<br><br>
             【Beta1.6の告知】<br>Beta1.6のアップデートでは、「親友コード」の応募を開始します。これにより、管理者でなくてもグループを作れるようになります。
                 
                 
@@ -314,7 +315,7 @@
 
 <script>
     // バージョン識別キー（アプデのたびに末尾の数字などを変えてください）
-    const CURRENT_UPDATE_ID = "Beta_1.5.2.2";
+    const CURRENT_UPDATE_ID = "Beta_1.5.9";
 
     // 読み込み時に表示を判定
     window.addEventListener('DOMContentLoaded', () => {
@@ -334,7 +335,7 @@
         }
     }
 </script>
-<!-- アップデート情報モーダル（ここまでコピー） -->
+<!-- アップデート情報モーダル（ここまで） -->
 
 
 
