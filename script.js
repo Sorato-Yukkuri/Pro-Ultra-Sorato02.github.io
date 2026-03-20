@@ -305,55 +305,25 @@ function runFPSBench(onComplete) {
         requestAnimationFrame(tickPhase2);
     }
 }
-/* ── ⑤ 高精度メモリ推定（5手法・加重統合） ── */
+/* ── ⑤ メモリ推定（安全のため特定機能を停止） ── */
 async function estimateMemoryPrecise() {
-    const ev=[];
-    if(navigator.deviceMemory){
-        const raw=navigator.deviceMemory;
-        ev.push({v:raw,w:raw===8?2:4,src:`API:${raw}GB`});
-    }
-    if(window.performance?.memory?.jsHeapSizeLimit){
-        const mb=performance.memory.jsHeapSizeLimit/1048576;
-        const tbl=[[14000,32],[7000,16],[3500,8],[1800,4],[900,2],[0,1]];
-        const est=(tbl.find(([th])=>mb>=th)||[0,1])[1];
-        ev.push({v:est,w:5,src:`heap:${Math.round(mb)}MB→${est}GB`});
-    }
-    try {
-        let allocated = [];
-        let currentGB = 0;
-        const step = 0.5; // 0.5GBずつ積み上げる
-        
-        // 最大16GBまで、0.5GBずつ追加していく
-        for (let i = 0; i < 32; i++) {
-            try {
-                // 小刻みに確保することでOSの強制終了を回避
-                allocated.push(new Uint8Array(step * 1024 * 1024 * 1024));
-                currentGB += step;
-                
-                // 1GBごとに、OSに「生きてますよ」と伝えるための短い休憩
-                if (i % 2 === 0) await new Promise(r => setTimeout(r, 1));
-            } catch (e) {
-                // メモリ上限に達したらループを抜ける
-                break;
-            }
-        }
+    // 全ての実測と判定ロジックを削除
+    return { 
+        gb: 0, 
+        label: 'メモリーを特定できません', 
+        confLabel: '非公開', 
+        detail: 'プライバシー保護またはデバイス制限により特定をスキップしました' 
+    };
+}
 
-        if (currentGB > 0) {
-            // あなたの既存の判定テーブルを、実測値(currentGB)に合わせて適用
-            const tbl = [[12, 64], [8, 32], [6, 16], [4, 12], [2, 8], [1.5, 4], [0.7, 2], [0, 1]];
-            const est = (tbl.find(([th]) => currentGB >= th) || [0, 1])[1];
-            ev.push({ v: est, w: 7, src: `alloc:${currentGB}GB→${est}GB` });
-        }
-        
-        // 計測が終わったら即座にメモリを解放
-        allocated = null; 
-    } catch (e) {}
-    const cores=navigator.hardwareConcurrency||2;
-    const cMap=[[24,64],[16,32],[12,16],[8,8],[6,6],[4,4],[2,2],[0,1]];
-    const cEst=(cMap.find(([th])=>cores>=th)||[0,1])[1];
-    ev.push({v:cEst,w:1,src:`cores:${cores}→${cEst}GB`});
-    const gpuStr=getGPUInfo().renderer.toLowerCase();
-    const pixels=screen.width*screen.height*((window.devicePixelRatio||1)**2);
+    // ── CPUコア数からの推定 ──
+    const cores = navigator.hardwareConcurrency || 2;
+    const cMap = [[24, 64], [16, 32], [12, 16], [8, 8], [6, 6], [4, 4], [2, 2], [0, 1]];
+    const cEst = (cMap.find(([th]) => cores >= th) || [0, 1])[1];
+    ev.push({ v: cEst, w: 1, src: `cores:${cores}→${cEst}GB` });
+
+    // ── GPU判定へ続く ──
+    const gpuStr = getGPUInfo().renderer.toLowerCase();height*((window.devicePixelRatio||1)**2);
     let bonus=0;
     if(/apple m[3-9]|a18|snapdragon 8 gen [3-9]|dimensity 9[3-9]|rtx [4-9]|rx 79/.test(gpuStr)) bonus=32;
     else if(/apple m[12]|a17|a16|snapdragon 8 gen [12]|dimensity 9[012]|rtx [123]|rx 6[7-9]/.test(gpuStr)) bonus=16;
