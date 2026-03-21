@@ -373,7 +373,6 @@ async function estimateMemoryPrecise() {
             return { gb: 8, label: '8 GB', confLabel: '高精度', detail: 'iPhone15以降確定8GB' };
         }
         // gen14 = iPhone 14 / 14 Plus → 6GB
-        // gen15,2/15,3 = iPhone 14 Pro/ProMax → 上で捌いてる
         if (_igen === 14) {
             return { gb: 6, label: '6 GB', confLabel: '高精度', detail: 'iPhone14確定6GB' };
         }
@@ -384,6 +383,31 @@ async function estimateMemoryPrecise() {
         // gen11以下 = iPhone 11以前 → 3〜4GB
         if (_igen <= 11) {
             return { gb: 3, label: '3 GB', confLabel: '高精度', detail: 'iPhone11以前確定3GB' };
+        }
+    }
+
+    // 5b. SafariはUAにモデル番号を含めないのでiOSバージョンで推定
+    // "iPhone OS 18_x" → iOS 18 → iPhone 15/16世代 → 8GB
+    if (/iPhone/.test(navigator.userAgent)) {
+        const _iosMatch = navigator.userAgent.match(/iPhone OS (\d+)_/);
+        if (_iosMatch) {
+            const _iosVer = parseInt(_iosMatch[1]);
+            // iOS 17以上 = iPhone 15以降 → 8GB確定
+            if (_iosVer >= 17) {
+                return { gb: 8, label: '8 GB', confLabel: '精度中', detail: 'iOS' + _iosVer + '→iPhone15以降推定8GB' };
+            }
+            // iOS 16 = iPhone 14世代 → 6GB
+            if (_iosVer === 16) {
+                return { gb: 6, label: '6 GB', confLabel: '精度中', detail: 'iOS16→iPhone14世代推定6GB' };
+            }
+            // iOS 15 = iPhone 13世代 → 4GB
+            if (_iosVer === 15) {
+                return { gb: 4, label: '4 GB', confLabel: '精度中', detail: 'iOS15→iPhone13世代推定4GB' };
+            }
+            // iOS 14以下 → 4GB以下
+            if (_iosVer <= 14) {
+                return { gb: 4, label: '4 GB', confLabel: '精度中', detail: 'iOS14以下→旧世代推定4GB' };
+            }
         }
     }
 
