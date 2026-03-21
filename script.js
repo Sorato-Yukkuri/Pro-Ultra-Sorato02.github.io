@@ -363,7 +363,31 @@ async function estimateMemoryPrecise() {
         }
     }
 
-    // 5. GPUの種類から極限まで正確に推測する
+    // 5. iPhoneモデル番号による強制固定（最優先・加重平均を無視して確定）
+    // UAの "iPhoneXX,YY" からモデル世代番号を取得
+    const _iphoneModelMatch = navigator.userAgent.match(/iPhone(\d+),(\d+)/);
+    if (_iphoneModelMatch) {
+        const _igen = parseInt(_iphoneModelMatch[1]);
+        // gen17 = iPhone 16系 / gen16 = iPhone 15 Pro系 / gen15 = iPhone 15系 → 全部8GB
+        if (_igen >= 15) {
+            return { gb: 8, label: '8 GB', confLabel: '高精度', detail: 'iPhone15以降確定8GB' };
+        }
+        // gen14 = iPhone 14 / 14 Plus → 6GB
+        // gen15,2/15,3 = iPhone 14 Pro/ProMax → 上で捌いてる
+        if (_igen === 14) {
+            return { gb: 6, label: '6 GB', confLabel: '高精度', detail: 'iPhone14確定6GB' };
+        }
+        // gen13 = iPhone 13系 / gen12 = iPhone 12系 → 4GB
+        if (_igen === 13 || _igen === 12) {
+            return { gb: 4, label: '4 GB', confLabel: '高精度', detail: 'iPhone12-13確定4GB' };
+        }
+        // gen11以下 = iPhone 11以前 → 3〜4GB
+        if (_igen <= 11) {
+            return { gb: 3, label: '3 GB', confLabel: '高精度', detail: 'iPhone11以前確定3GB' };
+        }
+    }
+
+    // 6. GPUの種類から極限まで正確に推測する
     const gpuInfo = getGPUInfo();
     const gpuStr = (gpuInfo.renderer || "").toLowerCase();
     
@@ -1604,55 +1628,42 @@ async function sendAIMessage() {
 
     // ══════════════════════════════════════════════════════
     // 【1位】Pollinations — openaiモデルのみ・キーなし
-    // 不安定なので最大3回リトライする
+    // 失敗したら即2位へ（リトライなし・8秒タイムアウト）
     // ══════════════════════════════════════════════════════
-    for (let _ptry = 0; _ptry < 3 && !reply; _ptry++) {
-        if (_ptry > 0) {
-            _resetTimer(15, `Pollinations 再試行中... (${_ptry + 1}/3)`);
-            await new Promise(r => setTimeout(r, 3000));
-        } else {
-            _resetTimer(18, '回答を生成しています...');
-        }
-        try {
-            // 8秒でタイムアウト（以前は無制限で詰まってた）
-            const _ctrl = new AbortController();
-            const _tout = setTimeout(() => _ctrl.abort(), 8000);
-            const resp = await fetch('https://text.pollinations.ai/openai', {
-                method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ model: 'openai', messages }),
-                signal:  _ctrl.signal
-            });
-            clearTimeout(_tout);
-            if (resp.ok) {
-                const data = await resp.json();
-                const raw  = data.choices?.[0]?.message?.content || '';
-                if (raw) {
-                    let cleaned = raw.replace(/\n---[\s\S]*$/m, '');
-                    cleaned = cleaned.replace(/Powered by Pollinations[^\n]*/gi, '');
-                    cleaned = cleaned.replace(/Support our mission[^\n]*/gi, '');
-                    reply = cleaned.trim() || raw.trim();
-                } else {
-                    lastErr = 'Pollinations: 空のレスポンス';
-                    if (_ptry === 2) _errLog.push({ service: 'Pollinations', code: '空レスポンス', msg: 'AIが空の返答を返しました。サービスが混雑しています。' });
-                }
+    try {
+        _resetTimer(18, '回答を生成しています...');
+        const _ctrl = new AbortController();
+        const _tout = setTimeout(() => _ctrl.abort(), 8000);
+        const resp = await fetch('https://text.pollinations.ai/openai', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ model: 'openai', messages }),
+            signal:  _ctrl.signal
+        });
+        clearTimeout(_tout);
+        if (resp.ok) {
+            const data = await resp.json();
+            const raw  = data.choices?.[0]?.message?.content || '';
+            if (raw) {
+                let cleaned = raw.replace(/\n---[\s\S]*$/m, '');
+                cleaned = cleaned.replace(/Powered by Pollinations[^\n]*/gi, '');
+                cleaned = cleaned.replace(/Support our mission[^\n]*/gi, '');
+                reply = cleaned.trim() || raw.trim();
             } else {
-                lastErr = 'Pollinations: HTTP ' + resp.status;
-                const _codeMap = { 429: 'レート制限（使いすぎ）', 503: 'サーバー過負荷', 500: 'サーバー内部エラー', 401: '認証エラー' };
-                if (_ptry === 2) _errLog.push({ service: 'Pollinations', code: 'HTTP ' + resp.status, msg: (_codeMap[resp.status] || 'サーバーエラー') + '。3回試みましたが失敗しました。' });
-                // 429は少し長めに待つ
-                if (resp.status === 429 && _ptry < 2) await new Promise(r => setTimeout(r, 5000));
+                lastErr = 'Pollinations: 空のレスポンス';
+                _errLog.push({ service: 'Pollinations', code: '空レスポンス', msg: 'AIが空の返答を返しました。サービスが混雑しています。' });
             }
-        } catch(e) {
-            const _isTimeout = e.name === 'AbortError';
-            lastErr = _isTimeout ? 'Pollinations: タイムアウト(8秒)' : 'Pollinations: ' + (e.message || 'ネットワークエラー');
-            if (_ptry === 2) {
-                const _msg = _isTimeout
-                    ? 'Pollinationsサーバーの応答が8秒以上かかりタイムアウトしました。サーバーが混雑または停止中です。'
-                    : 'インターネット接続を確認してください。または Pollinations のサーバーがダウンしています。';
-                _errLog.push({ service: 'Pollinations', code: _isTimeout ? 'タイムアウト' : 'ネットワークエラー', msg: _msg });
-            }
+        } else {
+            lastErr = 'Pollinations: HTTP ' + resp.status;
+            const _codeMap = { 429: 'レート制限（使いすぎ）', 503: 'サーバー過負荷', 500: 'サーバー内部エラー', 401: '認証エラー' };
+            _errLog.push({ service: 'Pollinations', code: 'HTTP ' + resp.status, msg: (_codeMap[resp.status] || 'サーバーエラー') + '。OpenRouterに切り替えます。' });
         }
+    } catch(e) {
+        const _isTimeout = e.name === 'AbortError';
+        lastErr = _isTimeout ? 'Pollinations: タイムアウト(8秒)' : 'Pollinations: ' + (e.message || 'ネットワークエラー');
+        _errLog.push({ service: 'Pollinations', code: _isTimeout ? 'タイムアウト' : 'ネットワークエラー',
+            msg: _isTimeout ? 'Pollinationsが8秒以内に応答しませんでした。OpenRouterに切り替えます。'
+                            : 'Pollinationsへの接続に失敗しました。OpenRouterに切り替えます。' });
     }
 
     // ══════════════════════════════════════════════════════
