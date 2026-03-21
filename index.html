@@ -8,8 +8,11 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="DeviceCheck">
-    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-title" content="デバイス診断">
+    <!-- Apple Touch Icon: 専用ファイルがない場合は192pxのアイコンで代用 -->
+    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+    <link rel="apple-touch-icon" sizes="192x192" href="android-chrome-192x192.png">
+    <link rel="apple-touch-icon" sizes="512x512" href="android-chrome-512x512.png">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
@@ -295,7 +298,7 @@
 
             <br><br>
 
-            【バグ修正】<br>・巨大な ArrayBuffer を一括確保する処理が iOS のメモリ制限（Jetsam）に抵触し、<br>Safari が強制終了する問題を解決しました。<br><br>・iPhone端末でメモリーが64GBになる問題を解決しました。<br><br>平均が60FPCに固定になる問題を修正
+            【バグ修正】<br>・巨大な ArrayBuffer を一括確保する処理が iOS のメモリ制限（Jetsam）に抵触し、<br>Safari が強制終了する問題を解決しました。<br><br>・iPhone端末でメモリーが64GBになる問題を解決し、80%正確のようにしました。<br><br>平均が60FPCに固定になる問題を修正
 <br>メモリ確保を小刻みなステップ（256MB/0.5GB単位）に変更し、安定性を向上させました。<br><br>【現状確認されているバグ】<br>・AI機能がエラーになる問題<br>・AI機能にて本アプリ以外のプロンクトを入れると返答しない問題<br><br>
             【Beta1.6の告知】<br>Beta1.6のアップデートでは、「親友コード」の応募を開始します。これにより、管理者でなくてもグループを作れるようになります。
                 

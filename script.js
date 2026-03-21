@@ -333,7 +333,37 @@ async function estimateMemoryPrecise() {
     const cEst = (cMap.find(([th]) => cores >= th) || [0, 1])[1];
     ev.push({ v: cEst, w: 1, src: `cores:${cores}→${cEst}GB` });
 
-    // 4. GPUの種類から極限まで正確に推測する
+    // 4. Google Pixel モデル名による強制固定（Android UA から機種名を直接取得）
+    // UA例: "...Android 14; Pixel 8 Pro Build/..."
+    const _pixelMatch = navigator.userAgent.match(/;\s*(Pixel\s+[\w\s]+?)\s+Build\//i);
+    if (_pixelMatch) {
+        const _pixelName = _pixelMatch[1].toLowerCase().trim();
+        // Pixel 8 / 8 Pro / 8a → 8GB
+        // Pixel 7 / 7 Pro / 7a → 8GB
+        // Pixel 6 / 6 Pro / 6a → 8GB
+        // Pixel 5 / 5a          → 8GB
+        if (/pixel\s+[5-9]|pixel\s+[1-9][0-9]/.test(_pixelName)) {
+            return { gb: 8, label: '8 GB', confLabel: '高精度', detail: 'Pixel5以降確定8GB' };
+        }
+        // Pixel 4 / 4 XL / 4a → 6GB
+        if (/pixel\s+4/.test(_pixelName)) {
+            return { gb: 6, label: '6 GB', confLabel: '高精度', detail: 'Pixel4確定6GB' };
+        }
+        // Pixel 3 / 3 XL / 3a → 4GB
+        if (/pixel\s+3/.test(_pixelName)) {
+            return { gb: 4, label: '4 GB', confLabel: '高精度', detail: 'Pixel3確定4GB' };
+        }
+        // Pixel 2 / 2 XL → 4GB
+        if (/pixel\s+2/.test(_pixelName)) {
+            return { gb: 4, label: '4 GB', confLabel: '高精度', detail: 'Pixel2確定4GB' };
+        }
+        // Pixel 1 → 4GB
+        if (/pixel\s+1|pixel\b(?!\s+[2-9])/.test(_pixelName)) {
+            return { gb: 4, label: '4 GB', confLabel: '高精度', detail: 'Pixel1確定4GB' };
+        }
+    }
+
+    // 5. GPUの種類から極限まで正確に推測する
     const gpuInfo = getGPUInfo();
     const gpuStr = (gpuInfo.renderer || "").toLowerCase();
     
@@ -1566,55 +1596,173 @@ async function sendAIMessage() {
         { role: 'system', content: _aiHistory._sys },
         ...recent
     ];
-    const body = JSON.stringify({ messages });
 
-    const models = [
-        'openai'
-    ];
+    let reply    = null;
+    let lastErr  = '';
+    // 各サービスのエラーを蓄積（最終表示用）
+    const _errLog = [];  // { service, code, msg } の配列
 
-    let reply   = null;
-    let lastErr = '';
-
-    for (let mi = 0; mi < models.length; mi++) {
-        const model = models[mi];
-        if (mi > 0) {
-            _resetTimer(
-                Math.floor(Math.random() * 11) + 12,
-                '別モデルで再試行中 (' + model + ')...'
-            );
-            // 429対策：少し待つ
-            await new Promise(r => setTimeout(r, 2500));
+    // ══════════════════════════════════════════════════════
+    // 【1位】Pollinations — openaiモデルのみ・キーなし
+    // 不安定なので最大3回リトライする
+    // ══════════════════════════════════════════════════════
+    for (let _ptry = 0; _ptry < 3 && !reply; _ptry++) {
+        if (_ptry > 0) {
+            _resetTimer(15, `Pollinations 再試行中... (${_ptry + 1}/3)`);
+            await new Promise(r => setTimeout(r, 3000));
+        } else {
+            _resetTimer(18, '回答を生成しています...');
         }
-
         try {
+            // 8秒でタイムアウト（以前は無制限で詰まってた）
+            const _ctrl = new AbortController();
+            const _tout = setTimeout(() => _ctrl.abort(), 8000);
             const resp = await fetch('https://text.pollinations.ai/openai', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ model, messages })
+                body:    JSON.stringify({ model: 'openai', messages }),
+                signal:  _ctrl.signal
             });
+            clearTimeout(_tout);
+            if (resp.ok) {
+                const data = await resp.json();
+                const raw  = data.choices?.[0]?.message?.content || '';
+                if (raw) {
+                    let cleaned = raw.replace(/\n---[\s\S]*$/m, '');
+                    cleaned = cleaned.replace(/Powered by Pollinations[^\n]*/gi, '');
+                    cleaned = cleaned.replace(/Support our mission[^\n]*/gi, '');
+                    reply = cleaned.trim() || raw.trim();
+                } else {
+                    lastErr = 'Pollinations: 空のレスポンス';
+                    if (_ptry === 2) _errLog.push({ service: 'Pollinations', code: '空レスポンス', msg: 'AIが空の返答を返しました。サービスが混雑しています。' });
+                }
+            } else {
+                lastErr = 'Pollinations: HTTP ' + resp.status;
+                const _codeMap = { 429: 'レート制限（使いすぎ）', 503: 'サーバー過負荷', 500: 'サーバー内部エラー', 401: '認証エラー' };
+                if (_ptry === 2) _errLog.push({ service: 'Pollinations', code: 'HTTP ' + resp.status, msg: (_codeMap[resp.status] || 'サーバーエラー') + '。3回試みましたが失敗しました。' });
+                // 429は少し長めに待つ
+                if (resp.status === 429 && _ptry < 2) await new Promise(r => setTimeout(r, 5000));
+            }
+        } catch(e) {
+            const _isTimeout = e.name === 'AbortError';
+            lastErr = _isTimeout ? 'Pollinations: タイムアウト(8秒)' : 'Pollinations: ' + (e.message || 'ネットワークエラー');
+            if (_ptry === 2) {
+                const _msg = _isTimeout
+                    ? 'Pollinationsサーバーの応答が8秒以上かかりタイムアウトしました。サーバーが混雑または停止中です。'
+                    : 'インターネット接続を確認してください。または Pollinations のサーバーがダウンしています。';
+                _errLog.push({ service: 'Pollinations', code: _isTimeout ? 'タイムアウト' : 'ネットワークエラー', msg: _msg });
+            }
+        }
+    }
 
-            if (!resp.ok) {
-                const errBody = await resp.text().catch(() => '');
-                lastErr = 'HTTP ' + resp.status + (errBody ? ': ' + errBody.slice(0, 120) : '');
-                await new Promise(r => setTimeout(r, resp.status === 429 ? 6000 : 2000));
-                continue;
+    // ══════════════════════════════════════════════════════
+    // 【2位】OpenRouter — APIキーあり・安定
+    // ══════════════════════════════════════════════════════
+    if (!reply) {
+        _resetTimer(20, '別サービスで再試行中 (OpenRouter)...');
+        await new Promise(r => setTimeout(r, 1000));
+        // OpenAI系2モデルのみ（無料枠節約）
+        const orModels = [
+            'openai/gpt-4o-mini',
+            'openai/gpt-3.5-turbo'
+        ];
+        for (const orModel of orModels) {
+            try {
+                const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                    method:  'POST',
+                    headers: {
+                        'Content-Type':  'application/json',
+                        'Authorization': 'Bearer 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',
+                        'HTTP-Referer':  'https://sorato-yukkuri.github.io/Pro-Ultra-Sorato02.github.io/',
+                        'X-Title':       '精密デバイス診断 Pro Ultra'
+                    },
+                    body: JSON.stringify({ model: orModel, messages })
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const raw  = data.choices?.[0]?.message?.content || '';
+                    if (raw) { reply = raw.trim(); break; }
+                    lastErr = 'OpenRouter(' + orModel + '): 空のレスポンス';
+                    _errLog.push({ service: 'OpenRouter', code: '空レスポンス', msg: 'モデル ' + orModel + ' が空の返答を返しました。' });
+                } else {
+                    lastErr = 'OpenRouter(' + orModel + '): HTTP ' + resp.status;
+                    const _orMap = { 402: '無料クレジット枯渇。OpenRouterの無料枠を使い切りました。', 403: 'APIキーが無効または期限切れ。', 429: 'レート制限。短時間に送りすぎています。', 503: 'OpenRouterサーバーが過負荷状態。' };
+                    _errLog.push({ service: 'OpenRouter', code: 'HTTP ' + resp.status, msg: _orMap[resp.status] || 'OpenRouterサーバーエラー (HTTP ' + resp.status + ')。' });
+                    if (resp.status === 402 || resp.status === 403) break;
+                }
+            } catch(e) {
+                lastErr = 'OpenRouter: ' + (e.message || 'ネットワークエラー');
+                _errLog.push({ service: 'OpenRouter', code: 'ネットワークエラー', msg: 'OpenRouterへの接続に失敗しました。' });
+            }
+            await new Promise(r => setTimeout(r, 1500));
+        }
+    }
+
+    // ══════════════════════════════════════════════════════
+    // 【3位】Puter.js — ログイン済みなら無制限・キーなし
+    // isSignedIn()は仮想環境で誤動作するため使わない
+    // → 直接AIを呼んで、認証エラー時にログイン促しUIを表示
+    // ══════════════════════════════════════════════════════
+    if (!reply) {
+        _resetTimer(25, '最終手段で再試行中 (Puter.js)...');
+        await new Promise(r => setTimeout(r, 1000));
+        try {
+            // Puter.js がまだ読み込まれていなければ動的に読み込む
+            if (typeof puter === 'undefined') {
+                await new Promise((resolve, reject) => {
+                    const s = document.createElement('script');
+                    s.src = 'https://js.puter.com/v2/';
+                    s.onload  = resolve;
+                    s.onerror = reject;
+                    document.head.appendChild(s);
+                });
+                await new Promise(r => setTimeout(r, 2000));
             }
 
-            const data = await resp.json();
-            const raw  = data.choices?.[0]?.message?.content || '';
-            if (!raw) { lastErr = '空のレスポンス'; continue; }
-
-            // 宣伝フッター除去（末尾の --- 以降のみ）
-            let cleaned = raw.replace(/\n---[\s\S]*$/m, '');
-            cleaned = cleaned.replace(/Powered by Pollinations[^\n]*/gi, '');
-            cleaned = cleaned.replace(/Support our mission[^\n]*/gi, '');
-            cleaned = cleaned.trim();
-            reply = cleaned || raw.trim();
-            break;
+            // isSignedIn()チェックなし → 直接AIを呼ぶ
+            // 認証エラーが出たらcatchでログイン促しUIを表示
+            const res = await puter.ai.chat(messages, { model: 'gpt-4o-mini' });
+            const raw = (typeof res === 'string')
+                ? res
+                : res?.message?.content
+               || res?.choices?.[0]?.message?.content
+               || res?.content
+               || '';
+            if (raw) {
+                reply = raw.trim();
+            } else {
+                lastErr = 'Puter.js: 空のレスポンス';
+                _errLog.push({ service: 'Puter.js', code: '空レスポンス', msg: 'Puter.jsが空の返答を返しました。再試行してください。' });
+            }
 
         } catch(e) {
-            lastErr = e.message || 'ネットワークエラー';
-            await new Promise(r => setTimeout(r, 2500));
+            const _isAuthErr = /auth|login|sign|unauthorized|401/i.test(e.message || '');
+            if (_isAuthErr) {
+                // 認証エラー → ログイン促しUIを表示して終了
+                clearInterval(_tickInterval);
+                loading.innerHTML = `
+                    <div style="background:#1a1a2e;border:1px solid #a78bfa;border-radius:16px;padding:20px;text-align:center;">
+                        <div style="font-size:1.6rem;margin-bottom:8px;">⚠️</div>
+                        <div style="font-weight:800;font-size:1rem;color:#fff;margin-bottom:6px;">AIの一部にアクセスできませんでした</div>
+                        <div style="color:#aaa;font-size:0.85rem;line-height:1.6;margin-bottom:16px;">
+                            このAI（Puter.js）を使うには<br>
+                            <strong style="color:#a78bfa;">Puter.js のログイン / サインアップ</strong>が必要です。<br>
+                            無料で登録できます。
+                        </div>
+                        <button onclick="window.open('https://puter.com', '_blank', 'noopener')"
+                            style="width:100%;padding:12px;border-radius:12px;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;border:none;font-weight:800;font-size:0.95rem;cursor:pointer;margin-bottom:8px;">
+                            🔑 Puter.js にログイン / サインアップ
+                        </button>
+                        <div style="color:#666;font-size:0.75rem;">登録後、このページを再読み込みして再送信してください</div>
+                    </div>`;
+                btn.disabled = false;
+                document.getElementById('ai-messages').scrollTop = 99999;
+                input.focus();
+                return;
+            }
+            // 認証以外のエラー → 通常エラーログに追加
+            lastErr = 'Puter.js: ' + (e.message || 'エラー');
+            _errLog.push({ service: 'Puter.js', code: 'エラー', msg: e.message || '不明なエラーが発生しました。' });
         }
     }
 
@@ -1624,11 +1772,32 @@ async function sendAIMessage() {
         loading.innerHTML = parseMarkdown(reply);
         _aiHistory.push({ role: 'assistant', content: reply });
     } else {
-        loading.innerHTML = parseMarkdown(
-            '**接続に失敗しました。**\n\n現在3回ほどやり取りするとエラーが出るバグが多発しています。申し訳ありません。\n\n原因: ' + lastErr +
-'\n\nしばらく待ってから再送信してください。'
+        // 原因別エラーUIを生成
+        const _errRows = _errLog.map(e =>
+            `<div style="background:#1a1a1a;border-left:3px solid #ff453a;border-radius:8px;padding:10px 14px;margin-bottom:8px;text-align:left;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                    <span style="font-weight:800;color:#fff;font-size:0.88rem;">${e.service}</span>
+                    <span style="background:rgba(255,69,58,0.2);color:#ff6b6b;font-size:0.75rem;padding:2px 8px;border-radius:20px;font-weight:700;">${e.code}</span>
+                </div>
+                <div style="color:#aaa;font-size:0.82rem;line-height:1.5;">${e.msg}</div>
+            </div>`
+        ).join('');
 
-        );
+        loading.innerHTML = `
+            <div style="background:#1c0a0a;border:1px solid #ff453a;border-radius:16px;padding:18px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                    <span style="font-size:1.3rem;">❌</span>
+                    <span style="font-weight:800;font-size:1rem;color:#fff;">すべてのAIサービスに接続できませんでした</span>
+                </div>
+                <div style="margin-bottom:14px;">${_errRows || '<div style="color:#aaa;font-size:0.85rem;">エラー詳細を取得できませんでした。</div>'}</div>
+                <div style="background:#111;border-radius:10px;padding:12px;font-size:0.82rem;color:#888;line-height:1.7;">
+                    💡 <strong style="color:#ccc;">対処法</strong><br>
+                    ① しばらく待ってから再送信<br>
+                    ② ページをリロードして再診断<br>
+                    ③ 別のWi-Fi / 回線に切り替える<br>
+                    ④ Puter.jsにログインすると接続が安定します
+                </div>
+            </div>`;
     }
     btn.disabled = false;
     document.getElementById('ai-messages').scrollTop = 99999;
