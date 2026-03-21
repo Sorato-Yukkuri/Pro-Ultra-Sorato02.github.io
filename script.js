@@ -18,8 +18,10 @@ const DEFAULT_SETTINGS = {
     theme:          'dark',      // 'dark' | 'light' | 'system'
     language:       'ja',        // 'ja' | 'ja-hira' | 'en' | 'zh-hans' | 'zh-hant' | 'ko'
     soundOnDone:    true,        // 診断終了音
+    soundPreset:    'default',   // 'default'|'bell'|'beep'|'fanfare'|'custom'
+    soundFileDataUrl: null,      // カスタム音声のDataURL
     fontSize:       'normal',    // 'small' | 'normal' | 'large'
-    exportFormat:   'png',       // 'png' | 'csv' | 'txt'
+    exportFormat:   'png',       // 'png' | 'csv' | 'pdf'
     speedUnit:      'mbps',      // 'mbps' | 'mbs'
     desktopNotify:  true,        // 完了時デスクトップ通知
     vibration:      true,        // バイブレーション
@@ -77,6 +79,8 @@ const I18N = {
         statusTitle:   'ハードウェア精密スキャン中...',
         evalMsg:       '各コンポーネントの整合性を検証しています',
         saveBtnTxt:    '診断レポートを画像で保存する',
+        saveBtnCSV:    '📊 CSVで保存する',
+        saveBtnPDF:    '📄 PDFで保存する',
         aiBtnTxt:      '🤖 AIアドバイザーに相談する',
         historyBtnTxt: '📊 過去の診断結果を見る',
         speedBtnTxt:   '⚡ ページ読み込み速度テスト',
@@ -91,10 +95,10 @@ const I18N = {
             labelTheme:'テーマ', optDark:'ダーク', optLight:'ライト', optSystem:'システム',
             labelFontSize:'フォントサイズ', optSmall:'小', optNormal:'普通', optLarge:'大', optCustom:'カスタム', labelCustomSize:'カスタムサイズ',
             labelLanguage:'表示言語',
-            labelTransGuard:'Google翻訳崩れ防止', labelSound:'診断終了音', labelVibration:'バイブレーション',
+            labelTransGuard:'Google翻訳崩れ防止', labelSound:'診断終了音', labelSoundPreset:'サウンドプリセット', soundDefault:'デフォルト（チャイム）', soundBell:'ベル', soundBeep:'ビープ', soundFanfare:'ファンファーレ', soundCustom:'カスタム（ファイル）', labelSoundFile:'カスタム音声ファイル', soundFileHint:'MP3・WAV・FLACに対応', soundUploadBtn:'📁 ファイルを選択', soundFileLoaded:'読み込み済み', soundFileClear:'削除', labelVibration:'バイブレーション',
             labelDesktopNotify:'完了時デスクトップ通知', labelBadge:'アイコンバッジ表示',
             labelQuietStart:'開始時刻', labelQuietEnd:'終了時刻',
-            labelExportFmt:'書き出し形式', optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelExportFmt:'書き出し形式', optPNG:'PNG', optCSV:'CSV', optPDF:'PDF',
             labelSpeedUnit:'通信速度の単位', labelAutoCheck:'開いたとき自動診断', labelGuard:'うっかりガード',
             ipWarnTitle:'⚠️ IPアドレスをスクリーンショットに含めますか？',
             ipWarnBody:'IPアドレスをSNSなどで公開すると、おおよその居住地域や利用プロバイダが特定される危険があります。公開する予定がある場合は「IPアドレスを非表示にして保存」をおすすめします。',
@@ -111,6 +115,7 @@ const I18N = {
             friendCodeTitle:'親友コードでログイン', friendCodePlaceholder:'コードを入力...', friendCodeError:'コードが違います', friendLoginBtn:'ログイン',
             diagComplete:'✅ 処理が完了しました', imgGenComplete:'✅ 画像の生成が完了しました',
             retryConfirm:'再診断しますか？\n現在の診断結果は上書きされます。',
+            notifyPromptReason:'診断完了時にデスクトップ通知でお知らせします。\n次の画面でブラウザの通知許可を求めます。許可しますか？',
             fpsAvgLabel:'実測平均フレームレート', fpsLowLabel:'1% LOW フレームレート', uaLabel:'ユーザーエージェント詳細スタック',
         },
     },
@@ -118,6 +123,8 @@ const I18N = {
         statusTitle:   'せいのうをはかっています...',
         evalMsg:       'かくこうもくをかくにんしています',
         saveBtnTxt:    'しんだんけっかをがぞうでほぞんする',
+        saveBtnCSV:    '📊 CSVでほぞんする',
+        saveBtnPDF:    '📄 PDFでほぞんする',
         aiBtnTxt:      '🤖 AIにそうだんする',
         historyBtnTxt: '📊 むかしのしんだんをみる',
         speedBtnTxt:   '⚡ つうしんそくどをはかる',
@@ -130,12 +137,12 @@ const I18N = {
             settingsTitle:'⚙️ せってい', settingsReset:'🔄 せっていをりせっと', settingsResetConfirm:'せっていをぜんぶもとにもどしますか？',
             secAppearance:'🎨 みため', secLanguage:'🌐 げんご', secNotify:'🔔 つうちとふぃーどばっく', secQuiet:'😴 おやすみじかん', secData:'💾 でーたとそうさ',
             labelTheme:'てーま', optDark:'だーく', optLight:'らいと', optSystem:'しすてむ',
-            labelFontSize:'もじのおおきさ', optSmall:'ちいさい', optNormal:'ふつう', optLarge:'おおきい',
+            labelFontSize:'もじのおおきさ', optSmall:'ちいさい', optNormal:'ふつう', optLarge:'おおきい', optCustom:'かすたむ', labelCustomSize:'かすたむさいず',
             labelLanguage:'ひょうじげんご',
             labelTransGuard:'ぐーぐるほんやくほご', labelSound:'しんだんおわりおと', labelVibration:'ばいぶれーしょん',
             labelDesktopNotify:'つうちきのう', labelBadge:'あいこんばっじ',
             labelQuietStart:'かいしじこく', labelQuietEnd:'しゅうりょうじこく',
-            labelExportFmt:'ほぞんけいしき', optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelExportFmt:'ほぞんけいしき', optPNG:'PNG', optCSV:'CSV', optPDF:'PDF',
             labelSpeedUnit:'つうしんそくどのたんい', labelAutoCheck:'じどうしんだん', labelGuard:'うっかりがーど',
             ipWarnTitle:'⚠️ IPあどれすをふくめますか？', ipWarnBody:'IPあどれすをこうかいすると、すんでいるばしょがわかるかもしれません。',
             ipHide:'🔒 IPあどれすをかくす（すいしょう）', ipMask:'⚠️ いちぶを*でかくす', ipShow:'そのままふくめる',
@@ -154,6 +161,8 @@ const I18N = {
         statusTitle:   'Scanning hardware...',
         evalMsg:       'Verifying component integrity',
         saveBtnTxt:    'Save Report as Image',
+        saveBtnCSV:    '📊 Save as CSV',
+        saveBtnPDF:    '📄 Save as PDF',
         aiBtnTxt:      '🤖 Ask AI Advisor',
         historyBtnTxt: '📊 View Past Results',
         speedBtnTxt:   '⚡ Page Load Speed Test',
@@ -168,10 +177,10 @@ const I18N = {
             labelTheme:'Theme', optDark:'Dark', optLight:'Light', optSystem:'System',
             labelFontSize:'Font Size', optSmall:'Small', optNormal:'Normal', optLarge:'Large', optCustom:'Custom', labelCustomSize:'Custom Size',
             labelLanguage:'Display Language',
-            labelTransGuard:'Google Translate Guard', labelSound:'Completion Sound', labelVibration:'Vibration',
+            labelTransGuard:'Google Translate Guard', labelSound:'Completion Sound', labelSoundPreset:'Sound Preset', soundDefault:'Default (Chime)', soundBell:'Bell', soundBeep:'Beep', soundFanfare:'Fanfare', soundCustom:'Custom (File)', labelSoundFile:'Custom Sound File', soundFileHint:'MP3, WAV, FLAC supported', soundUploadBtn:'📁 Choose File', soundFileLoaded:'File loaded', soundFileClear:'Remove', labelVibration:'Vibration',
             labelDesktopNotify:'Desktop Notification', labelBadge:'App Icon Badge',
             labelQuietStart:'Start Time', labelQuietEnd:'End Time',
-            labelExportFmt:'Export Format', optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelExportFmt:'Export Format', optPNG:'PNG', optCSV:'CSV', optPDF:'PDF',
             labelSpeedUnit:'Speed Unit', labelAutoCheck:'Auto Diagnose on Open', labelGuard:'Accidental Tap Guard',
             ipWarnTitle:'⚠️ Include IP address in screenshot?',
             ipWarnBody:'Sharing your IP address publicly can reveal your approximate location and ISP. We recommend hiding it.',
@@ -185,6 +194,7 @@ const I18N = {
             friendCodeTitle:'Login with Friend Code', friendCodePlaceholder:'Enter code...', friendCodeError:'Invalid code', friendLoginBtn:'Login',
             diagComplete:'✅ Diagnosis complete', imgGenComplete:'✅ Image generated',
             retryConfirm:'Re-diagnose?\nCurrent results will be overwritten.',
+            notifyPromptReason:'Allow desktop notifications when diagnosis completes?\nYou will be asked for browser notification permission.',
             fpsAvgLabel:'Avg Frame Rate', fpsLowLabel:'1% LOW Frame Rate', uaLabel:'User Agent Stack',
         },
     },
@@ -192,6 +202,8 @@ const I18N = {
         statusTitle:   '正在扫描硬件...',
         evalMsg:       '正在验证各组件的完整性',
         saveBtnTxt:    '将报告保存为图片',
+        saveBtnCSV:    '📊 保存为CSV',
+        saveBtnPDF:    '📄 保存为PDF',
         aiBtnTxt:      '🤖 咨询AI顾问',
         historyBtnTxt: '📊 查看历史结果',
         speedBtnTxt:   '⚡ 页面加载速度测试',
@@ -204,11 +216,11 @@ const I18N = {
             settingsTitle:'⚙️ 设置', settingsReset:'🔄 重置设置', settingsResetConfirm:'将所有设置重置为默认值？',
             secAppearance:'🎨 外观', secLanguage:'🌐 语言', secNotify:'🔔 通知和反馈', secQuiet:'😴 勿扰时间', secData:'💾 数据和操作',
             labelTheme:'主题', optDark:'深色', optLight:'浅色', optSystem:'跟随系统',
-            labelFontSize:'字体大小', optSmall:'小', optNormal:'中', optLarge:'大',
+            labelFontSize:'字体大小', optSmall:'小', optNormal:'中', optLarge:'大', optCustom:'自定义', labelCustomSize:'自定义大小',
             labelLanguage:'显示语言', labelTransGuard:'防谷歌翻译乱版', labelSound:'完成提示音', labelVibration:'振动',
             labelDesktopNotify:'桌面通知', labelBadge:'应用图标角标',
             labelQuietStart:'开始时间', labelQuietEnd:'结束时间',
-            labelExportFmt:'导出格式', optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelExportFmt:'导出格式', optPNG:'PNG', optCSV:'CSV', optPDF:'PDF',
             labelSpeedUnit:'速度单位', labelAutoCheck:'打开时自动诊断', labelGuard:'误触保护',
             ipWarnTitle:'⚠️ 截图是否包含IP地址？', ipWarnBody:'公开IP地址可能暴露您的大致位置和运营商，建议隐藏。',
             ipHide:'🔒 隐藏IP地址（推荐）', ipMask:'⚠️ 部分*遮蔽', ipShow:'直接包含',
@@ -227,6 +239,8 @@ const I18N = {
         statusTitle:   '正在掃描硬體...',
         evalMsg:       '正在驗證各元件的完整性',
         saveBtnTxt:    '將報告儲存為圖片',
+        saveBtnCSV:    '📊 儲存為CSV',
+        saveBtnPDF:    '📄 儲存為PDF',
         aiBtnTxt:      '🤖 諮詢AI顧問',
         historyBtnTxt: '📊 查看歷史結果',
         speedBtnTxt:   '⚡ 頁面載入速度測試',
@@ -239,11 +253,11 @@ const I18N = {
             settingsTitle:'⚙️ 設定', settingsReset:'🔄 重置設定', settingsResetConfirm:'將所有設定重置為預設值？',
             secAppearance:'🎨 外觀', secLanguage:'🌐 語言', secNotify:'🔔 通知和回饋', secQuiet:'😴 勿擾時間', secData:'💾 資料和操作',
             labelTheme:'主題', optDark:'深色', optLight:'淺色', optSystem:'跟隨系統',
-            labelFontSize:'字體大小', optSmall:'小', optNormal:'中', optLarge:'大',
+            labelFontSize:'字體大小', optSmall:'小', optNormal:'中', optLarge:'大', optCustom:'自訂', labelCustomSize:'自訂大小',
             labelLanguage:'顯示語言', labelTransGuard:'防Google翻譯版面錯亂', labelSound:'完成提示音', labelVibration:'震動',
             labelDesktopNotify:'桌面通知', labelBadge:'應用圖示角標',
             labelQuietStart:'開始時間', labelQuietEnd:'結束時間',
-            labelExportFmt:'匯出格式', optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelExportFmt:'匯出格式', optPNG:'PNG', optCSV:'CSV', optPDF:'PDF',
             labelSpeedUnit:'速度單位', labelAutoCheck:'開啟時自動診斷', labelGuard:'誤觸保護',
             ipWarnTitle:'⚠️ 截圖是否包含IP位址？', ipWarnBody:'公開IP位址可能暴露您的大致位置和ISP，建議隱藏。',
             ipHide:'🔒 隱藏IP位址（推薦）', ipMask:'⚠️ 部分*遮蔽', ipShow:'直接包含',
@@ -262,6 +276,8 @@ const I18N = {
         statusTitle:   '하드웨어 스캔 중...',
         evalMsg:       '각 구성 요소를 확인하고 있습니다',
         saveBtnTxt:    '진단 보고서를 이미지로 저장',
+        saveBtnCSV:    '📊 CSV로 저장',
+        saveBtnPDF:    '📄 PDF로 저장',
         aiBtnTxt:      '🤖 AI 어드바이저에게 상담',
         historyBtnTxt: '📊 과거 진단 결과 보기',
         speedBtnTxt:   '⚡ 페이지 로딩 속도 테스트',
@@ -274,11 +290,11 @@ const I18N = {
             settingsTitle:'⚙️ 설정', settingsReset:'🔄 설정 초기화', settingsResetConfirm:'모든 설정을 기본값으로 초기화하시겠습니까?',
             secAppearance:'🎨 외관', secLanguage:'🌐 언어', secNotify:'🔔 알림 및 피드백', secQuiet:'😴 방해 금지 시간', secData:'💾 데이터 및 작업',
             labelTheme:'테마', optDark:'다크', optLight:'라이트', optSystem:'시스템',
-            labelFontSize:'글자 크기', optSmall:'작게', optNormal:'보통', optLarge:'크게',
+            labelFontSize:'글자 크기', optSmall:'작게', optNormal:'보통', optLarge:'크게', optCustom:'사용자 정의', labelCustomSize:'사용자 정의 크기',
             labelLanguage:'표시 언어', labelTransGuard:'Google 번역 레이아웃 보호', labelSound:'완료 사운드', labelVibration:'진동',
             labelDesktopNotify:'데스크톱 알림', labelBadge:'앱 아이콘 배지',
             labelQuietStart:'시작 시간', labelQuietEnd:'종료 시간',
-            labelExportFmt:'내보내기 형식', optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelExportFmt:'내보내기 형식', optPNG:'PNG', optCSV:'CSV', optPDF:'PDF',
             labelSpeedUnit:'속도 단위', labelAutoCheck:'열면 자동 진단', labelGuard:'실수 방지',
             ipWarnTitle:'⚠️ 스크린샷에 IP 주소를 포함하시겠습니까?', ipWarnBody:'IP 주소를 공개하면 위치와 ISP가 노출될 수 있습니다.',
             ipHide:'🔒 IP 주소 숨기기 (권장)', ipMask:'⚠️ 일부를 *로 가리기', ipShow:'그대로 포함',
@@ -297,6 +313,8 @@ const I18N = {
         statusTitle:   'Đang quét phần cứng...',
         evalMsg:       'Đang xác minh tính toàn vẹn của các thành phần',
         saveBtnTxt:    'Lưu báo cáo dưới dạng hình ảnh',
+        saveBtnCSV:    '📊 Lưu dạng CSV',
+        saveBtnPDF:    '📄 Lưu dạng PDF',
         aiBtnTxt:      '🤖 Tư vấn AI',
         historyBtnTxt: '📊 Xem kết quả chẩn đoán cũ',
         speedBtnTxt:   '⚡ Kiểm tra tốc độ tải trang',
@@ -309,11 +327,11 @@ const I18N = {
             settingsTitle:'⚙️ Cài đặt', settingsReset:'🔄 Đặt lại', settingsResetConfirm:'Đặt lại tất cả cài đặt về mặc định?',
             secAppearance:'🎨 Giao diện', secLanguage:'🌐 Ngôn ngữ', secNotify:'🔔 Thông báo', secQuiet:'😴 Giờ yên tĩnh', secData:'💾 Dữ liệu',
             labelTheme:'Chủ đề', optDark:'Tối', optLight:'Sáng', optSystem:'Hệ thống',
-            labelFontSize:'Cỡ chữ', optSmall:'Nhỏ', optNormal:'Bình thường', optLarge:'Lớn',
+            labelFontSize:'Cỡ chữ', optSmall:'Nhỏ', optNormal:'Bình thường', optLarge:'Lớn', optCustom:'Tùy chỉnh', labelCustomSize:'Kích thước tùy chỉnh',
             labelLanguage:'Ngôn ngữ', labelTransGuard:'Bảo vệ Google Dịch', labelSound:'Âm thanh hoàn thành', labelVibration:'Rung',
             labelDesktopNotify:'Thông báo máy tính', labelBadge:'Huy hiệu ứng dụng',
             labelQuietStart:'Giờ bắt đầu', labelQuietEnd:'Giờ kết thúc',
-            labelExportFmt:'Định dạng xuất', optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelExportFmt:'Định dạng xuất', optPNG:'PNG', optCSV:'CSV', optPDF:'PDF',
             labelSpeedUnit:'Đơn vị tốc độ', labelAutoCheck:'Tự động chẩn đoán khi mở', labelGuard:'Bảo vệ thao tác nhầm',
             ipWarnTitle:'⚠️ Bao gồm địa chỉ IP trong ảnh chụp màn hình?', ipWarnBody:'Chia sẻ IP có thể lộ vị trí và ISP của bạn.',
             ipHide:'🔒 Ẩn IP (khuyến nghị)', ipMask:'⚠️ Che một phần bằng *', ipShow:'Giữ nguyên',
@@ -332,6 +350,8 @@ const I18N = {
         statusTitle:   'Escaneando hardware...',
         evalMsg:       'Verificando la integridad de los componentes',
         saveBtnTxt:    'Guardar informe como imagen',
+        saveBtnCSV:    '📊 Guardar como CSV',
+        saveBtnPDF:    '📄 Guardar como PDF',
         aiBtnTxt:      '🤖 Consultar al asesor de IA',
         historyBtnTxt: '📊 Ver resultados anteriores',
         speedBtnTxt:   '⚡ Prueba de velocidad de carga',
@@ -344,11 +364,11 @@ const I18N = {
             settingsTitle:'⚙️ Ajustes', settingsReset:'🔄 Restablecer', settingsResetConfirm:'¿Restablecer todos los ajustes?',
             secAppearance:'🎨 Apariencia', secLanguage:'🌐 Idioma', secNotify:'🔔 Notificaciones', secQuiet:'😴 Horas tranquilas', secData:'💾 Datos',
             labelTheme:'Tema', optDark:'Oscuro', optLight:'Claro', optSystem:'Sistema',
-            labelFontSize:'Tamaño de fuente', optSmall:'Pequeño', optNormal:'Normal', optLarge:'Grande',
+            labelFontSize:'Tamaño de fuente', optSmall:'Pequeño', optNormal:'Normal', optLarge:'Grande', optCustom:'Personalizado', labelCustomSize:'Tamaño personalizado',
             labelLanguage:'Idioma', labelTransGuard:'Protección Google Translate', labelSound:'Sonido de fin', labelVibration:'Vibración',
             labelDesktopNotify:'Notificación escritorio', labelBadge:'Insignia de app',
             labelQuietStart:'Hora de inicio', labelQuietEnd:'Hora de fin',
-            labelExportFmt:'Formato de exportación', optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelExportFmt:'Formato de exportación', optPNG:'PNG', optCSV:'CSV', optPDF:'PDF',
             labelSpeedUnit:'Unidad de velocidad', labelAutoCheck:'Auto diagnóstico al abrir', labelGuard:'Protección de toques accidentales',
             ipWarnTitle:'⚠️ ¿Incluir IP en captura?', ipWarnBody:'Compartir tu IP puede revelar ubicación e ISP.',
             ipHide:'🔒 Ocultar IP (recomendado)', ipMask:'⚠️ Enmascarar parcialmente', ipShow:'Incluir tal cual',
@@ -367,6 +387,8 @@ const I18N = {
         statusTitle:   'Verificando hardware...',
         evalMsg:       'Verificando a integridade dos componentes',
         saveBtnTxt:    'Salvar relatório como imagem',
+        saveBtnCSV:    '📊 Salvar como CSV',
+        saveBtnPDF:    '📄 Salvar como PDF',
         aiBtnTxt:      '🤖 Consultar o assistente de IA',
         historyBtnTxt: '📊 Ver resultados anteriores',
         speedBtnTxt:   '⚡ Teste de velocidade de carregamento',
@@ -379,11 +401,11 @@ const I18N = {
             settingsTitle:'⚙️ Configurações', settingsReset:'🔄 Redefinir', settingsResetConfirm:'Redefinir todas as configurações?',
             secAppearance:'🎨 Aparência', secLanguage:'🌐 Idioma', secNotify:'🔔 Notificações', secQuiet:'😴 Horas de silêncio', secData:'💾 Dados',
             labelTheme:'Tema', optDark:'Escuro', optLight:'Claro', optSystem:'Sistema',
-            labelFontSize:'Tamanho da fonte', optSmall:'Pequeno', optNormal:'Normal', optLarge:'Grande',
+            labelFontSize:'Tamanho da fonte', optSmall:'Pequeno', optNormal:'Normal', optLarge:'Grande', optCustom:'Personalizado', labelCustomSize:'Tamanho personalizado',
             labelLanguage:'Idioma', labelTransGuard:'Proteção Google Tradutor', labelSound:'Som de conclusão', labelVibration:'Vibração',
             labelDesktopNotify:'Notificação área de trabalho', labelBadge:'Emblema de app',
             labelQuietStart:'Hora de início', labelQuietEnd:'Hora de fim',
-            labelExportFmt:'Formato de exportação', optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelExportFmt:'Formato de exportação', optPNG:'PNG', optCSV:'CSV', optPDF:'PDF',
             labelSpeedUnit:'Unidade de velocidade', labelAutoCheck:'Diagnóstico auto ao abrir', labelGuard:'Proteção de toque acidental',
             ipWarnTitle:'⚠️ Incluir IP na captura?', ipWarnBody:'Compartilhar IP pode revelar localização e ISP.',
             ipHide:'🔒 Ocultar IP (recomendado)', ipMask:'⚠️ Mascarar parcialmente', ipShow:'Incluir como está',
@@ -402,6 +424,8 @@ const I18N = {
         statusTitle:   'Analyse du matériel...',
         evalMsg:       "Vérification de l'intégrité des composants",
         saveBtnTxt:    "Enregistrer le rapport en image",
+        saveBtnCSV:    '📊 Enregistrer en CSV',
+        saveBtnPDF:    '📄 Enregistrer en PDF',
         aiBtnTxt:      '🤖 Consulter le conseiller IA',
         historyBtnTxt: '📊 Voir les résultats passés',
         speedBtnTxt:   '⚡ Test de vitesse de chargement',
@@ -414,11 +438,11 @@ const I18N = {
             settingsTitle:'⚙️ Paramètres', settingsReset:'🔄 Réinitialiser', settingsResetConfirm:'Réinitialiser tous les paramètres ?',
             secAppearance:'🎨 Apparence', secLanguage:'🌐 Langue', secNotify:'🔔 Notifications', secQuiet:'😴 Heures calmes', secData:'💾 Données',
             labelTheme:'Thème', optDark:'Sombre', optLight:'Clair', optSystem:'Système',
-            labelFontSize:'Taille de police', optSmall:'Petit', optNormal:'Normal', optLarge:'Grand',
+            labelFontSize:'Taille de police', optSmall:'Petit', optNormal:'Normal', optLarge:'Grand', optCustom:'Personnalisé', labelCustomSize:'Taille personnalisée',
             labelLanguage:'Langue', labelTransGuard:'Protection Google Translate', labelSound:'Son de fin', labelVibration:'Vibration',
             labelDesktopNotify:'Notification bureau', labelBadge:"Badge d'app",
             labelQuietStart:'Heure de début', labelQuietEnd:'Heure de fin',
-            labelExportFmt:"Format d'export", optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelExportFmt:"Format d'export", optPNG:'PNG', optCSV:'CSV', optPDF:'PDF',
             labelSpeedUnit:'Unité de vitesse', labelAutoCheck:"Diagnostic auto à l'ouverture", labelGuard:'Protection erreur tactile',
             ipWarnTitle:"⚠️ Inclure l'IP dans la capture ?", ipWarnBody:"Partager votre IP peut révéler emplacement et FAI.",
             ipHide:"🔒 Masquer l'IP (recommandé)", ipMask:'⚠️ Masquer partiellement', ipShow:'Inclure tel quel',
@@ -437,6 +461,8 @@ const I18N = {
         statusTitle:   'Hardware wird gescannt...',
         evalMsg:       'Komponentenintegrität wird überprüft',
         saveBtnTxt:    'Bericht als Bild speichern',
+        saveBtnCSV:    '📊 Als CSV speichern',
+        saveBtnPDF:    '📄 Als PDF speichern',
         aiBtnTxt:      '🤖 KI-Berater fragen',
         historyBtnTxt: '📊 Vergangene Ergebnisse ansehen',
         speedBtnTxt:   '⚡ Seitenladegeschwindigkeitstest',
@@ -449,11 +475,11 @@ const I18N = {
             settingsTitle:'⚙️ Einstellungen', settingsReset:'🔄 Zurücksetzen', settingsResetConfirm:'Alle Einstellungen zurücksetzen?',
             secAppearance:'🎨 Erscheinungsbild', secLanguage:'🌐 Sprache', secNotify:'🔔 Benachrichtigungen', secQuiet:'😴 Ruhezeiten', secData:'💾 Daten',
             labelTheme:'Design', optDark:'Dunkel', optLight:'Hell', optSystem:'System',
-            labelFontSize:'Schriftgröße', optSmall:'Klein', optNormal:'Normal', optLarge:'Groß',
+            labelFontSize:'Schriftgröße', optSmall:'Klein', optNormal:'Normal', optLarge:'Groß', optCustom:'Benutzerdefiniert', labelCustomSize:'Benutzerdefinierte Größe',
             labelLanguage:'Sprache', labelTransGuard:'Google Translate Schutz', labelSound:'Abschluss-Sound', labelVibration:'Vibration',
             labelDesktopNotify:'Desktop-Benachrichtigung', labelBadge:'App-Badge',
             labelQuietStart:'Startzeit', labelQuietEnd:'Endzeit',
-            labelExportFmt:'Exportformat', optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelExportFmt:'Exportformat', optPNG:'PNG', optCSV:'CSV', optPDF:'PDF',
             labelSpeedUnit:'Geschwindigkeitseinheit', labelAutoCheck:'Beim Öffnen diagnostizieren', labelGuard:'Tippschutz',
             ipWarnTitle:'⚠️ IP-Adresse im Screenshot?', ipWarnBody:'Ihre IP kann Standort und ISP enthüllen.',
             ipHide:'🔒 IP verbergen (empfohlen)', ipMask:'⚠️ Teilweise maskieren', ipShow:'So einbeziehen',
@@ -472,6 +498,8 @@ const I18N = {
         statusTitle:   'Сканирование оборудования...',
         evalMsg:       'Проверка целостности компонентов',
         saveBtnTxt:    'Сохранить отчёт как изображение',
+        saveBtnCSV:    '📊 Сохранить как CSV',
+        saveBtnPDF:    '📄 Сохранить как PDF',
         aiBtnTxt:      '🤖 Спросить ИИ-советника',
         historyBtnTxt: '📊 Просмотр прошлых результатов',
         speedBtnTxt:   '⚡ Тест скорости загрузки страниц',
@@ -484,11 +512,11 @@ const I18N = {
             settingsTitle:'⚙️ Настройки', settingsReset:'🔄 Сбросить', settingsResetConfirm:'Сбросить все настройки?',
             secAppearance:'🎨 Внешний вид', secLanguage:'🌐 Язык', secNotify:'🔔 Уведомления', secQuiet:'😴 Тихие часы', secData:'💾 Данные',
             labelTheme:'Тема', optDark:'Тёмная', optLight:'Светлая', optSystem:'Системная',
-            labelFontSize:'Размер шрифта', optSmall:'Малый', optNormal:'Обычный', optLarge:'Крупный',
+            labelFontSize:'Размер шрифта', optSmall:'Малый', optNormal:'Обычный', optLarge:'Крупный', optCustom:'Свой размер', labelCustomSize:'Свой размер',
             labelLanguage:'Язык', labelTransGuard:'Защита от Google Переводчика', labelSound:'Звук завершения', labelVibration:'Вибрация',
             labelDesktopNotify:'Уведомление рабочего стола', labelBadge:'Значок приложения',
             labelQuietStart:'Начало', labelQuietEnd:'Конец',
-            labelExportFmt:'Формат экспорта', optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelExportFmt:'Формат экспорта', optPNG:'PNG', optCSV:'CSV', optPDF:'PDF',
             labelSpeedUnit:'Единица скорости', labelAutoCheck:'Авто-диагностика при открытии', labelGuard:'Защита от случайных нажатий',
             ipWarnTitle:'⚠️ Включить IP-адрес в скриншот?', ipWarnBody:'Публичный IP может раскрыть местоположение и ISP.',
             ipHide:'🔒 Скрыть IP (рекомендуется)', ipMask:'⚠️ Частично маскировать', ipShow:'Оставить как есть',
@@ -555,7 +583,13 @@ function applyLanguage() {
     const hb  = document.getElementById('history-btn');
     const spb = document.getElementById('speed-btn');
     const rb  = document.getElementById('retry-btn');
-    if (sb)  sb.textContent  = _tLang.saveBtnTxt;
+    // save-btnはexportFormatに応じてテキスト変更
+    if (sb) {
+        const fmt = _settings.exportFormat || 'png';
+        if (fmt === 'csv') sb.textContent = _tLang.saveBtnCSV || '📊 CSVで保存する';
+        else if (fmt === 'pdf') sb.textContent = _tLang.saveBtnPDF || '📄 PDFで保存する';
+        else sb.textContent = _tLang.saveBtnTxt;
+    }
     if (ab)  ab.textContent  = _tLang.aiBtnTxt;
     if (hb)  hb.textContent  = _tLang.historyBtnTxt;
     if (spb) spb.textContent = _tLang.speedBtnTxt;
@@ -628,20 +662,75 @@ function applySettings() {
 // ── 診断終了音（Web Audio API）──
 function playDoneSound() {
     if (!_settings.soundOnDone) return;
+    const preset = _settings.soundPreset || 'default';
+
+    // カスタム音声ファイル
+    if (preset === 'custom' && _settings.soundFileDataUrl) {
+        try {
+            const audio = new Audio(_settings.soundFileDataUrl);
+            audio.volume = 0.7;
+            audio.play().catch(() => {});
+        } catch(e) {}
+        return;
+    }
+
+    // Web Audio APIプリセット
     try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
-        const notes = [523, 659, 784, 1047]; // C5 E5 G5 C6
-        notes.forEach((freq, i) => {
-            const osc  = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain); gain.connect(ctx.destination);
-            osc.frequency.value = freq;
-            osc.type = 'sine';
-            const t = ctx.currentTime + i * 0.12;
-            gain.gain.setValueAtTime(0.18, t);
-            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-            osc.start(t); osc.stop(t + 0.25);
-        });
+        const play = () => {
+            if (preset === 'bell') {
+                // 澄んだベル音
+                [880, 1108, 1318].forEach((freq, i) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.type = 'sine'; osc.frequency.value = freq;
+                    const t = ctx.currentTime + i * 0.18;
+                    gain.gain.setValueAtTime(0.25, t);
+                    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+                    osc.start(t); osc.stop(t + 0.8);
+                });
+            } else if (preset === 'beep') {
+                // 短いビープ音
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.connect(gain); gain.connect(ctx.destination);
+                osc.type = 'square'; osc.frequency.value = 880;
+                const t = ctx.currentTime;
+                gain.gain.setValueAtTime(0.15, t);
+                gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+                osc.start(t); osc.stop(t + 0.12);
+            } else if (preset === 'fanfare') {
+                // ファンファーレ風
+                [523, 659, 784, 1047, 784, 1047, 1319].forEach((freq, i) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.type = 'triangle'; osc.frequency.value = freq;
+                    const t = ctx.currentTime + i * 0.1;
+                    gain.gain.setValueAtTime(0.2, t);
+                    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
+                    osc.start(t); osc.stop(t + 0.15);
+                });
+            } else {
+                // default: C-E-G-Cチャイム
+                [523, 659, 784, 1047].forEach((freq, i) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.connect(gain); gain.connect(ctx.destination);
+                    osc.type = 'sine'; osc.frequency.value = freq;
+                    const t = ctx.currentTime + i * 0.12;
+                    gain.gain.setValueAtTime(0.18, t);
+                    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+                    osc.start(t); osc.stop(t + 0.25);
+                });
+            }
+        };
+        if (ctx.state === 'suspended') {
+            ctx.resume().then(play).catch(() => {});
+        } else {
+            play();
+        }
     } catch(e) {}
 }
 
@@ -719,7 +808,7 @@ function openSettings() {
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'settings-modal';
-        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:999990;display:flex;justify-content:center;align-items:flex-end;padding:0;box-sizing:border-box;';
+        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:999990;display:flex;justify-content:center;align-items:flex-end;padding:0;box-sizing:border-box;overflow-y:auto;';
         document.body.appendChild(modal);
     }
 
@@ -727,12 +816,13 @@ function openSettings() {
     // ＊の説明文はHELP_TEXT_I18N経由（設定項目は別途）
     // 設定モーダル内の説明文はI18Nから取得
     modal.innerHTML = `
-    <div style="background:var(--card);border-radius:24px 24px 0 0;width:100%;max-width:520px;margin:0 auto;max-height:90vh;overflow-y:auto;padding:24px 20px 40px;box-sizing:border-box;">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+    <div style="background:var(--card);border-radius:24px 24px 0 0;width:100%;max-width:520px;margin:0 auto;max-height:92vh;overflow-y:auto;padding:0 0 40px;box-sizing:border-box;display:flex;flex-direction:column;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 20px 16px;position:sticky;top:0;background:var(--card);z-index:1;border-radius:24px 24px 0 0;">
             <h2 style="margin:0;font-size:1.2rem;font-weight:900;color:var(--text);">${ui.settingsTitle}</h2>
             <button onclick="closeSettings()" style="background:var(--border);border:none;color:var(--sub-text);width:32px;height:32px;border-radius:50%;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
         </div>
 
+        <div style="padding:0 20px;">
         ${settingSection(ui.secAppearance, [
             settingSelect(ui.labelTheme, 'theme', [['dark',ui.optDark],['light',ui.optLight],['system',ui.optSystem]], 'theme'),
             settingSelect(ui.labelFontSize, 'fontSize', [['small',ui.optSmall],['normal',ui.optNormal],['large',ui.optLarge],['custom',ui.optCustom||'カスタム']], 'fontSize'),
@@ -751,10 +841,19 @@ function openSettings() {
 
         ${settingSection(ui.secNotify, [
             settingToggle(ui.labelSound, 'soundOnDone', 'soundOnDone'),
+            settingSelect(ui.labelSoundPreset||'サウンドプリセット', 'soundPreset', [
+                ['default', ui.soundDefault||'デフォルト（チャイム）'],
+                ['bell',    ui.soundBell||'ベル'],
+                ['beep',    ui.soundBeep||'ビープ'],
+                ['fanfare', ui.soundFanfare||'ファンファーレ'],
+                ['custom',  ui.soundCustom||'カスタム（ファイル）'],
+            ], 'soundPreset'),
+            settingRow(ui.soundPreviewLabel||'プレビュー再生', '<button onclick="playDoneSound()" style="background:var(--accent);color:#fff;border:none;padding:6px 18px;border-radius:10px;font-size:0.85rem;font-weight:700;cursor:pointer;">▶ 試聴</button>'),
+            _settings.soundPreset === 'custom' ? settingSoundUpload(ui) : '',
             settingToggle(ui.labelVibration, 'vibration', 'vibration'),
             settingToggle(ui.labelDesktopNotify, 'desktopNotify', 'desktopNotify'),
             settingToggle(ui.labelBadge, 'badge', 'badge'),
-        ])}
+        ].filter(Boolean))}
 
         ${settingSection(ui.secQuiet, [
             settingTime(ui.labelQuietStart, 'quietStart', 'quietStart'),
@@ -762,13 +861,16 @@ function openSettings() {
         ])}
 
         ${settingSection(ui.secData, [
-            settingSelect(ui.labelExportFmt, 'exportFormat', [['png',ui.optPNG],['csv',ui.optCSV],['txt',ui.optTXT]], 'exportFormat'),
+            settingSelect(ui.labelExportFmt, 'exportFormat', [['png',ui.optPNG],['csv',ui.optCSV],['pdf',ui.optPDF||'PDF']], 'exportFormat'),
             settingSelect(ui.labelSpeedUnit, 'speedUnit', [['mbps','Mbps'],['mbs','MB/s']], 'speedUnit'),
             settingToggle(ui.labelAutoCheck, 'autoCheck', 'autoCheck'),
             settingToggle(ui.labelGuard, 'clumsiGuard', 'clumsiGuard'),
         ])}
 
+        </div>
+        <div style="padding:0 20px;">
         <button onclick="resetSettings()" style="width:100%;margin-top:16px;padding:12px;border-radius:14px;background:rgba(255,59,48,0.12);border:1px solid rgba(255,59,48,0.3);color:#ff6b6b;font-size:0.9rem;font-weight:700;cursor:pointer;">${ui.settingsReset}</button>
+        </div>
     </div>`;
 
     modal.style.display = 'flex';
@@ -817,6 +919,46 @@ function settingRow(label, control, descKey) {
     </div>`;
 }
 
+function settingSoundUpload(ui) {
+    const hasFile = !!_settings.soundFileDataUrl;
+    const label   = ui.labelSoundFile || 'カスタム音声ファイル';
+    const hint    = ui.soundFileHint  || 'MP3・WAV・FLACに対応';
+    const ctrl    = '<div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">'
+        + '<label style="background:var(--accent);color:#fff;padding:6px 14px;border-radius:10px;font-size:0.82rem;font-weight:700;cursor:pointer;">'
+        + (ui.soundUploadBtn || '📁 ファイルを選択')
+        + '<input type="file" accept=".mp3,.wav,.flac,audio/*" style="display:none;"'
+        + ' onchange="uploadSoundFile(this)">'
+        + '</label>'
+        + (hasFile
+            ? '<span style="color:#34c759;font-size:0.75rem;">✓ ' + (ui.soundFileLoaded || 'ファイル読み込み済み') + '</span>'
+              + '<button onclick="clearSoundFile()" style="background:rgba(255,59,48,0.15);border:1px solid rgba(255,59,48,0.3);color:#ff6b6b;padding:4px 10px;border-radius:8px;font-size:0.75rem;cursor:pointer;">' + (ui.soundFileClear || '削除') + '</button>'
+            : '<span style="color:var(--sub-text);font-size:0.75rem;">' + hint + '</span>')
+        + '</div>';
+    return settingRow(label, ctrl);
+}
+
+function uploadSoundFile(input) {
+    const file = input.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+        alert('ファイルサイズは5MB以内にしてください。');
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = e => {
+        _settings.soundFileDataUrl = e.target.result;
+        saveSettings();
+        openSettings();
+    };
+    reader.readAsDataURL(file);
+}
+
+function clearSoundFile() {
+    _settings.soundFileDataUrl = null;
+    saveSettings();
+    openSettings();
+}
+
 function settingCustomFontSize(label) {
     const val = _settings.customFontSize || 15;
     const ctrl = '<div style="display:flex;align-items:center;gap:10px;min-width:160px;">'
@@ -854,7 +996,7 @@ function settingTime(label, key, descKey) {
 
 function toggleSetting(key) {
     _settings[key] = !_settings[key];
-    // 通知系はONにするとき理由説明→許可を求める
+    // 通知系：deniedの場合のみ警告、defaultは起動時の許可フローに任せる
     if ((key === 'desktopNotify' || key === 'badge') && _settings[key]) {
         if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
             alert('通知がブラウザでブロックされています。\nブラウザのサイト設定から通知を「許可」に変更してください。');
@@ -862,13 +1004,7 @@ function toggleSetting(key) {
             saveSettings(); openSettings(); return;
         }
         if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
-            const reason = key === 'desktopNotify'
-                ? '診断が完了したときにデスクトップ通知でお知らせします。\n次の画面でブラウザの通知許可を求めます。許可しますか？'
-                : 'アプリアイコンにバッジを表示するために通知許可が必要です。\n次の画面でブラウザの通知許可を求めます。許可しますか？';
-            if (!confirm(reason)) {
-                _settings[key] = false;
-                saveSettings(); openSettings(); return;
-            }
+            // 起動時フローと重複しないよう即座に許可要求（toggleで明示的にONにした場合）
             Notification.requestPermission().then(p => {
                 if (p !== 'granted') {
                     _settings[key] = false;
@@ -886,7 +1022,7 @@ function changeSetting(key, val) {
     _settings[key] = val;
     saveSettings(); applySettings();
     // 言語・フォントサイズ選択変更は設定画面を再描画
-    if (key === 'language' || key === 'fontSize') {
+    if (key === 'language' || key === 'fontSize' || key === 'soundPreset') {
         openSettings();
     }
     // customFontSizeはスライダーなので再描画不要（applySettingsで即反映）
@@ -1875,7 +2011,7 @@ function processFinalReport() {
     setRow(34, diag.deviceName, 'good');
 
     // 30. 診断エンジン
-    setRow(30,'Pro Ultra Beta 1.7.0','good');
+    setRow(30,'Pro Ultra Beta 1.6.93','good');
 
     // 31. IPアドレス（WebRTC取得 or 外部API）
     const ipEl31 = document.getElementById('v-31');
@@ -2147,6 +2283,10 @@ let _action  = 'save';
 
 // ── 保存ボタン ──────────────────────────────────────────────────
 function triggerReportCapture() {
+    const fmt = _settings.exportFormat || 'png';
+    if (fmt === 'csv') { downloadCSV(); return; }
+    if (fmt === 'pdf') { downloadPDF(); return; }
+    // PNG: 通常のキャプチャフロー
     _action = 'save';
     _ipMode = 'show';
     _devMode = 'show';
@@ -2154,6 +2294,77 @@ function triggerReportCapture() {
         document.getElementById('ip-warn-overlay').style.display = 'flex';
     } else {
         showDeviceWarn();
+    }
+}
+
+function downloadCSV() {
+    const rows = [];
+    const labels = I18N_LABELS[_settings.language] || I18N_LABELS['ja'];
+    rows.push(['"項目"', '"値"']);
+    for (let i = 1; i <= 34; i++) {
+        const el = document.getElementById('v-' + i);
+        if (!el) continue;
+        const val = el.textContent.trim();
+        if (!val || val === '--') continue;
+        const label = labels[i - 1] || ('Row ' + i);
+        rows.push(['"' + label.replace(/"/g, '""') + '"', '"' + val.replace(/"/g, '""') + '"']);
+    }
+    const csv = '\uFEFF' + rows.map(r => r.join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = 'device-diagnostic-' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+async function downloadPDF() {
+    const btn = document.getElementById('save-btn');
+    const origText = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = '⏳ PDF生成中...';
+
+    // jsPDFを動的ロード
+    if (!window.jspdf) {
+        await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+            s.onload = resolve; s.onerror = reject;
+            document.head.appendChild(s);
+        }).catch(() => null);
+    }
+
+    const area = document.getElementById('capture-area');
+    area.classList.add('capture-mode');
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    await wait(150);
+
+    try {
+        const canvas = await html2canvas(area, {
+            backgroundColor: '#050505', scale: 2,
+            useCORS: true, logging: false, scrollX: 0, scrollY: 0
+        });
+        area.classList.remove('capture-mode');
+
+        const imgData = canvas.toDataURL('image/png', 1.0);
+        const imgW = canvas.width;
+        const imgH = canvas.height;
+
+        // A4サイズ（mm）に合わせてスケール
+        const { jsPDF } = window.jspdf;
+        const pdfW  = 210; // A4幅mm
+        const pdfH  = Math.round((imgH / imgW) * pdfW);
+        const pdf   = new jsPDF({ orientation: pdfH > pdfW ? 'p' : 'l', unit: 'mm', format: [pdfW, pdfH] });
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfW, pdfH);
+        pdf.save('device-report-' + new Date().toISOString().slice(0, 10) + '.pdf');
+
+    } catch(err) {
+        area.classList.remove('capture-mode');
+        alert('PDF生成に失敗しました。\n' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = origText;
     }
 }
 
@@ -2474,7 +2685,7 @@ function openAIChat() {
 ・「🎨 色の基準を確認する」→ 青/黄/赤/緑の意味を確認
 ・manifest.json対応。PWAとしてホーム画面に追加してアプリとして使用可能
 ・IPはブラウザ内のみで処理。サーバー送信なし（AI回答を除く）
-・正式名称：精密デバイス診断 Pro Ultra / バージョン：Beta 1.6.0 / Chrome推奨 /初リリース2026年3月15日 /15日に合計3回中/小アップデートを配信済み
+・正式名称：精密デバイス診断 Pro Ultra / バージョン：Beta 1.5.93 / Chrome推奨 /初リリース2026年3月15日 /15日に合計3回中/小アップデートを配信済み
 
 ■ ランク判定の詳細
 基本：S=総合80以上かつ1%LOW 55fps以上かつCPU 78以上かつRAM 12GB以上 / A=総合65以上かつ1%LOW 45以上かつRAM 8GB以上 / B=総合48以上かつ1%LOW 25以上 / C=30以上 / D=30未満
@@ -2802,7 +3013,7 @@ async function proceedCapture(mode, devMode) {
 
     const btn = document.getElementById('save-btn');
     btn.disabled = true;
-    btn.textContent = '画像解析レポートを生成中...';
+    btn.textContent = '⏳ ' + (_getLang().generatingLabel || '生成中...');
     window.scrollTo({ top: 0, behavior: 'instant' });
     await wait(150);
 
@@ -2847,7 +3058,7 @@ async function proceedCapture(mode, devMode) {
         alert('画像生成中にエラーが発生しました。\n' + err.message);
     } finally {
         btn.disabled = false;
-        btn.textContent = '診断レポートを画像で保存する';
+        btn.textContent = _getLang().saveBtnTxt || '診断レポートを画像で保存する';
     }
 }
 
@@ -3453,11 +3664,30 @@ window.addEventListener('load',()=>{
     fab.id = 'settings-fab';
     fab.textContent = '⚙️';
     fab.onclick = openSettings;
-    fab.style.cssText = 'position:fixed;bottom:24px;right:20px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#3a3a3c,#2a2a2a);border:1px solid #444;color:#fff;font-size:1.3rem;cursor:pointer;z-index:9000;box-shadow:0 4px 20px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;';
+    fab.style.cssText = 'position:fixed;bottom:80px;right:16px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#3a3a3c,#2a2a2a);border:1px solid #444;color:#fff;font-size:1.3rem;cursor:pointer;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;touch-action:manipulation;';
     document.body.appendChild(fab);
 
     // 診断は必ず実行（設定エラーに関わらず）
     runBenchmark();
+
+    // 通知許可：desktopNotifyがONかつ未許可なら起動後3秒後に理由説明→要求
+    if (_settings.desktopNotify && typeof Notification !== 'undefined' && Notification.permission === 'default') {
+        setTimeout(() => {
+            const ui = tui();
+            const reason = ui.notifyPromptReason || '診断完了時にデスクトップ通知でお知らせします。通知を許可しますか？';
+            if (confirm(reason)) {
+                Notification.requestPermission().then(p => {
+                    if (p !== 'granted') {
+                        _settings.desktopNotify = false;
+                        saveSettings();
+                    }
+                });
+            } else {
+                _settings.desktopNotify = false;
+                saveSettings();
+            }
+        }, 3000);
+    }
 
     // バッジクリア
     try { clearBadge(); } catch(e) {}
@@ -3500,7 +3730,7 @@ const SETTING_HELP_I18N = {
         badge:        'PWAのアイコンにバッジを表示します。\n📱 Android PWAのみ対応。\n❌ iOSは非対応。',
         quietStart:   'この時刻からお休み時間開始。\nデスクトップ通知を送りません。\nデフォルト：22:00',
         quietEnd:     'お休み時間の終了時刻。\n開始より早い時刻で日をまたいで適用。\nデフォルト：6:40',
-        exportFormat: '診断レポートの保存形式。\n・PNG：画像（デフォルト・SNS向け）\n・CSV：表計算ソフト用\n・TXT：テキスト\n⚠️ CSV・TXTは開発中のためPNG保存になります。',
+        exportFormat: '診断レポートの保存形式。\n・PNG：画像（デフォルト・SNS向け）\n・CSV：表計算ソフト（Excel等）用\n・PDF：印刷用HTMLをPDFとして保存',
         speedUnit:    '通信速度の表示単位。\n・Mbps：一般的な単位（デフォルト）\n・MB/s：Mbpsの約1/8\n例：100Mbps ≒ 12.5MB/s',
         autoCheck:    'ページを開いたとき自動的に診断を開始します。',
         clumsiGuard:  '再診断ボタンを押したとき確認ダイアログを表示。\n誤タップによるリセットを防げます。\n⚠️ OFFにすると確認なしで即座に再診断。',
@@ -3516,7 +3746,7 @@ const SETTING_HELP_I18N = {
         badge:        'Show badge on app icon.\n📱 Android PWA only.\n❌ iOS not supported.',
         quietStart:   'Quiet hours start time. No desktop notifications during this period. Default: 22:00',
         quietEnd:     'Quiet hours end time. Set earlier than start to span midnight. Default: 6:40',
-        exportFormat: 'Report export format.\n・PNG: Image (default, best for sharing)\n・CSV: Spreadsheet\n・TXT: Text\n⚠️ CSV/TXT still saves as PNG (in development).',
+        exportFormat: 'Report export format.\n・PNG: Image (default, best for sharing)\n・CSV: Spreadsheet (Excel etc.)\n・PDF: Save as PDF via print dialog',
         speedUnit:    'Network speed display unit.\n・Mbps: Common unit (default)\n・MB/s: ~1/8 of Mbps\nExample: 100Mbps ≈ 12.5MB/s',
         autoCheck:    'Automatically start diagnosis when page opens.',
         clumsiGuard:  'Show confirmation dialog before re-diagnosing.\nPrevents accidental resets.\n⚠️ OFF means immediate re-diagnosis without confirmation.',
