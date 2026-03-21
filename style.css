@@ -2,7 +2,27 @@
             --bg:#050505;--card:#121212;--border:#282828;--text:#ffffff;--sub-text:#888888;
             --accent:#007aff;--S-color:#ff3b30;--A-color:#ff9500;--B-color:#34c759;
             --C-color:#007aff;--D-color:#8e8e93;--st-ok:#007aff;--st-warn:#ffcc00;--st-bad:#ff3b30;
+            --base-font-size: 15px;
         }
+        /* ライトテーマ */
+        [data-theme="light"] {
+            --bg:#f2f2f7;--card:#ffffff;--border:#d0d0d5;--text:#000000;--sub-text:#5e5e63;
+            --accent:#0055cc;--st-ok:#0055cc;--st-warn:#b35900;--st-bad:#cc0000;
+            --C-color:#0055cc;
+        }
+        /* フォントサイズ：htmlに適用することでrem単位が全体に効く */
+        html { font-size: var(--base-font-size); }
+        [data-theme="light"] body { background-color:var(--bg);color:var(--text); }
+        [data-theme="light"] .spec-row { background:var(--card);border-color:var(--border); }
+        [data-theme="light"] .main-rank-card { background:var(--card);border-color:var(--border); }
+        [data-theme="light"] .info-panel { background:var(--card);border-color:var(--border); }
+        [data-theme="light"] .st-ok   { background:rgba(0,85,204,0.10); }
+        [data-theme="light"] .st-good { background:rgba(0,140,60,0.10); }
+        [data-theme="light"] .st-warn { background:rgba(179,89,0,0.10); }
+        [data-theme="light"] .st-bad  { background:rgba(204,0,0,0.10); }
+        [data-theme="light"] .extra-modal-box { background:var(--card); }
+        [data-theme="light"] #modal-overlay { background:rgba(240,240,245,0.98); }
+        [data-theme="light"] #result-img-wrap img { border:1px solid var(--border); }
         body { background-color:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"Hiragino Sans",sans-serif;margin:0;padding:20px;line-height:1.4;-webkit-font-smoothing:antialiased; }
         .app { max-width:900px;margin:0 auto;background-color:var(--bg);padding-bottom:40px; }
         .main-rank-card { background:var(--card);border:1px solid var(--border);padding:35px;border-radius:24px;display:flex;align-items:center;margin-bottom:25px; }
@@ -277,10 +297,10 @@
   color:#888;
   cursor:pointer;
   /* タップ領域を広げる（見た目は変わらない） */
-  padding: 12px;
-  margin-top: -12px;
-  margin-bottom: -12px;
-  margin-right: -12px;
+  padding: 16px;
+  margin-top: -16px;
+  margin-bottom: -16px;
+  margin-right: -16px;
 }
 
 /* スマホ向け: 小画面でボタン折り返し発生時も対応 */

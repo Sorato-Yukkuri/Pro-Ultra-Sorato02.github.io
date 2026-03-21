@@ -9,6 +9,903 @@ const setRow = (id, text, cls) => {
 };
 const st = (ok, warn) => ok ? 'ok' : (warn ? 'warn' : 'bad');
 
+// ══════════════════════════════════════════════════════════════
+// ⚙️ 設定システム
+// ══════════════════════════════════════════════════════════════
+const SETTINGS_KEY = 'app_settings_v1';
+
+const DEFAULT_SETTINGS = {
+    theme:          'dark',      // 'dark' | 'light' | 'system'
+    language:       'ja',        // 'ja' | 'ja-hira' | 'en' | 'zh-hans' | 'zh-hant' | 'ko'
+    soundOnDone:    true,        // 診断終了音
+    fontSize:       'normal',    // 'small' | 'normal' | 'large'
+    exportFormat:   'png',       // 'png' | 'csv' | 'txt'
+    speedUnit:      'mbps',      // 'mbps' | 'mbs'
+    desktopNotify:  true,        // 完了時デスクトップ通知
+    vibration:      true,        // バイブレーション
+    badge:          true,        // アイコンバッジ
+    quietStart:     '22:00',     // お休み時間 開始
+    quietEnd:       '06:40',     // お休み時間 終了
+    autoCheck:      false,       // 開いたとき自動チェック
+    clumsiGuard:    true,        // うっかりガード
+    translateGuard: true,        // Google翻訳崩れ防止
+    customFontSize: 15,          // カスタムフォントサイズ(px)
+};
+
+let _settings = { ...DEFAULT_SETTINGS };
+
+function loadSettings() {
+    try {
+        const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+        _settings = { ...DEFAULT_SETTINGS, ...s };
+    } catch(e) {
+        _settings = { ...DEFAULT_SETTINGS };
+    }
+}
+
+function saveSettings() {
+    try {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(_settings));
+    } catch(e) {}
+}
+
+// ══════════════════════════════════════════════════════════════
+// 🌐 言語翻訳システム（動的切り替え・全11言語）
+// ══════════════════════════════════════════════════════════════
+
+// 診断項目ラベル（row-1〜row-34対応）
+const I18N_LABELS = {
+    'ja': ['CPU 論理コア数','システムメモリ容量','GPU レンダラー','GPU 最大テクスチャサイズ','実測 CPU ベンチスコア','実測 GPU 描画スコア','実測メモリ帯域スコア','実測平均フレームレート','実測 1% LOW フレームレート','画面リフレッシュレート(推定)','画面解像度 (物理ピクセル)','デバイスピクセル比 (DPR)','カラー深度 / HDR 対応','JS ヒープ上限','UIスレッド応答レイテンシ','ネットワーク速度 (実測)','回線種別 / API 実効帯域','バッテリー残量 / 充電状態','タッチポイント数','ダークモード / ハイコントラスト','セキュア通信 (HTTPS)','Cookie / IndexedDB','WebGL バージョン','WebGL 最大頂点属性数','WakeLock / 振動 API','PWA / Service Worker','自動操縦検知 (WebDriver)','FPS ジッタースコア','システム言語 / タイムゾーン','診断エンジンバージョン','IP アドレス (WebRTC)','ダークモード / ハイコントラスト','使用ブラウザ','デバイス機種'],
+    'ja-hira': ['CPUのこあすう','めもりようりょう','GPUのしゅるい','GPUさいだいてくすちゃ','CPUせいのうすこあ','GPUせいのうすこあ','めもりたいいきすこあ','へいきんFPS','1%LOWのFPS','がめんこうしんひんど(すいてい)','がめんかいぞうど','でばいすぴくせるひ','からーふかど/HDR','JSひーぷじょうげん','UIおうとうそくど','つうしんそくど(じっそく)','かいせんしゅるい','でんちざんりょう','たっちぽいんとすう','だーくもーど','あんごうつうしん','Cookieとほぞん','WebGLばーじょん','WebGLちょうてんぞくせい','WakeLock/しんどう','PWA/サービスワーカー','じどうそうじゅうけんち','FPSあんていせい','げんごとたいむぞーん','しんだんえんじんばーじょん','IPあどれす','だーくもーど','つかっているぶらうざ','でばいすのきしゅ'],
+    'en': ['CPU Logical Cores','System Memory','GPU Renderer','GPU Max Texture Size','CPU Bench Score','GPU Render Score','Memory Bandwidth Score','Avg Frame Rate','1% LOW Frame Rate','Screen Refresh Rate (est.)','Screen Resolution (Physical)','Device Pixel Ratio (DPR)','Color Depth / HDR','JS Heap Limit','UI Thread Latency','Network Speed (measured)','Connection Type / API Bandwidth','Battery / Charging Status','Touch Points','Dark Mode / High Contrast','Secure Connection (HTTPS)','Cookie / IndexedDB','WebGL Version','WebGL Max Vertex Attribs','WakeLock / Vibration API','PWA / Service Worker','Bot Detection (WebDriver)','FPS Jitter Score','System Language / Timezone','Diagnostic Engine Version','IP Address (WebRTC)','Dark Mode / High Contrast','Browser','Device Model'],
+    'zh-hans': ['CPU逻辑核心数','系统内存容量','GPU渲染器','GPU最大纹理尺寸','CPU基准分数','GPU渲染分数','内存带宽分数','平均帧率','1%低帧率','屏幕刷新率(估计)','屏幕分辨率(物理像素)','设备像素比(DPR)','色彩深度/HDR支持','JS堆内存上限','UI线程响应延迟','网络速度(实测)','网络类型/API带宽','电池余量/充电状态','触控点数量','深色模式/高对比度','安全连接(HTTPS)','Cookie/IndexedDB','WebGL版本','WebGL最大顶点属性数','WakeLock/振动API','PWA/Service Worker','自动化检测(WebDriver)','FPS抖动分数','系统语言/时区','诊断引擎版本','IP地址(WebRTC)','深色模式/高对比度','使用的浏览器','设备型号'],
+    'zh-hant': ['CPU邏輯核心數','系統記憶體容量','GPU渲染器','GPU最大紋理尺寸','CPU基準分數','GPU渲染分數','記憶體頻寬分數','平均幀率','1%低幀率','螢幕更新率(估計)','螢幕解析度(實體像素)','裝置像素比(DPR)','色彩深度/HDR支援','JS堆記憶體上限','UI執行緒回應延遲','網路速度(實測)','網路類型/API頻寬','電池餘量/充電狀態','觸控點數量','深色模式/高對比度','安全連線(HTTPS)','Cookie/IndexedDB','WebGL版本','WebGL最大頂點屬性數','WakeLock/震動API','PWA/Service Worker','自動化偵測(WebDriver)','FPS抖動分數','系統語言/時區','診斷引擎版本','IP位址(WebRTC)','深色模式/高對比度','使用的瀏覽器','裝置型號'],
+    'ko': ['CPU 논리 코어 수','시스템 메모리 용량','GPU 렌더러','GPU 최대 텍스처 크기','CPU 벤치 점수','GPU 렌더 점수','메모리 대역폭 점수','평균 프레임률','1% LOW 프레임률','화면 재생률(추정)','화면 해상도(물리 픽셀)','기기 픽셀 비율(DPR)','색심도/HDR 지원','JS 힙 한도','UI 스레드 응답 지연','네트워크 속도(실측)','연결 유형/API 대역폭','배터리/충전 상태','터치 포인트 수','다크 모드/고대비','보안 연결(HTTPS)','Cookie/IndexedDB','WebGL 버전','WebGL 최대 정점 속성 수','WakeLock/진동 API','PWA/Service Worker','봇 감지(WebDriver)','FPS 지터 점수','시스템 언어/시간대','진단 엔진 버전','IP 주소(WebRTC)','다크 모드/고대비','사용 중인 브라우저','기기 모델'],
+    'vi': ['Số nhân CPU','Dung lượng RAM','GPU Renderer','Kích thước texture tối đa','Điểm CPU','Điểm GPU','Điểm băng thông bộ nhớ','FPS trung bình','1% LOW FPS','Tần số quét màn hình(ước tính)','Độ phân giải màn hình(pixel vật lý)','Tỷ lệ pixel thiết bị(DPR)','Độ sâu màu/HDR','Giới hạn JS Heap','Độ trễ UI thread','Tốc độ mạng(đo thực tế)','Loại kết nối/Băng thông API','Pin/Trạng thái sạc','Số điểm chạm','Chế độ tối/Tương phản cao','Kết nối bảo mật(HTTPS)','Cookie/IndexedDB','Phiên bản WebGL','Thuộc tính đỉnh WebGL tối đa','WakeLock/Rung API','PWA/Service Worker','Phát hiện bot(WebDriver)','Điểm ổn định FPS','Ngôn ngữ/Múi giờ','Phiên bản engine chẩn đoán','Địa chỉ IP(WebRTC)','Chế độ tối/Tương phản cao','Trình duyệt','Model thiết bị'],
+    'es': ['Núcleos lógicos CPU','Memoria del sistema','Renderizador GPU','Tamaño máximo de textura GPU','Puntuación CPU','Puntuación GPU','Puntuación de ancho de banda','FPS promedio','1% LOW FPS','Tasa de refresco(estimada)','Resolución de pantalla(píxeles físicos)','Relación de píxeles(DPR)','Profundidad de color/HDR','Límite JS Heap','Latencia UI Thread','Velocidad de red(medida)','Tipo de conexión/Ancho de banda','Batería/Estado de carga','Puntos táctiles','Modo oscuro/Alto contraste','Conexión segura(HTTPS)','Cookie/IndexedDB','Versión WebGL','Atributos de vértice WebGL','WakeLock/API de vibración','PWA/Service Worker','Detección de bots(WebDriver)','Puntuación de jitter FPS','Idioma del sistema/Zona horaria','Versión del motor de diagnóstico','Dirección IP(WebRTC)','Modo oscuro/Alto contraste','Navegador','Modelo de dispositivo'],
+    'pt': ['Núcleos lógicos CPU','Memória do sistema','Renderizador GPU','Tamanho máximo de textura GPU','Pontuação CPU','Pontuação GPU','Pontuação de largura de banda','FPS médio','1% LOW FPS','Taxa de atualização(estimada)','Resolução da tela(pixels físicos)','Taxa de pixels do dispositivo(DPR)','Profundidade de cor/HDR','Limite JS Heap','Latência UI Thread','Velocidade de rede(medida)','Tipo de conexão/Largura de banda','Bateria/Status de carga','Pontos de toque','Modo escuro/Alto contraste','Conexão segura(HTTPS)','Cookie/IndexedDB','Versão WebGL','Atributos de vértice WebGL','WakeLock/API de vibração','PWA/Service Worker','Detecção de bots(WebDriver)','Pontuação de jitter FPS','Idioma do sistema/Fuso horário','Versão do motor de diagnóstico','Endereço IP(WebRTC)','Modo escuro/Alto contraste','Navegador','Modelo do dispositivo'],
+    'fr': ['Cœurs logiques CPU','Mémoire système','Rendu GPU','Taille max texture GPU','Score CPU','Score GPU','Score bande passante','FPS moyen','1% LOW FPS','Taux de rafraîchissement(estimé)','Résolution écran(pixels physiques)','Ratio pixels(DPR)','Profondeur couleur/HDR','Limite JS Heap','Latence UI Thread','Vitesse réseau(mesurée)','Type connexion/Bande passante API','Batterie/Statut charge','Points tactiles','Mode sombre/Contraste élevé','Connexion sécurisée(HTTPS)','Cookie/IndexedDB','Version WebGL','Attributs vertex WebGL','WakeLock/API vibration','PWA/Service Worker','Détection bot(WebDriver)','Score jitter FPS','Langue système/Fuseau horaire','Version moteur diagnostic','Adresse IP(WebRTC)','Mode sombre/Contraste élevé','Navigateur','Modèle appareil'],
+    'de': ['CPU-Logikkerne','Systemspeicher','GPU-Renderer','Maximale GPU-Texturgröße','CPU-Benchmark','GPU-Benchmark','Speicherbandbreite','Durchschnittliche FPS','1% LOW FPS','Bildwiederholrate(geschätzt)','Bildschirmauflösung(physisch)','Gerätepixelverhältnis(DPR)','Farbtiefe/HDR','JS-Heap-Limit','UI-Thread-Latenz','Netzwerkgeschwindigkeit(gemessen)','Verbindungstyp/API-Bandbreite','Akku/Ladestatus','Berührungspunkte','Dunkelmodus/Hoher Kontrast','Sichere Verbindung(HTTPS)','Cookie/IndexedDB','WebGL-Version','Max WebGL-Vertex-Attribute','WakeLock/Vibrations-API','PWA/Service Worker','Bot-Erkennung(WebDriver)','FPS-Jitter-Score','Systemsprache/Zeitzone','Diagnose-Engine-Version','IP-Adresse(WebRTC)','Dunkelmodus/Hoher Kontrast','Browser','Gerätemodell'],
+    'ru': ['Логических ядер CPU','Объём системной памяти','Рендерер GPU','Макс. размер текстуры GPU','Оценка CPU','Оценка GPU','Оценка пропускной способности','Средний FPS','1% LOW FPS','Частота обновления экрана(оценка)','Разрешение экрана(физические пиксели)','Соотношение пикселей(DPR)','Глубина цвета/HDR','Лимит JS Heap','Задержка UI потока','Скорость сети(измеренная)','Тип соединения/Пропускная способность','Батарея/Статус зарядки','Точки касания','Тёмная тема/Высокий контраст','Защищённое соединение(HTTPS)','Cookie/IndexedDB','Версия WebGL','Макс. атрибуты вершин WebGL','WakeLock/API вибрации','PWA/Service Worker','Обнаружение бота(WebDriver)','Оценка дрожания FPS','Язык системы/Часовой пояс','Версия движка диагностики','IP-адрес(WebRTC)','Тёмная тема/Высокий контраст','Браузер','Модель устройства'],
+};
+
+// row番号→ラベルインデックスのマッピング（1〜34をそのまま使う、0始まりの配列なのでrow-1=index0）
+const LABEL_ROW_IDS = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31,32,33,34];
+
+const I18N = {
+    'ja': {
+        statusTitle:   'ハードウェア精密スキャン中...',
+        evalMsg:       '各コンポーネントの整合性を検証しています',
+        saveBtnTxt:    '診断レポートを画像で保存する',
+        aiBtnTxt:      '🤖 AIアドバイザーに相談する',
+        historyBtnTxt: '📊 過去の診断結果を見る',
+        speedBtnTxt:   '⚡ ページ読み込み速度テスト',
+        retryBtnTxt:   '🔄 再診断する',
+        rankMsgs: { S:'最高峰のフラッグシップ性能です', A:'非常に快適で強力な環境です', B:'一般的な標準デバイス性能です', C:'動作の遅延が目立ち、やや非力です', D:'性能が不足している旧型環境です' },
+        bench: ['CPU 演算性能を計測中...','素数計算・行列積・ビット演算を実行しています','GPU 描画性能を計測中...','WebGL シェーダー・Canvas 2D 合成描画を負荷試験中','メモリ帯域を計測中...','シーケンシャル・ストライド・ランダムアクセスを測定中','システムメモリを精密解析中...','5手法を統合中','ネットワーク速度を実測中...','実際にデータを取得して実効帯域を計算しています','バッテリー・UIレイテンシを計測中...','Battery API・UIスレッド応答遅延を同時取得しています','省電力モードを確認中...','タイマー精度を計測しています','フレームレート安定性を計測中...','rAF遅延ギャップ方式で15秒間精密計測中'],
+        val: { supported:'対応', unsupported:'非対応', running:'起動中', browser:'ブラウザ', secure:'安全 (HTTPS / TLS)', insecure:'非暗号 (HTTP)', detected:'⚠ 自動操縦を検知', normal:'正常 (手動操作)', hidden:'非表示', measuring:'計測不可', failed:'計測失敗 (オフライン?)', fast:'高速', medium:'普通', slow:'低速', charging:'⚡充電中', discharging:'🔋放電中', enabled:'有効', disabled:'無効', dark:'ダーク:ON', light:'ダーク:OFF', hiconOn:'ハイコン:ON', hiconOff:'ハイコン:OFF', estimated:'推定', highPrec:'高精度', midPrec:'精度中' },
+        ui: { legendBtn:'🎨 色の基準を確認する', shareHint:'💡 プレビュー画面のダウンロードボタン下からXにシェアできます', speedDesc:'主要サイトへの接続時間を計測します。', speedNote:'※ブラウザ制限により参考値です。', fpsAvgDesc:'（1秒間に何回画面が更新されるか。高いほど滑らか）', fpsLowDesc:'(最も重い場面でのFPS。低いとカクつきを感じやすい)', uaDesc:'（OS・ブラウザなど環境情報をまとめた文字列）', remaining:'推定残り時間: 約 ', seconds:' 秒', fpsMeasuring:' 秒 (FPS計測中)', fpsCalc:'FPS集計中...', finalizing:'最終処理中...',
+            scoreLabel:'総合スコア', memLabel:'MEM帯域', fpsLabel:'FPS安定', netLabel:'NET',
+            settingsTitle:'⚙️ 設定', settingsReset:'🔄 設定をリセット', settingsResetConfirm:'設定をすべてデフォルトに戻しますか？',
+            secAppearance:'🎨 外観', secLanguage:'🌐 言語', secNotify:'🔔 通知・フィードバック', secQuiet:'😴 お休み時間', secData:'💾 データ・操作',
+            labelTheme:'テーマ', optDark:'ダーク', optLight:'ライト', optSystem:'システム',
+            labelFontSize:'フォントサイズ', optSmall:'小', optNormal:'普通', optLarge:'大', optCustom:'カスタム', labelCustomSize:'カスタムサイズ',
+            labelLanguage:'表示言語',
+            labelTransGuard:'Google翻訳崩れ防止', labelSound:'診断終了音', labelVibration:'バイブレーション',
+            labelDesktopNotify:'完了時デスクトップ通知', labelBadge:'アイコンバッジ表示',
+            labelQuietStart:'開始時刻', labelQuietEnd:'終了時刻',
+            labelExportFmt:'書き出し形式', optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelSpeedUnit:'通信速度の単位', labelAutoCheck:'開いたとき自動診断', labelGuard:'うっかりガード',
+            ipWarnTitle:'⚠️ IPアドレスをスクリーンショットに含めますか？',
+            ipWarnBody:'IPアドレスをSNSなどで公開すると、おおよその居住地域や利用プロバイダが特定される危険があります。公開する予定がある場合は「IPアドレスを非表示にして保存」をおすすめします。',
+            ipHide:'🔒 IPアドレスを非表示にして保存（推奨）', ipMask:'⚠️ 一部を * で隠して保存', ipShow:'そのまま含めて保存',
+            ipNote:'※ IPアドレスの取得は外部APIへの問い合わせのみで行われます。取得した値はブラウザ内でのみ使用され、当診断ツールのサーバーには一切送信されません。',
+            ipBack:'← 戻る（保存をキャンセル）',
+            devWarnTitle:'📱 デバイス機種名をそのまま含めますか？',
+            devShow:'そのまま含めて保存', devHide:'🔒 デバイス名を * に変更して保存',
+            devNote:'※ デバイス名はUA文字列から取得しており、サーバーには送信されません。',
+            devBack:'← 戻る（IPアドレスの選択に戻る）',
+            loginRequired:'ログインが必要です', loginMsg:'はログインが必要です。Googleアカウントで無料登録できます。',
+            loginBtn:'Googleでログイン', cancelBtn:'キャンセル', logoutBtn:'ログアウト',
+            syncOk:'✓ 同期済み', syncing:'同期中...', syncFail:'⚠ 同期失敗', synced:'✓ 同期中',
+            friendCodeTitle:'親友コードでログイン', friendCodePlaceholder:'コードを入力...', friendCodeError:'コードが違います', friendLoginBtn:'ログイン',
+            diagComplete:'✅ 処理が完了しました', imgGenComplete:'✅ 画像の生成が完了しました',
+            retryConfirm:'再診断しますか？\n現在の診断結果は上書きされます。',
+            fpsAvgLabel:'実測平均フレームレート', fpsLowLabel:'1% LOW フレームレート', uaLabel:'ユーザーエージェント詳細スタック',
+        },
+    },
+    'ja-hira': {
+        statusTitle:   'せいのうをはかっています...',
+        evalMsg:       'かくこうもくをかくにんしています',
+        saveBtnTxt:    'しんだんけっかをがぞうでほぞんする',
+        aiBtnTxt:      '🤖 AIにそうだんする',
+        historyBtnTxt: '📊 むかしのしんだんをみる',
+        speedBtnTxt:   '⚡ つうしんそくどをはかる',
+        retryBtnTxt:   '🔄 もういちどはかる',
+        rankMsgs: { S:'さいこうのせいのうです', A:'とてもよいせいのうです', B:'ふつうのせいのうです', C:'すこしおそいです', D:'ふるいきしゅです' },
+        bench: ['CPUをはかっています...','けいさんをしています','GPUをはかっています...','えをかいてせいのうをみています','めもりをはかっています...','よみかきのはやさをみています','めもりのようりょうをかくにんしています...','いろいろなほうほうでしらべています','つうしんそくどをはかっています...','じっさいにつないではかっています','でんちとおうとうそくどをはかっています...','でんちとおそさをみています','せつでんもーどをかくにんしています...','たいまーのせいかくさをみています','FPSをはかっています...','15びょうかんせいかくにはかっています'],
+        val: { supported:'たいおう', unsupported:'ひたいおう', running:'きどうちゅう', browser:'ぶらうざ', secure:'あんぜん(HTTPS)', insecure:'あんごうなし', detected:'⚠ じどうそうじゅうけんち', normal:'せいじょう', hidden:'ひひょうじ', measuring:'はかれません', failed:'けいそくしっぱい', fast:'はやい', medium:'ふつう', slow:'おそい', charging:'⚡じゅうでんちゅう', discharging:'🔋ほうでんちゅう', enabled:'ゆうこう', disabled:'むこう', dark:'だーく:ON', light:'だーく:OFF', hiconOn:'ひこんとらすと:ON', hiconOff:'ひこんとらすと:OFF', estimated:'すいてい', highPrec:'こうせいど', midPrec:'せいどちゅう' },
+        ui: { legendBtn:'🎨 いろのきじゅんをかくにんする', shareHint:'💡 ぷれびゅーがめんからXにしぇあできます', speedDesc:'いろんなさいとへのつながるじかんをはかります。', speedNote:'※ぶらうざのせいげんであくまでもさんこうです。', fpsAvgDesc:'（1びょうにがめんがなんかいこうしんされるか）', fpsLowDesc:'(いちばんおもいばめんでのFPS)', uaDesc:'（ぶらうざやOSのじょうほうのもじれつ）', remaining:'のこりやく ', seconds:' びょう', fpsMeasuring:' びょう(FPS)', fpsCalc:'FPSしゅうけいちゅう...', finalizing:'さいしゅうしょりちゅう...',
+            scoreLabel:'そうごうすこあ', memLabel:'めもりたいいき', fpsLabel:'FPSあんてい', netLabel:'NET',
+            settingsTitle:'⚙️ せってい', settingsReset:'🔄 せっていをりせっと', settingsResetConfirm:'せっていをぜんぶもとにもどしますか？',
+            secAppearance:'🎨 みため', secLanguage:'🌐 げんご', secNotify:'🔔 つうちとふぃーどばっく', secQuiet:'😴 おやすみじかん', secData:'💾 でーたとそうさ',
+            labelTheme:'てーま', optDark:'だーく', optLight:'らいと', optSystem:'しすてむ',
+            labelFontSize:'もじのおおきさ', optSmall:'ちいさい', optNormal:'ふつう', optLarge:'おおきい',
+            labelLanguage:'ひょうじげんご',
+            labelTransGuard:'ぐーぐるほんやくほご', labelSound:'しんだんおわりおと', labelVibration:'ばいぶれーしょん',
+            labelDesktopNotify:'つうちきのう', labelBadge:'あいこんばっじ',
+            labelQuietStart:'かいしじこく', labelQuietEnd:'しゅうりょうじこく',
+            labelExportFmt:'ほぞんけいしき', optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelSpeedUnit:'つうしんそくどのたんい', labelAutoCheck:'じどうしんだん', labelGuard:'うっかりがーど',
+            ipWarnTitle:'⚠️ IPあどれすをふくめますか？', ipWarnBody:'IPあどれすをこうかいすると、すんでいるばしょがわかるかもしれません。',
+            ipHide:'🔒 IPあどれすをかくす（すいしょう）', ipMask:'⚠️ いちぶを*でかくす', ipShow:'そのままふくめる',
+            ipNote:'※ IPあどれすはぶらうざないだけでつかいます。', ipBack:'← もどる',
+            devWarnTitle:'📱 きしゅめいをふくめますか？', devShow:'そのままふくめる', devHide:'🔒 きしゅめいをかくす',
+            devNote:'※ きしゅめいはさーばーにそうしんしません。', devBack:'← もどる',
+            loginRequired:'ろぐいんひつよう', loginMsg:'はろぐいんがひつようです。', loginBtn:'Googleでろぐいん', cancelBtn:'きゃんせる', logoutBtn:'ろぐあうと',
+            syncOk:'✓ どうきずみ', syncing:'どうきちゅう...', syncFail:'⚠ どうきしっぱい', synced:'✓ どうきちゅう',
+            friendCodeTitle:'しんゆうこーどでろぐいん', friendCodePlaceholder:'こーどをにゅうりょく...', friendCodeError:'こーどがちがいます', friendLoginBtn:'ろぐいん',
+            diagComplete:'✅ しょりがかんりょうしました', imgGenComplete:'✅ がぞうがかんりょうしました',
+            retryConfirm:'もういちどしんだんしますか？',
+            fpsAvgLabel:'へいきんFPS', fpsLowLabel:'1%さいていFPS', uaLabel:'ぶらうざじょうほう',
+        },
+    },
+    'en': {
+        statusTitle:   'Scanning hardware...',
+        evalMsg:       'Verifying component integrity',
+        saveBtnTxt:    'Save Report as Image',
+        aiBtnTxt:      '🤖 Ask AI Advisor',
+        historyBtnTxt: '📊 View Past Results',
+        speedBtnTxt:   '⚡ Page Load Speed Test',
+        retryBtnTxt:   '🔄 Re-diagnose',
+        rankMsgs: { S:'Flagship-class performance', A:'High-performance device', B:'Standard performance', C:'Below average performance', D:'Low-end / Legacy device' },
+        bench: ['Measuring CPU performance...','Running prime/matrix/SHA benchmarks','Measuring GPU rendering...','WebGL shaders & Canvas 2D stress test','Measuring memory bandwidth...','Sequential, stride & random access test','Analyzing system memory...','Integrating 5 estimation methods','Measuring network speed...','Fetching data to calculate bandwidth','Measuring battery & UI latency...','Battery API & UI thread latency','Checking power saving mode...','Measuring timer accuracy','Measuring frame rate stability...','rAF jitter method — 15 second precision test'],
+        val: { supported:'Supported', unsupported:'Not supported', running:'Running', browser:'Browser', secure:'Secure (HTTPS / TLS)', insecure:'Insecure (HTTP)', detected:'⚠ Automation detected', normal:'Normal (manual)', hidden:'Hidden', measuring:'Cannot measure', failed:'Measurement failed (offline?)', fast:'Fast', medium:'Average', slow:'Slow', charging:'⚡ Charging', discharging:'🔋 Discharging', enabled:'Enabled', disabled:'Disabled', dark:'Dark: ON', light:'Dark: OFF', hiconOn:'HiContrast: ON', hiconOff:'HiContrast: OFF', estimated:'Estimated', highPrec:'High accuracy', midPrec:'Mid accuracy' },
+        ui: { legendBtn:'🎨 View color indicators', shareHint:'💡 You can share to X from the download button in the preview', speedDesc:'Measures connection time to major sites.', speedNote:'※ Reference only due to browser limitations.', fpsAvgDesc:'(Screen updates per second. Higher = smoother)', fpsLowDesc:'(FPS in heaviest scenes. Lower = more stutter)', uaDesc:'(Browser/OS environment info string)', remaining:'Est. remaining: ~', seconds:' sec', fpsMeasuring:' sec (FPS measuring)', fpsCalc:'Calculating FPS...', finalizing:'Finalizing...',
+            scoreLabel:'Total Score', memLabel:'Mem BW', fpsLabel:'FPS Stab', netLabel:'NET',
+            settingsTitle:'⚙️ Settings', settingsReset:'🔄 Reset Settings', settingsResetConfirm:'Reset all settings to default?',
+            secAppearance:'🎨 Appearance', secLanguage:'🌐 Language', secNotify:'🔔 Notifications & Feedback', secQuiet:'😴 Quiet Hours', secData:'💾 Data & Operations',
+            labelTheme:'Theme', optDark:'Dark', optLight:'Light', optSystem:'System',
+            labelFontSize:'Font Size', optSmall:'Small', optNormal:'Normal', optLarge:'Large', optCustom:'Custom', labelCustomSize:'Custom Size',
+            labelLanguage:'Display Language',
+            labelTransGuard:'Google Translate Guard', labelSound:'Completion Sound', labelVibration:'Vibration',
+            labelDesktopNotify:'Desktop Notification', labelBadge:'App Icon Badge',
+            labelQuietStart:'Start Time', labelQuietEnd:'End Time',
+            labelExportFmt:'Export Format', optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelSpeedUnit:'Speed Unit', labelAutoCheck:'Auto Diagnose on Open', labelGuard:'Accidental Tap Guard',
+            ipWarnTitle:'⚠️ Include IP address in screenshot?',
+            ipWarnBody:'Sharing your IP address publicly can reveal your approximate location and ISP. We recommend hiding it.',
+            ipHide:'🔒 Hide IP address (recommended)', ipMask:'⚠️ Partially mask with *', ipShow:'Include as-is',
+            ipNote:'※ IP is obtained via external API only, used within browser, never sent to our servers.',
+            ipBack:'← Back (cancel save)',
+            devWarnTitle:'📱 Include device model in screenshot?', devShow:'Include as-is', devHide:'🔒 Replace with *',
+            devNote:'※ Device name is from UA string and is not sent to servers.', devBack:'← Back (return to IP selection)',
+            loginRequired:'Login Required', loginMsg:' requires login. Register free with Google.', loginBtn:'Sign in with Google', cancelBtn:'Cancel', logoutBtn:'Logout',
+            syncOk:'✓ Synced', syncing:'Syncing...', syncFail:'⚠ Sync failed', synced:'✓ Syncing',
+            friendCodeTitle:'Login with Friend Code', friendCodePlaceholder:'Enter code...', friendCodeError:'Invalid code', friendLoginBtn:'Login',
+            diagComplete:'✅ Diagnosis complete', imgGenComplete:'✅ Image generated',
+            retryConfirm:'Re-diagnose?\nCurrent results will be overwritten.',
+            fpsAvgLabel:'Avg Frame Rate', fpsLowLabel:'1% LOW Frame Rate', uaLabel:'User Agent Stack',
+        },
+    },
+    'zh-hans': {
+        statusTitle:   '正在扫描硬件...',
+        evalMsg:       '正在验证各组件的完整性',
+        saveBtnTxt:    '将报告保存为图片',
+        aiBtnTxt:      '🤖 咨询AI顾问',
+        historyBtnTxt: '📊 查看历史结果',
+        speedBtnTxt:   '⚡ 页面加载速度测试',
+        retryBtnTxt:   '🔄 重新诊断',
+        rankMsgs: { S:'旗舰级性能', A:'高性能设备', B:'标准性能设备', C:'性能略显不足', D:'低端/老旧设备' },
+        bench: ['正在测量CPU性能...','运行素数/矩阵/SHA基准测试','正在测量GPU渲染...','WebGL着色器和Canvas 2D压力测试','正在测量内存带宽...','顺序、跨步和随机访问测试','正在精密分析系统内存...','整合5种估算方法','正在实测网络速度...','获取数据计算带宽','正在测量电池和UI延迟...','Battery API和UI线程延迟','正在检查节电模式...','测量计时器精度','正在测量帧率稳定性...','rAF抖动方式精密计测15秒'],
+        val: { supported:'支持', unsupported:'不支持', running:'运行中', browser:'浏览器', secure:'安全 (HTTPS/TLS)', insecure:'不加密 (HTTP)', detected:'⚠ 检测到自动化', normal:'正常 (手动)', hidden:'已隐藏', measuring:'无法测量', failed:'测量失败 (离线?)', fast:'快速', medium:'普通', slow:'缓慢', charging:'⚡充电中', discharging:'🔋放电中', enabled:'启用', disabled:'禁用', dark:'深色:ON', light:'深色:OFF', hiconOn:'高对比:ON', hiconOff:'高对比:OFF', estimated:'估算', highPrec:'高精度', midPrec:'中精度' },
+        ui: { legendBtn:'🎨 查看颜色指示说明', shareHint:'💡 可在预览界面下载按钮处分享到X', speedDesc:'测量到各主要网站的连接时间。', speedNote:'※ 受浏览器限制，仅供参考。', fpsAvgDesc:'（每秒刷新次数，越高越流畅）', fpsLowDesc:'(最卡场景的FPS，越低越明显)', uaDesc:'（浏览器/OS环境信息字符串）', remaining:'预计剩余: 约', seconds:'秒', fpsMeasuring:'秒(FPS测量中)', fpsCalc:'FPS计算中...', finalizing:'最终处理中...',
+            scoreLabel:'总分', memLabel:'内存带宽', fpsLabel:'FPS稳定', netLabel:'NET',
+            settingsTitle:'⚙️ 设置', settingsReset:'🔄 重置设置', settingsResetConfirm:'将所有设置重置为默认值？',
+            secAppearance:'🎨 外观', secLanguage:'🌐 语言', secNotify:'🔔 通知和反馈', secQuiet:'😴 勿扰时间', secData:'💾 数据和操作',
+            labelTheme:'主题', optDark:'深色', optLight:'浅色', optSystem:'跟随系统',
+            labelFontSize:'字体大小', optSmall:'小', optNormal:'中', optLarge:'大',
+            labelLanguage:'显示语言', labelTransGuard:'防谷歌翻译乱版', labelSound:'完成提示音', labelVibration:'振动',
+            labelDesktopNotify:'桌面通知', labelBadge:'应用图标角标',
+            labelQuietStart:'开始时间', labelQuietEnd:'结束时间',
+            labelExportFmt:'导出格式', optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelSpeedUnit:'速度单位', labelAutoCheck:'打开时自动诊断', labelGuard:'误触保护',
+            ipWarnTitle:'⚠️ 截图是否包含IP地址？', ipWarnBody:'公开IP地址可能暴露您的大致位置和运营商，建议隐藏。',
+            ipHide:'🔒 隐藏IP地址（推荐）', ipMask:'⚠️ 部分*遮蔽', ipShow:'直接包含',
+            ipNote:'※ IP地址仅在浏览器内使用，不会发送到本工具服务器。', ipBack:'← 返回（取消保存）',
+            devWarnTitle:'📱 截图是否包含设备型号？', devShow:'直接包含', devHide:'🔒 替换为*',
+            devNote:'※ 设备名称从UA字符串获取，不会发送到服务器。', devBack:'← 返回',
+            loginRequired:'需要登录', loginMsg:'需要登录。可使用Google账号免费注册。', loginBtn:'使用Google登录', cancelBtn:'取消', logoutBtn:'退出登录',
+            syncOk:'✓ 已同步', syncing:'同步中...', syncFail:'⚠ 同步失败', synced:'✓ 同步中',
+            friendCodeTitle:'使用亲友码登录', friendCodePlaceholder:'请输入代码...', friendCodeError:'代码错误', friendLoginBtn:'登录',
+            diagComplete:'✅ 诊断完成', imgGenComplete:'✅ 图片已生成',
+            retryConfirm:'重新诊断？\n当前结果将被覆盖。',
+            fpsAvgLabel:'平均帧率', fpsLowLabel:'1%低帧率', uaLabel:'用户代理字符串',
+        },
+    },
+    'zh-hant': {
+        statusTitle:   '正在掃描硬體...',
+        evalMsg:       '正在驗證各元件的完整性',
+        saveBtnTxt:    '將報告儲存為圖片',
+        aiBtnTxt:      '🤖 諮詢AI顧問',
+        historyBtnTxt: '📊 查看歷史結果',
+        speedBtnTxt:   '⚡ 頁面載入速度測試',
+        retryBtnTxt:   '🔄 重新診斷',
+        rankMsgs: { S:'旗艦級效能', A:'高效能裝置', B:'標準效能裝置', C:'效能略顯不足', D:'低階/舊型裝置' },
+        bench: ['正在測量CPU效能...','執行質數/矩陣/SHA基準測試','正在測量GPU渲染...','WebGL著色器和Canvas 2D壓力測試','正在測量記憶體頻寬...','順序、跨步和隨機存取測試','正在精密分析系統記憶體...','整合5種估算方法','正在實測網路速度...','取得資料計算頻寬','正在測量電池和UI延遲...','Battery API和UI執行緒延遲','正在檢查省電模式...','測量計時器精度','正在測量幀率穩定性...','rAF抖動方式精密計測15秒'],
+        val: { supported:'支援', unsupported:'不支援', running:'執行中', browser:'瀏覽器', secure:'安全 (HTTPS/TLS)', insecure:'不加密 (HTTP)', detected:'⚠ 偵測到自動化', normal:'正常 (手動)', hidden:'已隱藏', measuring:'無法測量', failed:'測量失敗 (離線?)', fast:'快速', medium:'普通', slow:'緩慢', charging:'⚡充電中', discharging:'🔋放電中', enabled:'啟用', disabled:'停用', dark:'深色:ON', light:'深色:OFF', hiconOn:'高對比:ON', hiconOff:'高對比:OFF', estimated:'估算', highPrec:'高精度', midPrec:'中精度' },
+        ui: { legendBtn:'🎨 查看顏色指示說明', shareHint:'💡 可在預覽介面下載按鈕處分享到X', speedDesc:'測量到各主要網站的連線時間。', speedNote:'※ 受瀏覽器限制，僅供參考。', fpsAvgDesc:'（每秒重新整理次數，越高越流暢）', fpsLowDesc:'(最卡場景的FPS，越低越明顯)', uaDesc:'（瀏覽器/OS環境資訊字串）', remaining:'預計剩餘: 約', seconds:'秒', fpsMeasuring:'秒(FPS測量中)', fpsCalc:'FPS計算中...', finalizing:'最終處理中...',
+            scoreLabel:'總分', memLabel:'記憶體頻寬', fpsLabel:'FPS穩定', netLabel:'NET',
+            settingsTitle:'⚙️ 設定', settingsReset:'🔄 重置設定', settingsResetConfirm:'將所有設定重置為預設值？',
+            secAppearance:'🎨 外觀', secLanguage:'🌐 語言', secNotify:'🔔 通知和回饋', secQuiet:'😴 勿擾時間', secData:'💾 資料和操作',
+            labelTheme:'主題', optDark:'深色', optLight:'淺色', optSystem:'跟隨系統',
+            labelFontSize:'字體大小', optSmall:'小', optNormal:'中', optLarge:'大',
+            labelLanguage:'顯示語言', labelTransGuard:'防Google翻譯版面錯亂', labelSound:'完成提示音', labelVibration:'震動',
+            labelDesktopNotify:'桌面通知', labelBadge:'應用圖示角標',
+            labelQuietStart:'開始時間', labelQuietEnd:'結束時間',
+            labelExportFmt:'匯出格式', optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelSpeedUnit:'速度單位', labelAutoCheck:'開啟時自動診斷', labelGuard:'誤觸保護',
+            ipWarnTitle:'⚠️ 截圖是否包含IP位址？', ipWarnBody:'公開IP位址可能暴露您的大致位置和ISP，建議隱藏。',
+            ipHide:'🔒 隱藏IP位址（推薦）', ipMask:'⚠️ 部分*遮蔽', ipShow:'直接包含',
+            ipNote:'※ IP位址僅在瀏覽器內使用，不會傳送至本工具伺服器。', ipBack:'← 返回（取消儲存）',
+            devWarnTitle:'📱 截圖是否包含裝置型號？', devShow:'直接包含', devHide:'🔒 替換為*',
+            devNote:'※ 裝置名稱從UA字串取得，不會傳送至伺服器。', devBack:'← 返回',
+            loginRequired:'需要登入', loginMsg:'需要登入。可使用Google帳號免費註冊。', loginBtn:'使用Google登入', cancelBtn:'取消', logoutBtn:'登出',
+            syncOk:'✓ 已同步', syncing:'同步中...', syncFail:'⚠ 同步失敗', synced:'✓ 同步中',
+            friendCodeTitle:'使用親友碼登入', friendCodePlaceholder:'請輸入代碼...', friendCodeError:'代碼錯誤', friendLoginBtn:'登入',
+            diagComplete:'✅ 診斷完成', imgGenComplete:'✅ 圖片已生成',
+            retryConfirm:'重新診斷？\n目前結果將被覆蓋。',
+            fpsAvgLabel:'平均幀率', fpsLowLabel:'1%低幀率', uaLabel:'使用者代理字串',
+        },
+    },
+    'ko': {
+        statusTitle:   '하드웨어 스캔 중...',
+        evalMsg:       '각 구성 요소를 확인하고 있습니다',
+        saveBtnTxt:    '진단 보고서를 이미지로 저장',
+        aiBtnTxt:      '🤖 AI 어드바이저에게 상담',
+        historyBtnTxt: '📊 과거 진단 결과 보기',
+        speedBtnTxt:   '⚡ 페이지 로딩 속도 테스트',
+        retryBtnTxt:   '🔄 재진단',
+        rankMsgs: { S:'최고급 플래그십 성능', A:'매우 쾌적한 고성능 기기', B:'일반적인 표준 기기', C:'다소 느린 기기', D:'구형 저사양 기기' },
+        bench: ['CPU 성능 측정 중...','소수/행렬/SHA 벤치마크 실행','GPU 렌더링 측정 중...','WebGL 쉐이더 및 Canvas 2D 스트레스 테스트','메모리 대역폭 측정 중...','순차, 스트라이드 및 랜덤 액세스 테스트','시스템 메모리 정밀 분석 중...','5가지 추정 방법 통합','네트워크 속도 실측 중...','데이터 가져와서 대역폭 계산','배터리 및 UI 지연 측정 중...','Battery API 및 UI 스레드 지연','절전 모드 확인 중...','타이머 정확도 측정','프레임률 안정성 측정 중...','rAF 지터 방식 15초 정밀 측정'],
+        val: { supported:'지원', unsupported:'미지원', running:'실행 중', browser:'브라우저', secure:'보안 (HTTPS/TLS)', insecure:'비암호화 (HTTP)', detected:'⚠ 자동화 감지', normal:'정상 (수동)', hidden:'숨김', measuring:'측정 불가', failed:'측정 실패 (오프라인?)', fast:'빠름', medium:'보통', slow:'느림', charging:'⚡ 충전 중', discharging:'🔋 방전 중', enabled:'활성화', disabled:'비활성화', dark:'다크:ON', light:'다크:OFF', hiconOn:'고대비:ON', hiconOff:'고대비:OFF', estimated:'추정', highPrec:'고정밀', midPrec:'중정밀' },
+        ui: { legendBtn:'🎨 색상 기준 확인', shareHint:'💡 미리보기 화면에서 X로 공유할 수 있습니다', speedDesc:'주요 사이트로의 연결 시간을 측정합니다.', speedNote:'※ 브라우저 제한으로 참고값입니다.', fpsAvgDesc:'(초당 화면 갱신 횟수. 높을수록 부드러움)', fpsLowDesc:'(가장 무거운 장면의 FPS. 낮을수록 끊김)', uaDesc:'(브라우저/OS 환경 정보 문자열)', remaining:'예상 남은 시간: 약 ', seconds:' 초', fpsMeasuring:' 초 (FPS 측정 중)', fpsCalc:'FPS 집계 중...', finalizing:'최종 처리 중...',
+            scoreLabel:'총점', memLabel:'메모리 대역폭', fpsLabel:'FPS 안정', netLabel:'NET',
+            settingsTitle:'⚙️ 설정', settingsReset:'🔄 설정 초기화', settingsResetConfirm:'모든 설정을 기본값으로 초기화하시겠습니까?',
+            secAppearance:'🎨 외관', secLanguage:'🌐 언어', secNotify:'🔔 알림 및 피드백', secQuiet:'😴 방해 금지 시간', secData:'💾 데이터 및 작업',
+            labelTheme:'테마', optDark:'다크', optLight:'라이트', optSystem:'시스템',
+            labelFontSize:'글자 크기', optSmall:'작게', optNormal:'보통', optLarge:'크게',
+            labelLanguage:'표시 언어', labelTransGuard:'Google 번역 레이아웃 보호', labelSound:'완료 사운드', labelVibration:'진동',
+            labelDesktopNotify:'데스크톱 알림', labelBadge:'앱 아이콘 배지',
+            labelQuietStart:'시작 시간', labelQuietEnd:'종료 시간',
+            labelExportFmt:'내보내기 형식', optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelSpeedUnit:'속도 단위', labelAutoCheck:'열면 자동 진단', labelGuard:'실수 방지',
+            ipWarnTitle:'⚠️ 스크린샷에 IP 주소를 포함하시겠습니까?', ipWarnBody:'IP 주소를 공개하면 위치와 ISP가 노출될 수 있습니다.',
+            ipHide:'🔒 IP 주소 숨기기 (권장)', ipMask:'⚠️ 일부를 *로 가리기', ipShow:'그대로 포함',
+            ipNote:'※ IP 주소는 브라우저 내에서만 사용되며 서버로 전송되지 않습니다.', ipBack:'← 뒤로 (저장 취소)',
+            devWarnTitle:'📱 스크린샷에 기기 모델을 포함하시겠습니까?', devShow:'그대로 포함', devHide:'🔒 *로 대체',
+            devNote:'※ 기기 이름은 UA 문자열에서 가져오며 서버로 전송되지 않습니다.', devBack:'← 뒤로',
+            loginRequired:'로그인 필요', loginMsg:'에는 로그인이 필요합니다.', loginBtn:'Google로 로그인', cancelBtn:'취소', logoutBtn:'로그아웃',
+            syncOk:'✓ 동기화됨', syncing:'동기화 중...', syncFail:'⚠ 동기화 실패', synced:'✓ 동기화 중',
+            friendCodeTitle:'친구 코드로 로그인', friendCodePlaceholder:'코드 입력...', friendCodeError:'코드가 틀립니다', friendLoginBtn:'로그인',
+            diagComplete:'✅ 진단 완료', imgGenComplete:'✅ 이미지 생성 완료',
+            retryConfirm:'재진단하시겠습니까?\n현재 결과가 덮어쓰여집니다.',
+            fpsAvgLabel:'평균 프레임률', fpsLowLabel:'1% LOW 프레임률', uaLabel:'유저 에이전트',
+        },
+    },
+    'vi': {
+        statusTitle:   'Đang quét phần cứng...',
+        evalMsg:       'Đang xác minh tính toàn vẹn của các thành phần',
+        saveBtnTxt:    'Lưu báo cáo dưới dạng hình ảnh',
+        aiBtnTxt:      '🤖 Tư vấn AI',
+        historyBtnTxt: '📊 Xem kết quả chẩn đoán cũ',
+        speedBtnTxt:   '⚡ Kiểm tra tốc độ tải trang',
+        retryBtnTxt:   '🔄 Chẩn đoán lại',
+        rankMsgs: { S:'Hiệu suất đỉnh cao', A:'Thiết bị hiệu suất cao', B:'Thiết bị tiêu chuẩn', C:'Hiệu suất dưới mức trung bình', D:'Thiết bị cũ / thấp cấp' },
+        bench: ['Đang đo CPU...','Chạy benchmark','Đang đo GPU...','Kiểm tra tải WebGL và Canvas','Đang đo băng thông bộ nhớ...','Kiểm tra đọc/ghi tuần tự và ngẫu nhiên','Đang phân tích RAM...','Tổng hợp 5 phương pháp','Đang đo tốc độ mạng...','Tải dữ liệu để tính băng thông','Đang đo pin và độ trễ UI...','Battery API và độ trễ UI thread','Đang kiểm tra chế độ tiết kiệm điện...','Đo độ chính xác bộ đếm thời gian','Đang đo ổn định frame rate...','Phương pháp rAF jitter 15 giây'],
+        val: { supported:'Hỗ trợ', unsupported:'Không hỗ trợ', running:'Đang chạy', browser:'Trình duyệt', secure:'Bảo mật (HTTPS)', insecure:'Không mã hóa (HTTP)', detected:'⚠ Phát hiện tự động hóa', normal:'Bình thường', hidden:'Đã ẩn', measuring:'Không đo được', failed:'Đo thất bại (offline?)', fast:'Nhanh', medium:'Trung bình', slow:'Chậm', charging:'⚡ Đang sạc', discharging:'🔋 Đang xả', enabled:'Bật', disabled:'Tắt', dark:'Tối:ON', light:'Tối:OFF', hiconOn:'Tương phản:ON', hiconOff:'Tương phản:OFF', estimated:'Ước tính', highPrec:'Độ chính xác cao', midPrec:'Độ chính xác TB' },
+        ui: { legendBtn:'🎨 Xem chú thích màu sắc', shareHint:'💡 Bạn có thể chia sẻ lên X từ nút tải trong xem trước', speedDesc:'Đo thời gian kết nối đến các trang web lớn.', speedNote:'※ Chỉ mang tính tham khảo do giới hạn trình duyệt.', fpsAvgDesc:'(Số lần cập nhật màn hình/giây. Cao hơn = mượt hơn)', fpsLowDesc:'(FPS ở cảnh nặng nhất. Thấp = giật nhiều)', uaDesc:'(Chuỗi thông tin môi trường trình duyệt/OS)', remaining:'Ước tính còn: ~', seconds:' giây', fpsMeasuring:' giây (đang đo FPS)', fpsCalc:'Đang tính FPS...', finalizing:'Đang xử lý cuối...',
+            scoreLabel:'Tổng điểm', memLabel:'BW bộ nhớ', fpsLabel:'Ổn định FPS', netLabel:'NET',
+            settingsTitle:'⚙️ Cài đặt', settingsReset:'🔄 Đặt lại', settingsResetConfirm:'Đặt lại tất cả cài đặt về mặc định?',
+            secAppearance:'🎨 Giao diện', secLanguage:'🌐 Ngôn ngữ', secNotify:'🔔 Thông báo', secQuiet:'😴 Giờ yên tĩnh', secData:'💾 Dữ liệu',
+            labelTheme:'Chủ đề', optDark:'Tối', optLight:'Sáng', optSystem:'Hệ thống',
+            labelFontSize:'Cỡ chữ', optSmall:'Nhỏ', optNormal:'Bình thường', optLarge:'Lớn',
+            labelLanguage:'Ngôn ngữ', labelTransGuard:'Bảo vệ Google Dịch', labelSound:'Âm thanh hoàn thành', labelVibration:'Rung',
+            labelDesktopNotify:'Thông báo máy tính', labelBadge:'Huy hiệu ứng dụng',
+            labelQuietStart:'Giờ bắt đầu', labelQuietEnd:'Giờ kết thúc',
+            labelExportFmt:'Định dạng xuất', optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelSpeedUnit:'Đơn vị tốc độ', labelAutoCheck:'Tự động chẩn đoán khi mở', labelGuard:'Bảo vệ thao tác nhầm',
+            ipWarnTitle:'⚠️ Bao gồm địa chỉ IP trong ảnh chụp màn hình?', ipWarnBody:'Chia sẻ IP có thể lộ vị trí và ISP của bạn.',
+            ipHide:'🔒 Ẩn IP (khuyến nghị)', ipMask:'⚠️ Che một phần bằng *', ipShow:'Giữ nguyên',
+            ipNote:'※ IP chỉ được dùng trong trình duyệt, không gửi đến máy chủ.', ipBack:'← Quay lại',
+            devWarnTitle:'📱 Bao gồm model thiết bị?', devShow:'Giữ nguyên', devHide:'🔒 Thay bằng *',
+            devNote:'※ Tên thiết bị lấy từ UA, không gửi đến máy chủ.', devBack:'← Quay lại',
+            loginRequired:'Cần đăng nhập', loginMsg:'yêu cầu đăng nhập.', loginBtn:'Đăng nhập Google', cancelBtn:'Hủy', logoutBtn:'Đăng xuất',
+            syncOk:'✓ Đã đồng bộ', syncing:'Đang đồng bộ...', syncFail:'⚠ Đồng bộ thất bại', synced:'✓ Đang đồng bộ',
+            friendCodeTitle:'Đăng nhập bằng mã bạn bè', friendCodePlaceholder:'Nhập mã...', friendCodeError:'Mã không đúng', friendLoginBtn:'Đăng nhập',
+            diagComplete:'✅ Chẩn đoán hoàn tất', imgGenComplete:'✅ Ảnh đã tạo',
+            retryConfirm:'Chẩn đoán lại?\nKết quả hiện tại sẽ bị ghi đè.',
+            fpsAvgLabel:'FPS trung bình', fpsLowLabel:'1% LOW FPS', uaLabel:'User Agent',
+        },
+    },
+    'es': {
+        statusTitle:   'Escaneando hardware...',
+        evalMsg:       'Verificando la integridad de los componentes',
+        saveBtnTxt:    'Guardar informe como imagen',
+        aiBtnTxt:      '🤖 Consultar al asesor de IA',
+        historyBtnTxt: '📊 Ver resultados anteriores',
+        speedBtnTxt:   '⚡ Prueba de velocidad de carga',
+        retryBtnTxt:   '🔄 Volver a diagnosticar',
+        rankMsgs: { S:'Rendimiento de gama alta', A:'Dispositivo de alto rendimiento', B:'Rendimiento estándar', C:'Rendimiento por debajo del promedio', D:'Dispositivo antiguo / de gama baja' },
+        bench: ['Midiendo rendimiento CPU...','Ejecutando benchmarks','Midiendo renderizado GPU...','Prueba de carga WebGL y Canvas','Midiendo ancho de banda de memoria...','Prueba de acceso secuencial y aleatorio','Analizando memoria del sistema...','Integrando 5 métodos de estimación','Midiendo velocidad de red...','Descargando datos para calcular ancho de banda','Midiendo batería y latencia UI...','Battery API y latencia del hilo UI','Verificando modo de ahorro de energía...','Midiendo precisión del temporizador','Midiendo estabilidad de frame rate...','Método de jitter rAF 15 segundos'],
+        val: { supported:'Compatible', unsupported:'No compatible', running:'En ejecución', browser:'Navegador', secure:'Seguro (HTTPS/TLS)', insecure:'No cifrado (HTTP)', detected:'⚠ Automatización detectada', normal:'Normal (manual)', hidden:'Oculto', measuring:'No se puede medir', failed:'Medición fallida (offline?)', fast:'Rápido', medium:'Normal', slow:'Lento', charging:'⚡ Cargando', discharging:'🔋 Descargando', enabled:'Habilitado', disabled:'Deshabilitado', dark:'Oscuro:ON', light:'Oscuro:OFF', hiconOn:'AltoContraste:ON', hiconOff:'AltoContraste:OFF', estimated:'Estimado', highPrec:'Alta precisión', midPrec:'Precisión media' },
+        ui: { legendBtn:'🎨 Ver indicadores de color', shareHint:'💡 Puedes compartir a X desde el botón de descarga en la vista previa', speedDesc:'Mide el tiempo de conexión a sitios principales.', speedNote:'※ Solo referencia debido a limitaciones del navegador.', fpsAvgDesc:'(Actualizaciones de pantalla por segundo. Mayor = más fluido)', fpsLowDesc:'(FPS en escenas más pesadas. Menor = más tirones)', uaDesc:'(Cadena de información del entorno navegador/SO)', remaining:'Tiempo restante est.: ~', seconds:' seg', fpsMeasuring:' seg (midiendo FPS)', fpsCalc:'Calculando FPS...', finalizing:'Finalizando...',
+            scoreLabel:'Puntuación', memLabel:'BW memoria', fpsLabel:'Estab. FPS', netLabel:'NET',
+            settingsTitle:'⚙️ Ajustes', settingsReset:'🔄 Restablecer', settingsResetConfirm:'¿Restablecer todos los ajustes?',
+            secAppearance:'🎨 Apariencia', secLanguage:'🌐 Idioma', secNotify:'🔔 Notificaciones', secQuiet:'😴 Horas tranquilas', secData:'💾 Datos',
+            labelTheme:'Tema', optDark:'Oscuro', optLight:'Claro', optSystem:'Sistema',
+            labelFontSize:'Tamaño de fuente', optSmall:'Pequeño', optNormal:'Normal', optLarge:'Grande',
+            labelLanguage:'Idioma', labelTransGuard:'Protección Google Translate', labelSound:'Sonido de fin', labelVibration:'Vibración',
+            labelDesktopNotify:'Notificación escritorio', labelBadge:'Insignia de app',
+            labelQuietStart:'Hora de inicio', labelQuietEnd:'Hora de fin',
+            labelExportFmt:'Formato de exportación', optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelSpeedUnit:'Unidad de velocidad', labelAutoCheck:'Auto diagnóstico al abrir', labelGuard:'Protección de toques accidentales',
+            ipWarnTitle:'⚠️ ¿Incluir IP en captura?', ipWarnBody:'Compartir tu IP puede revelar ubicación e ISP.',
+            ipHide:'🔒 Ocultar IP (recomendado)', ipMask:'⚠️ Enmascarar parcialmente', ipShow:'Incluir tal cual',
+            ipNote:'※ IP se usa solo en el navegador.', ipBack:'← Volver (cancelar)',
+            devWarnTitle:'📱 ¿Incluir modelo de dispositivo?', devShow:'Incluir tal cual', devHide:'🔒 Reemplazar con *',
+            devNote:'※ El nombre del dispositivo proviene del UA.', devBack:'← Volver',
+            loginRequired:'Se requiere inicio de sesión', loginMsg:' requiere login.', loginBtn:'Iniciar sesión con Google', cancelBtn:'Cancelar', logoutBtn:'Cerrar sesión',
+            syncOk:'✓ Sincronizado', syncing:'Sincronizando...', syncFail:'⚠ Error de sync', synced:'✓ Sincronizando',
+            friendCodeTitle:'Iniciar sesión con código', friendCodePlaceholder:'Introduce código...', friendCodeError:'Código incorrecto', friendLoginBtn:'Iniciar sesión',
+            diagComplete:'✅ Diagnóstico completo', imgGenComplete:'✅ Imagen generada',
+            retryConfirm:'¿Volver a diagnosticar?\nLos resultados actuales se sobrescribirán.',
+            fpsAvgLabel:'FPS promedio', fpsLowLabel:'1% LOW FPS', uaLabel:'User Agent',
+        },
+    },
+    'pt': {
+        statusTitle:   'Verificando hardware...',
+        evalMsg:       'Verificando a integridade dos componentes',
+        saveBtnTxt:    'Salvar relatório como imagem',
+        aiBtnTxt:      '🤖 Consultar o assistente de IA',
+        historyBtnTxt: '📊 Ver resultados anteriores',
+        speedBtnTxt:   '⚡ Teste de velocidade de carregamento',
+        retryBtnTxt:   '🔄 Rediagnosticar',
+        rankMsgs: { S:'Desempenho de ponta', A:'Dispositivo de alto desempenho', B:'Desempenho padrão', C:'Desempenho abaixo da média', D:'Dispositivo antigo / de baixo nível' },
+        bench: ['Medindo desempenho do CPU...','Executando benchmarks','Medindo renderização da GPU...','Teste de carga WebGL e Canvas','Medindo largura de banda da memória...','Teste de acesso sequencial e aleatório','Analisando memória do sistema...','Integrando 5 métodos de estimativa','Medindo velocidade de rede...','Baixando dados para calcular largura de banda','Medindo bateria e latência UI...','Battery API e latência do thread UI','Verificando modo de economia de energia...','Medindo precisão do temporizador','Medindo estabilidade da taxa de quadros...','Método de jitter rAF 15 segundos'],
+        val: { supported:'Compatível', unsupported:'Não compatível', running:'Em execução', browser:'Navegador', secure:'Seguro (HTTPS/TLS)', insecure:'Não criptografado (HTTP)', detected:'⚠ Automação detectada', normal:'Normal (manual)', hidden:'Oculto', measuring:'Não é possível medir', failed:'Medição falhou (offline?)', fast:'Rápido', medium:'Normal', slow:'Lento', charging:'⚡ Carregando', discharging:'🔋 Descarregando', enabled:'Habilitado', disabled:'Desabilitado', dark:'Escuro:ON', light:'Escuro:OFF', hiconOn:'AltoContraste:ON', hiconOff:'AltoContraste:OFF', estimated:'Estimado', highPrec:'Alta precisão', midPrec:'Precisão média' },
+        ui: { legendBtn:'🎨 Ver indicadores de cor', shareHint:'💡 Você pode compartilhar no X pelo botão de download na prévia', speedDesc:'Mede o tempo de conexão aos principais sites.', speedNote:'※ Apenas referência devido às limitações do navegador.', fpsAvgDesc:'(Atualizações de tela por segundo. Maior = mais fluido)', fpsLowDesc:'(FPS nas cenas mais pesadas. Menor = mais travamentos)', uaDesc:'(String de informações do ambiente navegador/SO)', remaining:'Tempo restante est.: ~', seconds:' seg', fpsMeasuring:' seg (medindo FPS)', fpsCalc:'Calculando FPS...', finalizing:'Finalizando...',
+            scoreLabel:'Pontuação', memLabel:'BW memória', fpsLabel:'Estab. FPS', netLabel:'NET',
+            settingsTitle:'⚙️ Configurações', settingsReset:'🔄 Redefinir', settingsResetConfirm:'Redefinir todas as configurações?',
+            secAppearance:'🎨 Aparência', secLanguage:'🌐 Idioma', secNotify:'🔔 Notificações', secQuiet:'😴 Horas de silêncio', secData:'💾 Dados',
+            labelTheme:'Tema', optDark:'Escuro', optLight:'Claro', optSystem:'Sistema',
+            labelFontSize:'Tamanho da fonte', optSmall:'Pequeno', optNormal:'Normal', optLarge:'Grande',
+            labelLanguage:'Idioma', labelTransGuard:'Proteção Google Tradutor', labelSound:'Som de conclusão', labelVibration:'Vibração',
+            labelDesktopNotify:'Notificação área de trabalho', labelBadge:'Emblema de app',
+            labelQuietStart:'Hora de início', labelQuietEnd:'Hora de fim',
+            labelExportFmt:'Formato de exportação', optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelSpeedUnit:'Unidade de velocidade', labelAutoCheck:'Diagnóstico auto ao abrir', labelGuard:'Proteção de toque acidental',
+            ipWarnTitle:'⚠️ Incluir IP na captura?', ipWarnBody:'Compartilhar IP pode revelar localização e ISP.',
+            ipHide:'🔒 Ocultar IP (recomendado)', ipMask:'⚠️ Mascarar parcialmente', ipShow:'Incluir como está',
+            ipNote:'※ IP é usado apenas no navegador.', ipBack:'← Voltar (cancelar)',
+            devWarnTitle:'📱 Incluir modelo do dispositivo?', devShow:'Incluir como está', devHide:'🔒 Substituir por *',
+            devNote:'※ Nome do dispositivo vem do UA.', devBack:'← Voltar',
+            loginRequired:'Login necessário', loginMsg:' requer login.', loginBtn:'Entrar com Google', cancelBtn:'Cancelar', logoutBtn:'Sair',
+            syncOk:'✓ Sincronizado', syncing:'Sincronizando...', syncFail:'⚠ Falha de sync', synced:'✓ Sincronizando',
+            friendCodeTitle:'Entrar com código amigo', friendCodePlaceholder:'Digite o código...', friendCodeError:'Código incorreto', friendLoginBtn:'Entrar',
+            diagComplete:'✅ Diagnóstico concluído', imgGenComplete:'✅ Imagem gerada',
+            retryConfirm:'Rediagnosticar?\nOs resultados atuais serão sobrescritos.',
+            fpsAvgLabel:'FPS médio', fpsLowLabel:'1% LOW FPS', uaLabel:'User Agent',
+        },
+    },
+    'fr': {
+        statusTitle:   'Analyse du matériel...',
+        evalMsg:       "Vérification de l'intégrité des composants",
+        saveBtnTxt:    "Enregistrer le rapport en image",
+        aiBtnTxt:      '🤖 Consulter le conseiller IA',
+        historyBtnTxt: '📊 Voir les résultats passés',
+        speedBtnTxt:   '⚡ Test de vitesse de chargement',
+        retryBtnTxt:   '🔄 Re-diagnostiquer',
+        rankMsgs: { S:'Performance haut de gamme', A:'Appareil haute performance', B:'Performance standard', C:'Performance en dessous de la moyenne', D:'Appareil ancien / bas de gamme' },
+        bench: ['Mesure des performances CPU...','Exécution des benchmarks','Mesure du rendu GPU...','Test de charge WebGL et Canvas','Mesure de la bande passante mémoire...','Test d\'accès séquentiel et aléatoire','Analyse précise de la mémoire système...','Intégration de 5 méthodes d\'estimation','Mesure de la vitesse réseau...','Téléchargement de données pour calculer la bande passante','Mesure de la batterie et latence UI...','Battery API et latence du thread UI','Vérification du mode économie d\'énergie...','Mesure de la précision du minuteur','Mesure de la stabilité du taux de frames...','Méthode jitter rAF 15 secondes'],
+        val: { supported:'Supporté', unsupported:'Non supporté', running:'En cours', browser:'Navigateur', secure:'Sécurisé (HTTPS/TLS)', insecure:'Non chiffré (HTTP)', detected:'⚠ Automatisation détectée', normal:'Normal (manuel)', hidden:'Masqué', measuring:'Impossible à mesurer', failed:'Mesure échouée (hors ligne?)', fast:'Rapide', medium:'Moyen', slow:'Lent', charging:'⚡ En charge', discharging:'🔋 Décharge', enabled:'Activé', disabled:'Désactivé', dark:'Sombre:ON', light:'Sombre:OFF', hiconOn:'HautContraste:ON', hiconOff:'HautContraste:OFF', estimated:'Estimé', highPrec:'Haute précision', midPrec:'Précision moyenne' },
+        ui: { legendBtn:'🎨 Voir les indicateurs de couleur', shareHint:'💡 Vous pouvez partager sur X depuis le bouton de téléchargement', speedDesc:'Mesure le temps de connexion aux sites principaux.', speedNote:'※ Valeur de référence en raison des limitations du navigateur.', fpsAvgDesc:'(Actualisations d\'écran par seconde. Plus élevé = plus fluide)', fpsLowDesc:'(FPS dans les scènes les plus lourdes. Plus bas = plus de saccades)', uaDesc:'(Chaîne d\'informations sur l\'environnement navigateur/OS)', remaining:'Temps restant est.: ~', seconds:' sec', fpsMeasuring:' sec (mesure FPS)', fpsCalc:'Calcul FPS...', finalizing:'Finalisation...',
+            scoreLabel:'Score', memLabel:'BW mémoire', fpsLabel:'Stab. FPS', netLabel:'NET',
+            settingsTitle:'⚙️ Paramètres', settingsReset:'🔄 Réinitialiser', settingsResetConfirm:'Réinitialiser tous les paramètres ?',
+            secAppearance:'🎨 Apparence', secLanguage:'🌐 Langue', secNotify:'🔔 Notifications', secQuiet:'😴 Heures calmes', secData:'💾 Données',
+            labelTheme:'Thème', optDark:'Sombre', optLight:'Clair', optSystem:'Système',
+            labelFontSize:'Taille de police', optSmall:'Petit', optNormal:'Normal', optLarge:'Grand',
+            labelLanguage:'Langue', labelTransGuard:'Protection Google Translate', labelSound:'Son de fin', labelVibration:'Vibration',
+            labelDesktopNotify:'Notification bureau', labelBadge:"Badge d'app",
+            labelQuietStart:'Heure de début', labelQuietEnd:'Heure de fin',
+            labelExportFmt:"Format d'export", optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelSpeedUnit:'Unité de vitesse', labelAutoCheck:"Diagnostic auto à l'ouverture", labelGuard:'Protection erreur tactile',
+            ipWarnTitle:"⚠️ Inclure l'IP dans la capture ?", ipWarnBody:"Partager votre IP peut révéler emplacement et FAI.",
+            ipHide:"🔒 Masquer l'IP (recommandé)", ipMask:'⚠️ Masquer partiellement', ipShow:'Inclure tel quel',
+            ipNote:"※ L'IP est utilisée uniquement dans le navigateur.", ipBack:'← Retour (annuler)',
+            devWarnTitle:'📱 Inclure le modèle ?', devShow:'Inclure tel quel', devHide:'🔒 Remplacer par *',
+            devNote:"※ Le nom de l'appareil provient de l'UA.", devBack:'← Retour',
+            loginRequired:'Connexion requise', loginMsg:' nécessite une connexion.', loginBtn:'Se connecter avec Google', cancelBtn:'Annuler', logoutBtn:'Déconnexion',
+            syncOk:'✓ Synchronisé', syncing:'Synchronisation...', syncFail:'⚠ Échec sync', synced:'✓ Synchronisation',
+            friendCodeTitle:'Connexion avec code ami', friendCodePlaceholder:'Entrez le code...', friendCodeError:'Code incorrect', friendLoginBtn:'Connexion',
+            diagComplete:'✅ Diagnostic terminé', imgGenComplete:'✅ Image générée',
+            retryConfirm:'Re-diagnostiquer ?\nLes résultats actuels seront écrasés.',
+            fpsAvgLabel:'FPS moyen', fpsLowLabel:'1% LOW FPS', uaLabel:'User Agent',
+        },
+    },
+    'de': {
+        statusTitle:   'Hardware wird gescannt...',
+        evalMsg:       'Komponentenintegrität wird überprüft',
+        saveBtnTxt:    'Bericht als Bild speichern',
+        aiBtnTxt:      '🤖 KI-Berater fragen',
+        historyBtnTxt: '📊 Vergangene Ergebnisse ansehen',
+        speedBtnTxt:   '⚡ Seitenladegeschwindigkeitstest',
+        retryBtnTxt:   '🔄 Neu diagnostizieren',
+        rankMsgs: { S:'Spitzenklasse-Leistung', A:'Hochleistungsgerät', B:'Standardleistung', C:'Unterdurchschnittliche Leistung', D:'Altes / Low-End-Gerät' },
+        bench: ['CPU-Leistung wird gemessen...','Benchmarks werden ausgeführt','GPU-Rendering wird gemessen...','WebGL- und Canvas-Lasttest','Speicherbandbreite wird gemessen...','Sequentieller und zufälliger Zugriffstest','Systemspeicher wird analysiert...','5 Schätzmethoden werden integriert','Netzwerkgeschwindigkeit wird gemessen...','Daten herunterladen zur Bandbreitenberechnung','Akku und UI-Latenz werden gemessen...','Battery API und UI-Thread-Latenz','Energiesparmodus wird überprüft...','Timer-Genauigkeit wird gemessen','Framerate-Stabilität wird gemessen...','rAF-Jitter-Methode 15-Sekunden-Test'],
+        val: { supported:'Unterstützt', unsupported:'Nicht unterstützt', running:'Aktiv', browser:'Browser', secure:'Sicher (HTTPS/TLS)', insecure:'Unverschlüsselt (HTTP)', detected:'⚠ Automatisierung erkannt', normal:'Normal (manuell)', hidden:'Ausgeblendet', measuring:'Nicht messbar', failed:'Messung fehlgeschlagen (offline?)', fast:'Schnell', medium:'Mittel', slow:'Langsam', charging:'⚡ Lädt', discharging:'🔋 Entlädt', enabled:'Aktiviert', disabled:'Deaktiviert', dark:'Dunkel:EIN', light:'Dunkel:AUS', hiconOn:'HohKontrast:EIN', hiconOff:'HohKontrast:AUS', estimated:'Geschätzt', highPrec:'Hohe Genauigkeit', midPrec:'Mittlere Genauigkeit' },
+        ui: { legendBtn:'🎨 Farbanzeigen anzeigen', shareHint:'💡 Sie können über den Download-Button in der Vorschau auf X teilen', speedDesc:'Misst die Verbindungszeit zu wichtigen Websites.', speedNote:'※ Nur Referenzwert aufgrund von Browser-Einschränkungen.', fpsAvgDesc:'(Bildschirmaktualisierungen pro Sekunde. Höher = flüssiger)', fpsLowDesc:'(FPS in den schwersten Szenen. Niedriger = mehr Stottern)', uaDesc:'(Browser-/OS-Umgebungsinformationszeichenkette)', remaining:'Geschätzte Restzeit: ~', seconds:' Sek', fpsMeasuring:' Sek (FPS-Messung)', fpsCalc:'FPS wird berechnet...', finalizing:'Wird abgeschlossen...',
+            scoreLabel:'Gesamt', memLabel:'Speicher BW', fpsLabel:'FPS Stab.', netLabel:'NET',
+            settingsTitle:'⚙️ Einstellungen', settingsReset:'🔄 Zurücksetzen', settingsResetConfirm:'Alle Einstellungen zurücksetzen?',
+            secAppearance:'🎨 Erscheinungsbild', secLanguage:'🌐 Sprache', secNotify:'🔔 Benachrichtigungen', secQuiet:'😴 Ruhezeiten', secData:'💾 Daten',
+            labelTheme:'Design', optDark:'Dunkel', optLight:'Hell', optSystem:'System',
+            labelFontSize:'Schriftgröße', optSmall:'Klein', optNormal:'Normal', optLarge:'Groß',
+            labelLanguage:'Sprache', labelTransGuard:'Google Translate Schutz', labelSound:'Abschluss-Sound', labelVibration:'Vibration',
+            labelDesktopNotify:'Desktop-Benachrichtigung', labelBadge:'App-Badge',
+            labelQuietStart:'Startzeit', labelQuietEnd:'Endzeit',
+            labelExportFmt:'Exportformat', optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelSpeedUnit:'Geschwindigkeitseinheit', labelAutoCheck:'Beim Öffnen diagnostizieren', labelGuard:'Tippschutz',
+            ipWarnTitle:'⚠️ IP-Adresse im Screenshot?', ipWarnBody:'Ihre IP kann Standort und ISP enthüllen.',
+            ipHide:'🔒 IP verbergen (empfohlen)', ipMask:'⚠️ Teilweise maskieren', ipShow:'So einbeziehen',
+            ipNote:'※ IP wird nur im Browser verwendet.', ipBack:'← Zurück (Abbrechen)',
+            devWarnTitle:'📱 Gerätemodell einschließen?', devShow:'So einbeziehen', devHide:'🔒 Durch * ersetzen',
+            devNote:'※ Gerätename stammt aus UA.', devBack:'← Zurück',
+            loginRequired:'Anmeldung erforderlich', loginMsg:' erfordert Anmeldung.', loginBtn:'Mit Google anmelden', cancelBtn:'Abbrechen', logoutBtn:'Abmelden',
+            syncOk:'✓ Synchronisiert', syncing:'Synchronisierung...', syncFail:'⚠ Sync fehlgeschlagen', synced:'✓ Synchronisierung',
+            friendCodeTitle:'Mit Code anmelden', friendCodePlaceholder:'Code eingeben...', friendCodeError:'Falscher Code', friendLoginBtn:'Anmelden',
+            diagComplete:'✅ Diagnose abgeschlossen', imgGenComplete:'✅ Bild erstellt',
+            retryConfirm:'Neu diagnostizieren?\nAktuelle Ergebnisse werden überschrieben.',
+            fpsAvgLabel:'Durchschnittliche FPS', fpsLowLabel:'1% LOW FPS', uaLabel:'User Agent',
+        },
+    },
+    'ru': {
+        statusTitle:   'Сканирование оборудования...',
+        evalMsg:       'Проверка целостности компонентов',
+        saveBtnTxt:    'Сохранить отчёт как изображение',
+        aiBtnTxt:      '🤖 Спросить ИИ-советника',
+        historyBtnTxt: '📊 Просмотр прошлых результатов',
+        speedBtnTxt:   '⚡ Тест скорости загрузки страниц',
+        retryBtnTxt:   '🔄 Диагностировать снова',
+        rankMsgs: { S:'Флагманская производительность', A:'Высокопроизводительное устройство', B:'Стандартная производительность', C:'Ниже среднего', D:'Устаревшее / бюджетное устройство' },
+        bench: ['Измерение производительности CPU...','Запуск бенчмарков','Измерение рендеринга GPU...','Нагрузочный тест WebGL и Canvas','Измерение пропускной способности памяти...','Последовательный и случайный доступ','Точный анализ системной памяти...','Интеграция 5 методов оценки','Измерение скорости сети...','Загрузка данных для расчёта пропускной способности','Измерение батареи и задержки UI...','Battery API и задержка UI-потока','Проверка режима энергосбережения...','Измерение точности таймера','Измерение стабильности частоты кадров...','Метод дрожания rAF 15 секунд'],
+        val: { supported:'Поддерживается', unsupported:'Не поддерживается', running:'Работает', browser:'Браузер', secure:'Защищено (HTTPS/TLS)', insecure:'Не зашифровано (HTTP)', detected:'⚠ Обнаружена автоматизация', normal:'Нормально (вручную)', hidden:'Скрыто', measuring:'Не удаётся измерить', failed:'Измерение не удалось (офлайн?)', fast:'Быстро', medium:'Средне', slow:'Медленно', charging:'⚡ Заряжается', discharging:'🔋 Разряжается', enabled:'Включено', disabled:'Отключено', dark:'Тёмная:ВКЛ', light:'Тёмная:ВЫКЛ', hiconOn:'ВысКонтраст:ВКЛ', hiconOff:'ВысКонтраст:ВЫКЛ', estimated:'Оценка', highPrec:'Высокая точность', midPrec:'Средняя точность' },
+        ui: { legendBtn:'🎨 Просмотр цветовых индикаторов', shareHint:'💡 Вы можете поделиться в X через кнопку загрузки в превью', speedDesc:'Измеряет время подключения к основным сайтам.', speedNote:'※ Только справочное значение из-за ограничений браузера.', fpsAvgDesc:'(Обновлений экрана в секунду. Выше = плавнее)', fpsLowDesc:'(FPS в самых тяжёлых сценах. Ниже = больше рывков)', uaDesc:'(Строка информации об окружении браузера/ОС)', remaining:'Осталось примерно: ~', seconds:' сек', fpsMeasuring:' сек (измерение FPS)', fpsCalc:'Расчёт FPS...', finalizing:'Завершение...',
+            scoreLabel:'Итог', memLabel:'Пропускная', fpsLabel:'Стаб. FPS', netLabel:'NET',
+            settingsTitle:'⚙️ Настройки', settingsReset:'🔄 Сбросить', settingsResetConfirm:'Сбросить все настройки?',
+            secAppearance:'🎨 Внешний вид', secLanguage:'🌐 Язык', secNotify:'🔔 Уведомления', secQuiet:'😴 Тихие часы', secData:'💾 Данные',
+            labelTheme:'Тема', optDark:'Тёмная', optLight:'Светлая', optSystem:'Системная',
+            labelFontSize:'Размер шрифта', optSmall:'Малый', optNormal:'Обычный', optLarge:'Крупный',
+            labelLanguage:'Язык', labelTransGuard:'Защита от Google Переводчика', labelSound:'Звук завершения', labelVibration:'Вибрация',
+            labelDesktopNotify:'Уведомление рабочего стола', labelBadge:'Значок приложения',
+            labelQuietStart:'Начало', labelQuietEnd:'Конец',
+            labelExportFmt:'Формат экспорта', optPNG:'PNG', optCSV:'CSV', optTXT:'TXT',
+            labelSpeedUnit:'Единица скорости', labelAutoCheck:'Авто-диагностика при открытии', labelGuard:'Защита от случайных нажатий',
+            ipWarnTitle:'⚠️ Включить IP-адрес в скриншот?', ipWarnBody:'Публичный IP может раскрыть местоположение и ISP.',
+            ipHide:'🔒 Скрыть IP (рекомендуется)', ipMask:'⚠️ Частично маскировать', ipShow:'Оставить как есть',
+            ipNote:'※ IP используется только в браузере.', ipBack:'← Назад (отмена)',
+            devWarnTitle:'📱 Включить модель устройства?', devShow:'Оставить как есть', devHide:'🔒 Заменить на *',
+            devNote:'※ Имя устройства из UA.', devBack:'← Назад',
+            loginRequired:'Требуется вход', loginMsg:' требует входа.', loginBtn:'Войти через Google', cancelBtn:'Отмена', logoutBtn:'Выйти',
+            syncOk:'✓ Синхронизировано', syncing:'Синхронизация...', syncFail:'⚠ Ошибка sync', synced:'✓ Синхронизация',
+            friendCodeTitle:'Войти с кодом друга', friendCodePlaceholder:'Введите код...', friendCodeError:'Неверный код', friendLoginBtn:'Войти',
+            diagComplete:'✅ Диагностика завершена', imgGenComplete:'✅ Изображение создано',
+            retryConfirm:'Диагностировать снова?\nТекущие результаты будут перезаписаны.',
+            fpsAvgLabel:'Средний FPS', fpsLowLabel:'1% LOW FPS', uaLabel:'User Agent',
+        },
+    },
+};
+
+function applyLanguage() {
+    try {
+    const lang = _settings.language;
+    const _tLang = I18N[lang] || I18N['ja'];
+    const labels = I18N_LABELS[lang] || I18N_LABELS['ja'];
+
+    // ── 診断項目ラベル切り替え ──
+    LABEL_ROW_IDS.forEach((rowId, idx) => {
+        try {
+            const rowEl = document.getElementById('row-' + rowId);
+            if (!rowEl) return;
+            const labelEl = rowEl.querySelector('.label');
+            if (!labelEl) return;
+            const helpSpan = labelEl.querySelector('.help');
+            labelEl.textContent = labels[idx] || '';
+            if (helpSpan) labelEl.appendChild(helpSpan);
+        } catch(e) {}
+    });
+
+    // ── UI文字列の更新 ──
+    const ui = tui();
+    const legendBtn = document.getElementById('legend-btn');
+    if (legendBtn) legendBtn.textContent = ui.legendBtn;
+    const shareHint = document.getElementById('share-hint');
+    if (shareHint) shareHint.textContent = ui.shareHint;
+
+    // FPSパネルのラベルとdescを安全に更新
+    try {
+        const _infoPanels = document.querySelectorAll('.info-panel');
+        [[0, ui.fpsAvgLabel, ui.fpsAvgDesc],
+         [1, ui.fpsLowLabel, ui.fpsLowDesc],
+         [2, ui.uaLabel,     ui.uaDesc]].forEach(([idx, lbl, desc]) => {
+            const panel = _infoPanels[idx];
+            if (!panel) return;
+            const _label = panel.querySelector('label');
+            if (!_label) return;
+            // テキストノード（nodeType===3）を安全に更新
+            const _firstTxt = Array.from(_label.childNodes).find(n => n.nodeType === 3);
+            if (_firstTxt) _firstTxt.textContent = lbl;
+            const _d = _label.querySelector('.desc');
+            if (_d) _d.textContent = desc;
+        });
+    } catch(e) {}
+
+    // ── ボタンテキスト（常に更新） ──
+    const sb  = document.getElementById('save-btn');
+    const ab  = document.getElementById('ai-btn');
+    const hb  = document.getElementById('history-btn');
+    const spb = document.getElementById('speed-btn');
+    const rb  = document.getElementById('retry-btn');
+    if (sb)  sb.textContent  = _tLang.saveBtnTxt;
+    if (ab)  ab.textContent  = _tLang.aiBtnTxt;
+    if (hb)  hb.textContent  = _tLang.historyBtnTxt;
+    if (spb) spb.textContent = _tLang.speedBtnTxt;
+    if (rb)  rb.textContent  = _tLang.retryBtnTxt;
+
+    // ── ランクメッセージ（診断完了後のみ） ──
+    try {
+        const rankEl = document.getElementById('rank-letter');
+        if (rankEl && rankEl.textContent !== '?') {
+            const rank    = rankEl.textContent;
+            const titleEl = document.getElementById('status-title');
+            if (titleEl && _tLang.rankMsgs[rank]) titleEl.textContent = _tLang.rankMsgs[rank];
+        }
+    } catch(e) {}
+
+    // ── ログイン系テキスト更新 ──
+    try {
+        const _loginLabel  = document.getElementById('auth-login-label');
+        const _logoutBtn   = document.getElementById('auth-logout-btn');
+        const _friendLabel = document.getElementById('auth-friend-label');
+        const _modalTitle  = document.getElementById('auth-modal-title');
+        const _modalLogin  = document.getElementById('auth-modal-login-label');
+        const _modalCancel = document.getElementById('auth-modal-cancel');
+        if (_loginLabel)  _loginLabel.textContent  = ui.loginBtn;
+        if (_logoutBtn)   _logoutBtn.textContent   = ui.logoutBtn;
+        if (_friendLabel) _friendLabel.textContent = ui.friendCodeTitle.split('で')[0] || ui.friendCodeTitle;
+        if (_modalTitle)  _modalTitle.textContent  = ui.loginRequired;
+        if (_modalLogin)  _modalLogin.textContent  = ui.loginBtn;
+        if (_modalCancel) _modalCancel.textContent = ui.cancelBtn;
+    } catch(e) {}
+
+    } catch(e) { console.warn('applyLanguage error:', e); }
+}
+
+// 現在の言語の翻訳オブジェクトを返すヘルパー
+function _getLang() { return I18N[_settings.language] || I18N['ja']; }
+function tv() { return _getLang().val || I18N['ja'].val; }
+function tui() { return _getLang().ui || I18N['ja'].ui; }
+
+function applySettings() {
+    // ── テーマ ──
+    const root = document.documentElement;
+    const theme = _settings.theme === 'system'
+        ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        : _settings.theme;
+    root.setAttribute('data-theme', theme);
+
+    // ── フォントサイズ ──
+    const fmap = { small: '13px', normal: '15px', large: '20px', custom: (_settings.customFontSize||15)+'px' };
+    root.style.setProperty('--base-font-size', fmap[_settings.fontSize] || '15px');
+
+    // ── Google翻訳崩れ防止 ──
+    const metaNoTrans = document.querySelector('meta[name="google"]');
+    if (_settings.translateGuard) {
+        if (!metaNoTrans) {
+            const m = document.createElement('meta');
+            m.name = 'google'; m.content = 'notranslate';
+            document.head.appendChild(m);
+        }
+        document.documentElement.setAttribute('translate', 'no');
+    } else {
+        if (metaNoTrans) metaNoTrans.remove();
+        document.documentElement.removeAttribute('translate');
+    }
+
+    // ── 言語適用 ──
+    applyLanguage();
+}
+
+// ── 診断終了音（Web Audio API）──
+function playDoneSound() {
+    if (!_settings.soundOnDone) return;
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const notes = [523, 659, 784, 1047]; // C5 E5 G5 C6
+        notes.forEach((freq, i) => {
+            const osc  = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain); gain.connect(ctx.destination);
+            osc.frequency.value = freq;
+            osc.type = 'sine';
+            const t = ctx.currentTime + i * 0.12;
+            gain.gain.setValueAtTime(0.18, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+            osc.start(t); osc.stop(t + 0.25);
+        });
+    } catch(e) {}
+}
+
+// ── バイブレーション ──
+function vibrateOnDone() {
+    if (!_settings.vibration) return;
+    try { navigator.vibrate && navigator.vibrate([100, 50, 100]); } catch(e) {}
+}
+
+// ── デスクトップ通知 ──
+async function notifyOnDone(rank, score) {
+    if (!_settings.desktopNotify) return;
+    // お休み時間チェック
+    if (isQuietTime()) return;
+    if (Notification.permission === 'default') {
+        await Notification.requestPermission();
+    }
+    if (Notification.permission === 'granted') {
+        new Notification('診断完了！', {
+            body: `ランク ${rank} / 総合スコア ${score}点`,
+            icon: './android-chrome-192x192.png'
+        });
+    }
+}
+
+// ── バッジ ──
+async function setBadge() {
+    if (!_settings.badge) return;
+    try {
+        if (navigator.setAppBadge) await navigator.setAppBadge(1);
+    } catch(e) {}
+}
+async function clearBadge() {
+    try {
+        if (navigator.clearAppBadge) await navigator.clearAppBadge();
+    } catch(e) {}
+}
+
+// ── お休み時間チェック ──
+function isQuietTime() {
+    try {
+        const now  = new Date();
+        const cur  = now.getHours() * 60 + now.getMinutes();
+        const [sh, sm] = _settings.quietStart.split(':').map(Number);
+        const [eh, em] = _settings.quietEnd.split(':').map(Number);
+        const start = sh * 60 + sm;
+        const end   = eh * 60 + em;
+        if (start > end) return cur >= start || cur < end; // 日をまたぐ場合
+        return cur >= start && cur < end;
+    } catch(e) { return false; }
+}
+
+// ── 通信速度単位変換 ──
+function formatSpeed(mbps) {
+    if (mbps === null || mbps === undefined) return null;
+    if (_settings.speedUnit === 'mbs') {
+        return Math.round(mbps / 8 * 10) / 10 + ' MB/s';
+    }
+    return mbps + ' Mbps';
+}
+
+// ── うっかりガード ──
+function guardedRetry() {
+    if (_settings.clumsiGuard) {
+        if (!confirm(tui().retryConfirm)) return;
+    }
+    retryDiagnostic();
+}
+
+// ══════════════════════════════════════════════════════════════
+// ⚙️ 設定モーダル UI
+// ══════════════════════════════════════════════════════════════
+function openSettings() {
+    let modal = document.getElementById('settings-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'settings-modal';
+        modal.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:999990;display:flex;justify-content:center;align-items:flex-end;padding:0;box-sizing:border-box;';
+        document.body.appendChild(modal);
+    }
+
+    const ui = tui();
+    // ＊の説明文はHELP_TEXT_I18N経由（設定項目は別途）
+    // 設定モーダル内の説明文はI18Nから取得
+    modal.innerHTML = `
+    <div style="background:var(--card);border-radius:24px 24px 0 0;width:100%;max-width:520px;margin:0 auto;max-height:90vh;overflow-y:auto;padding:24px 20px 40px;box-sizing:border-box;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;">
+            <h2 style="margin:0;font-size:1.2rem;font-weight:900;color:var(--text);">${ui.settingsTitle}</h2>
+            <button onclick="closeSettings()" style="background:var(--border);border:none;color:var(--sub-text);width:32px;height:32px;border-radius:50%;font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">✕</button>
+        </div>
+
+        ${settingSection(ui.secAppearance, [
+            settingSelect(ui.labelTheme, 'theme', [['dark',ui.optDark],['light',ui.optLight],['system',ui.optSystem]], 'theme'),
+            settingSelect(ui.labelFontSize, 'fontSize', [['small',ui.optSmall],['normal',ui.optNormal],['large',ui.optLarge],['custom',ui.optCustom||'カスタム']], 'fontSize'),
+            _settings.fontSize === 'custom' ? settingCustomFontSize(ui.labelCustomSize||'カスタムサイズ') : '',
+        ].filter(Boolean))}
+
+        ${settingSection(ui.secLanguage, [
+            settingSelect(ui.labelLanguage, 'language', [
+                ['ja','日本語'],['ja-hira','にほんご'],['en','English'],
+                ['zh-hans','中文（简体）'],['zh-hant','中文（繁體）'],['ko','한국어'],
+                ['vi','Tiếng Việt'],['es','Español'],['pt','Português'],
+                ['fr','Français'],['de','Deutsch'],['ru','Русский'],
+            ], 'language'),
+            settingToggle(ui.labelTransGuard, 'translateGuard', 'translateGuard'),
+        ])}
+
+        ${settingSection(ui.secNotify, [
+            settingToggle(ui.labelSound, 'soundOnDone', 'soundOnDone'),
+            settingToggle(ui.labelVibration, 'vibration', 'vibration'),
+            settingToggle(ui.labelDesktopNotify, 'desktopNotify', 'desktopNotify'),
+            settingToggle(ui.labelBadge, 'badge', 'badge'),
+        ])}
+
+        ${settingSection(ui.secQuiet, [
+            settingTime(ui.labelQuietStart, 'quietStart', 'quietStart'),
+            settingTime(ui.labelQuietEnd, 'quietEnd', 'quietEnd'),
+        ])}
+
+        ${settingSection(ui.secData, [
+            settingSelect(ui.labelExportFmt, 'exportFormat', [['png',ui.optPNG],['csv',ui.optCSV],['txt',ui.optTXT]], 'exportFormat'),
+            settingSelect(ui.labelSpeedUnit, 'speedUnit', [['mbps','Mbps'],['mbs','MB/s']], 'speedUnit'),
+            settingToggle(ui.labelAutoCheck, 'autoCheck', 'autoCheck'),
+            settingToggle(ui.labelGuard, 'clumsiGuard', 'clumsiGuard'),
+        ])}
+
+        <button onclick="resetSettings()" style="width:100%;margin-top:16px;padding:12px;border-radius:14px;background:rgba(255,59,48,0.12);border:1px solid rgba(255,59,48,0.3);color:#ff6b6b;font-size:0.9rem;font-weight:700;cursor:pointer;">${ui.settingsReset}</button>
+    </div>`;
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    modal.onclick = e => { if (e.target === modal) closeSettings(); };
+    // ＊ボタンのイベント委譲（初回のみ登録）
+    if (!modal._helpListenerAdded) {
+        modal._helpListenerAdded = true;
+        modal.addEventListener('click', e => {
+            const btn = e.target.closest('.setting-help');
+            if (!btn) return;
+            e.stopPropagation();
+            // 現在の言語でHELP_TEXT_I18Nから取得（行番号ベース）
+            const rowKey = btn.getAttribute('data-setting-key') || '';
+            if (rowKey) {
+                const lang = _settings.language;
+                const settingDescs = SETTING_HELP_I18N[lang] || SETTING_HELP_I18N['en'];
+                alert(settingDescs[rowKey] || settingDescs['default'] || '');
+            } else {
+                const desc = btn.getAttribute('data-setting-desc') || '';
+                alert(desc.replace(/&#10;/g, '\n'));
+            }
+        });
+    }
+}
+
+function settingSection(title, rows) {
+    return `<div style="margin-bottom:20px;">
+        <div style="font-size:0.78rem;font-weight:800;color:var(--sub-text);text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">${title}</div>
+        <div style="background:var(--bg);border-radius:16px;overflow:hidden;border:1px solid var(--border);">
+            ${rows.join('')}
+        </div>
+    </div>`;
+}
+
+function settingRow(label, control, descKey) {
+    const hasDesc = !!descKey;
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);gap:8px;">
+        <div style="flex:1;">
+            <div style="font-size:0.9rem;color:var(--text);display:flex;align-items:center;gap:4px;">
+                ${label}
+                ${hasDesc ? `<span class="setting-help" data-setting-key="${descKey}" style="color:var(--sub-text);font-size:0.8rem;cursor:pointer;padding:6px 8px;margin:-6px -4px;user-select:none;">＊</span>` : ''}
+            </div>
+        </div>
+        ${control}
+    </div>`;
+}
+
+function settingCustomFontSize(label) {
+    const val = _settings.customFontSize || 15;
+    const ctrl = '<div style="display:flex;align-items:center;gap:10px;min-width:160px;">'
+        + '<input type="range" min="10" max="32" value="' + val + '"'
+        + ' oninput="this.nextElementSibling.textContent=this.value+\'px\';changeSetting(\'customFontSize\',parseInt(this.value))"'
+        + ' style="flex:1;accent-color:var(--accent);cursor:pointer;">'
+        + '<span style="color:var(--text);font-size:0.85rem;font-weight:700;min-width:36px;text-align:right;">' + val + 'px</span>'
+        + '</div>';
+    return settingRow(label, ctrl);
+}
+function settingToggle(label, key, descKey) {
+    const on = _settings[key];
+    return settingRow(label, `
+        <div onclick="toggleSetting('${key}')" style="width:48px;height:28px;border-radius:14px;background:${on?'#34c759':'#555'};position:relative;cursor:pointer;transition:background 0.2s;flex-shrink:0;">
+            <div style="position:absolute;top:3px;${on?'right:3px':'left:3px'};width:22px;height:22px;border-radius:50%;background:#fff;transition:all 0.2s;"></div>
+        </div>`, descKey);
+}
+
+function settingSelect(label, key, options, descKey) {
+    const val = _settings[key];
+    const opts = options.map(([v,t]) => `<option value="${v}" ${v===val?'selected':''}>${t}</option>`).join('');
+    return settingRow(label, `
+        <select onchange="changeSetting('${key}',this.value)"
+            style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:10px;font-size:0.85rem;cursor:pointer;max-width:140px;">
+            ${opts}
+        </select>`, descKey);
+}
+
+function settingTime(label, key, descKey) {
+    const val = _settings[key];
+    return settingRow(label, `
+        <input type="time" value="${val}" onchange="changeSetting('${key}',this.value)"
+            style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:10px;font-size:0.85rem;cursor:pointer;">`, descKey);
+}
+
+function toggleSetting(key) {
+    _settings[key] = !_settings[key];
+    // 通知系はONにするとき理由説明→許可を求める
+    if ((key === 'desktopNotify' || key === 'badge') && _settings[key]) {
+        if (typeof Notification !== 'undefined' && Notification.permission === 'denied') {
+            alert('通知がブラウザでブロックされています。\nブラウザのサイト設定から通知を「許可」に変更してください。');
+            _settings[key] = false;
+            saveSettings(); openSettings(); return;
+        }
+        if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+            const reason = key === 'desktopNotify'
+                ? '診断が完了したときにデスクトップ通知でお知らせします。\n次の画面でブラウザの通知許可を求めます。許可しますか？'
+                : 'アプリアイコンにバッジを表示するために通知許可が必要です。\n次の画面でブラウザの通知許可を求めます。許可しますか？';
+            if (!confirm(reason)) {
+                _settings[key] = false;
+                saveSettings(); openSettings(); return;
+            }
+            Notification.requestPermission().then(p => {
+                if (p !== 'granted') {
+                    _settings[key] = false;
+                    alert('通知が許可されませんでした。ブラウザの設定から許可してください。');
+                }
+                saveSettings(); applySettings(); openSettings();
+            });
+            return;
+        }
+    }
+    saveSettings(); applySettings(); openSettings();
+}
+
+function changeSetting(key, val) {
+    _settings[key] = val;
+    saveSettings(); applySettings();
+    // 言語・フォントサイズ選択変更は設定画面を再描画
+    if (key === 'language' || key === 'fontSize') {
+        openSettings();
+    }
+    // customFontSizeはスライダーなので再描画不要（applySettingsで即反映）
+}
+
+function closeSettings() {
+    const modal = document.getElementById('settings-modal');
+    if (modal) modal.style.display = 'none';
+    document.body.style.overflow = ''; // スクロールロック解除
+}
+
+function resetSettings() {
+    if (!confirm(tui().settingsResetConfirm)) return;
+    _settings = { ...DEFAULT_SETTINGS };
+    saveSettings(); applySettings(); openSettings();
+}
+
+
+
 /* ── GPU 情報取得（WebGL2/1 両対応） ── */
 function getGPUInfo() {
     const r = { renderer:'不明', vendor:'不明', version:'なし', maxTex:0, maxAttrib:0 };
@@ -737,30 +1634,31 @@ async function runBenchmark() {
     const el=document.getElementById('status-title');
     const msg=document.getElementById('eval-msg');
     const timeEl=document.getElementById('time-remaining');
+    const _tb = () => _getLang().bench || I18N['ja'].bench;
+    const _tui = () => tui();
 
     // 推定残り時間タイマー
-    // フェーズ別推定秒数（CPU~1s, GPU~1s, MEM~1s, MemEstimate~2s, NET~3s, BAT~1s, FPS=15s）
     const TOTAL_EST = 25;
     const benchStart = performance.now();
     let timerInterval = setInterval(() => {
         const elapsed = (performance.now() - benchStart) / 1000;
         const remaining = Math.max(0, Math.ceil(TOTAL_EST - elapsed));
         if (timeEl) {
+            const ui = _tui();
             if (remaining > 0) {
-                timeEl.textContent = '推定残り時間: 約 ' + remaining + ' 秒';
+                timeEl.textContent = ui.remaining + remaining + ui.seconds;
             } else {
-                timeEl.textContent = '最終処理中...';
+                timeEl.textContent = ui.finalizing;
             }
         }
     }, 1000);
-    // タイマーを止める関数をdiagに保持
     diag._stopTimer = () => {
         clearInterval(timerInterval);
         if (timeEl) timeEl.textContent = '';
     };
 
-    el.textContent='CPU 演算性能を計測中...';
-    msg.textContent='素数計算・行列積・ビット演算を実行しています';
+    el.textContent=_tb()[0];
+    msg.textContent=_tb()[1];
     await wait(80);
 
 // ウォームアップ（捨て）
@@ -774,45 +1672,46 @@ const s3 = await benchCPU_pro();
 const arr = [s1, s2, s3].sort((a, b) => a - b);
 scores.cpu = arr[1]; // 真ん中だけ採用（中央値）
 
-    el.textContent='GPU 描画性能を計測中...';
-    msg.textContent='WebGL シェーダー・Canvas 2D 合成描画を負荷試験中';
+    el.textContent=_tb()[2];
+    msg.textContent=_tb()[3];
     await wait(50);
     scores.gpu=benchGPU();
 
-    el.textContent='メモリ帯域を計測中...';
-    msg.textContent='48MB バッファの シーケンシャル・ストライド・ランダムアクセスを測定中';
+    el.textContent=_tb()[4];
+    msg.textContent=_tb()[5];
     await wait(50);
     scores.mem=benchMemory();
 
-    el.textContent='システムメモリを精密解析中...';
-    msg.textContent='5手法（API・ヒープ・アロケーション探索・コア相関・GPU特定）を統合中';
+    el.textContent=_tb()[6];
+    msg.textContent=_tb()[7];
     await wait(40);
     diag.memResult=await estimateMemoryPrecise();
 
-    el.textContent='ネットワーク速度を実測中...';
-    msg.textContent='実際にデータを取得して実効帯域を計算しています';
+    el.textContent=_tb()[8];
+    msg.textContent=_tb()[9];
     [diag.networkMbps, diag.publicIP] = await Promise.all([measureNetworkSpeed(), fetchPublicIP()]);
 
-    el.textContent='バッテリー・UIレイテンシを計測中...';
-    msg.textContent='Battery API・UIスレッド応答遅延を同時取得しています';
+    el.textContent=_tb()[10];
+    msg.textContent=_tb()[11];
     [diag.battery, diag.latency] = await Promise.all([getBatteryInfo(), measureUILatency()]);
 
     diag.gpu=getGPUInfo();
 
     // ── Safari低電力モード検出（setTimeout間引き確認）──
-    el.textContent='省電力モードを確認中...';
-    msg.textContent='タイマー精度を計測しています';
+    el.textContent=_tb()[12];
+    msg.textContent=_tb()[13];
     diag.safariThrottled = await detectSafariThrottle();
 
-    el.textContent='フレームレート安定性を計測中...';
-    msg.textContent='rAF遅延ギャップ方式・スケジューリング精度を15秒間精密計測中';
+    el.textContent=_tb()[14];
+    msg.textContent=_tb()[15];
     // FPSは15秒固定なので残り時間を15秒にリセット
     if (diag._stopTimer) { diag._stopTimer(); }
     const fpsStart = performance.now();
     const fpsTimerEl = document.getElementById('time-remaining');
     const fpsTimer = setInterval(() => {
         const rem = Math.max(0, Math.ceil(15 - (performance.now()-fpsStart)/1000));
-        if (fpsTimerEl) fpsTimerEl.textContent = rem > 0 ? '推定残り時間: 約 ' + rem + ' 秒 (FPS計測中)' : 'FPS集計中...';
+        const ui = tui();
+        if (fpsTimerEl) fpsTimerEl.textContent = rem > 0 ? ui.remaining + rem + ui.fpsMeasuring : ui.fpsCalc;
     }, 1000);
 
     runFPSBench((avgFps,lowFps,jitterScore,refreshRate,jank32,jank17) => {
@@ -831,6 +1730,8 @@ function processFinalReport() {
     document.getElementById('b-fps-avg').textContent=avgFps+' FPS';
     document.getElementById('b-fps-low').textContent=lowFps+' FPS';
 
+    const _v = tv(); // 現在言語の診断値文字列
+
     // 1. CPUコア数
     const cores=navigator.hardwareConcurrency||2;
     setRow(1,cores+' Cores',st(cores>=12,cores>=6));
@@ -844,7 +1745,7 @@ function processFinalReport() {
     setRow(3,rend,'ok');
 
     // 4. GPU 最大テクスチャサイズ
-    setRow(4,gpu.maxTex?gpu.maxTex+' px':'不明',st(gpu.maxTex>=16384,gpu.maxTex>=8192));
+    setRow(4,gpu.maxTex?gpu.maxTex+' px':'--',st(gpu.maxTex>=16384,gpu.maxTex>=8192));
 
     // 5. CPU ベンチスコア
     setRow(5,scores.cpu+' / 100 pts',st(scores.cpu>=75,scores.cpu>=45));
@@ -876,86 +1777,85 @@ function processFinalReport() {
     // 13. カラー深度 / HDR
     const depth=screen.colorDepth;
     const hdr=window.matchMedia('(dynamic-range: high)').matches;
-    setRow(13,depth+'bit / HDR:'+(hdr?'対応':'非対応'),st(hdr&&depth>=30,depth>=24));
+    setRow(13,depth+'bit / HDR:'+(hdr?_v.supported:_v.unsupported),st(hdr&&depth>=30,depth>=24));
 
     // 14. JS ヒープ上限
     const heapMB=window.performance?.memory?Math.round(performance.memory.jsHeapSizeLimit/1048576):null;
-    setRow(14,heapMB?heapMB+' MB':'非対応 (Firefox 等)',heapMB?st(heapMB>=4096,heapMB>=2048):'warn');
+    setRow(14,heapMB?heapMB+' MB':_v.unsupported+' (Firefox)',heapMB?st(heapMB>=4096,heapMB>=2048):'warn');
 
-    // 15. UIスレッドレイテンシ（rAF→postMessage往復時間）
+    // 15. UIスレッドレイテンシ
     const lat = diag.latency;
     if(lat){
-        // 中央値16ms=60fps同期(正常), 8ms=120Hz, 32ms超=遅延あり
         const medMs = lat.medMs;
-        setRow(15, `中央値 ${medMs} ms / P95: ${lat.p95Ms} ms`, st(medMs<=17, medMs<=35));
+        setRow(15, `Median ${medMs} ms / P95: ${lat.p95Ms} ms`, st(medMs<=17, medMs<=35));
     } else {
-        setRow(15,'計測不可','warn');
+        setRow(15,_v.measuring,'warn');
     }
 
     // 16. ネットワーク実測
     if(networkMbps!==null){
-        setRow(16,networkMbps+' Mbps (実測)',st(networkMbps>=100,networkMbps>=20));
+        setRow(16,formatSpeed(networkMbps),st(networkMbps>=100,networkMbps>=20));
     } else {
-        setRow(16,'計測失敗 (オフライン?)','warn');
+        setRow(16,_v.failed,'warn');
     }
 
     // 17. 回線種別 / API 帯域
-    const effType=navigator.connection?.effectiveType?.toUpperCase()??'不明';
+    const effType=navigator.connection?.effectiveType?.toUpperCase()??'--';
     const dlAPI=navigator.connection?.downlink??null;
-    setRow(17,effType+(dlAPI!==null?' / '+dlAPI+' Mbps':''),st(effType==='4G',effType==='3G'));
+    setRow(17,effType+(dlAPI!==null?' / '+formatSpeed(dlAPI):''),st(effType==='4G',effType==='3G'));
 
     // 18. バッテリー
     if(battery){
         const fmtMin = sec => {
             const m = Math.round(sec / 60);
-            if (m >= 60) { const h = Math.floor(m/60); return h+'時間'+(m%60 ? m%60+'分' : ''); }
-            return m+'分';
+            if (m >= 60) { const h = Math.floor(m/60); return h+'h'+(m%60 ? m%60+'m' : ''); }
+            return m+'m';
         };
-        const t=battery.charging
-            ?(battery.chargingTime===Infinity?(battery.level>=99?'ほぼ満充電':'')               :('残り'+fmtMin(battery.chargingTime)+'で満充電完了'))
-            :(battery.dischargingTime===Infinity?'使用時間を計測中…':('残り約'+fmtMin(battery.dischargingTime)));
-        const timeStr = t ? '  '+t : '';
-        setRow(18,battery.level+'%  '+(battery.charging?'⚡充電中':'🔋放電中')+timeStr,
+        const btime=battery.charging
+            ?(battery.chargingTime===Infinity?(battery.level>=99?'':'' ):('→'+fmtMin(battery.chargingTime)))
+            :(battery.dischargingTime===Infinity?'':('~'+fmtMin(battery.dischargingTime)));
+        const timeStr = btime ? '  '+btime : '';
+        setRow(18,battery.level+'%  '+(battery.charging?_v.charging:_v.discharging)+timeStr,
             st(battery.level>=80,battery.level>=30));
     } else {
-        setRow(18,'API 非対応 (PC / Firefox)','warn');
+        setRow(18,'API: '+_v.unsupported,'warn');
     }
 
     // 19. タッチポイント数
     const tp=navigator.maxTouchPoints;
-    setRow(19,tp+' ポイント',st(tp>=10,tp>=5));
+    setRow(19,tp+' pt',st(tp>=10,tp>=5));
 
-    // 20. ダークモード / ハイコントラスト（緑グループに移動したので非表示）
+    // 20. ダークモード / ハイコントラスト（非表示）
     const dark=window.matchMedia('(prefers-color-scheme: dark)').matches;
     const hiCon=window.matchMedia('(prefers-contrast: high)').matches;
     document.getElementById('row-20').style.display='none';
 
     // 21. HTTPS
     const https=location.protocol==='https:';
-    setRow(21,https?'安全 (HTTPS / TLS)':'非暗号 (HTTP)',https?'ok':'bad');
+    setRow(21,https?_v.secure:_v.insecure,https?'ok':'bad');
 
     // 22. Cookie / IndexedDB
     let idb=false; try{idb=!!window.indexedDB;}catch(e){}
-    setRow(22,'Cookie:'+(navigator.cookieEnabled?'有効':'無効')+' / IDB:'+(idb?'対応':'非対応'),
+    setRow(22,'Cookie:'+(navigator.cookieEnabled?_v.enabled:_v.disabled)+' / IDB:'+(idb?_v.supported:_v.unsupported),
         st(navigator.cookieEnabled&&idb,navigator.cookieEnabled));
 
     // 23. WebGL バージョン
     setRow(23,gpu.version,st(gpu.version==='WebGL 2.0',gpu.version==='WebGL 1.0'));
 
     // 24. WebGL 最大頂点属性数
-    setRow(24,gpu.maxAttrib?gpu.maxAttrib+' 属性':'不明',st(gpu.maxAttrib>=16,gpu.maxAttrib>=8));
+    setRow(24,gpu.maxAttrib?gpu.maxAttrib+' attrs':'--',st(gpu.maxAttrib>=16,gpu.maxAttrib>=8));
 
     // 25. WakeLock / 振動
     const wl='wakeLock' in navigator, vib='vibrate' in navigator;
-    setRow(25,'WakeLock:'+(wl?'対応':'非対応')+' / Vib:'+(vib?'対応':'非対応'),st(wl&&vib,wl||vib));
+    setRow(25,'WakeLock:'+(wl?_v.supported:_v.unsupported)+' / Vib:'+(vib?_v.supported:_v.unsupported),st(wl&&vib,wl||vib));
 
     // 26. PWA / SW
     const sw='serviceWorker' in navigator;
     const pwa=window.matchMedia('(display-mode: standalone)').matches;
-    setRow(26,'SW:'+(sw?'対応':'非対応')+' / PWA:'+(pwa?'起動中':'ブラウザ'),sw?'ok':'warn');
+    setRow(26,'SW:'+(sw?_v.supported:_v.unsupported)+' / PWA:'+(pwa?_v.running:_v.browser),sw?'ok':'warn');
 
     // 27. WebDriver
-    setRow(27,navigator.webdriver?'⚠ 自動操縦を検知':'正常 (手動操作)',!navigator.webdriver?'ok':'bad');
+    setRow(27,navigator.webdriver?_v.detected:_v.normal,!navigator.webdriver?'ok':'bad');
 
     // 28. FPS ジッタースコア
     setRow(28,scores.fps+' / 100 pts',st(scores.fps>=75,scores.fps>=50));
@@ -965,7 +1865,7 @@ function processFinalReport() {
     setRow(29,navigator.language.toUpperCase()+' / '+tz,'good');
 
     // 32. ダークモード / ハイコントラスト（緑・情報）
-    setRow(32,'ダーク:'+(dark?'ON':'OFF')+' / ハイコン:'+(hiCon?'ON':'OFF'),'good');
+    setRow(32,(dark?_v.dark:_v.light)+' / '+(hiCon?_v.hiconOn:_v.hiconOff),'good');
 
     // 33. 使用ブラウザ（緑・情報）
     setRow(33, detectBrowser(), 'good');
@@ -975,21 +1875,21 @@ function processFinalReport() {
     setRow(34, diag.deviceName, 'good');
 
     // 30. 診断エンジン
-    setRow(30,'Pro Ultra Beta 1.6.93','good');
+    setRow(30,'Pro Ultra Beta 1.7.0','good');
 
     // 31. IPアドレス（WebRTC取得 or 外部API）
     const ipEl31 = document.getElementById('v-31');
     const row31  = document.getElementById('row-31');
     if (diag.publicIP) {
         const isPriv = isPrivateIP(diag.publicIP);
-        ipEl31.textContent = diag.publicIP + (isPriv ? ' (ローカル)' : '');
+        ipEl31.textContent = diag.publicIP + (isPriv ? ' (local)' : '');
         row31.className = 'spec-row st-good';
         row31.style.display = '';
     } else {
-    row31.style.display = 'none';
-}
+        row31.style.display = 'none';
+    }
 
-initHelpIcons();
+    initHelpIcons();
 
 
     // ── スコアリング（CPU32/GPU23/MEM帯域10/FPS15/RAM12/NET8） ──
@@ -1205,10 +2105,11 @@ initHelpIcons();
     const rEl=document.getElementById('rank-letter');
     rEl.textContent=rank; rEl.className='rank-'+rank;
 
-    const msgs={S:'最高峰のフラッグシップ性能です',A:'非常に快適で強力な環境です',B:'一般的な標準デバイス性能です',C:'動作の遅延が目立ち、やや非力です',D:'性能が不足している旧型環境です'};
-    document.getElementById('status-title').textContent=msgs[rank];
-    document.getElementById('eval-msg').textContent=
-        `総合スコア ${totalScore}/100\nCPU:${scores.cpu}  GPU:${scores.gpu}  RAM:${ramGB}GB  MEM帯域:${scores.mem}  FPS安定:${scores.fps}  NET:${networkMbps??'?'}Mbps`;
+    const _diagLang = _getLang();
+    const _ui2 = tui();
+    document.getElementById('status-title').textContent = _diagLang.rankMsgs[rank] || rank;
+    document.getElementById('eval-msg').textContent =
+        `${_ui2.scoreLabel} ${totalScore}/100\nCPU:${scores.cpu}  GPU:${scores.gpu}  RAM:${ramGB}GB  ${_ui2.memLabel}:${scores.mem}  ${_ui2.fpsLabel}:${scores.fps}  ${_ui2.netLabel}:${networkMbps!=null?formatSpeed(networkMbps):'?'}`;
     document.getElementById('ai-btn').style.display='block';
     document.getElementById('save-btn').style.display='block';
     document.getElementById('share-hint').style.display='block';
@@ -1218,7 +2119,7 @@ initHelpIcons();
 
     // 診断完了トースト
     const doneToast = document.createElement('div');
-    doneToast.textContent = '✅ 処理が完了しました';
+    doneToast.textContent = tui().diagComplete;
     doneToast.style.cssText = 'position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#1c1c1e;color:#fff;padding:14px 28px;border-radius:40px;font-size:0.95rem;font-weight:700;box-shadow:0 8px 32px rgba(0,0,0,0.5);border:1px solid #3a3a3c;z-index:999999;opacity:0;transition:opacity 0.3s;white-space:nowrap;';
     document.body.appendChild(doneToast);
     requestAnimationFrame(() => { doneToast.style.opacity = '1'; });
@@ -1229,6 +2130,12 @@ initHelpIcons();
 
     // ローカルストレージに結果を保存
     saveResultToHistory(totalScore, rank, scores, ramGB, diag.avgFps, diag.lowFps, diag.networkMbps);
+
+    // 設定に応じたフィードバック
+    playDoneSound();
+    vibrateOnDone();
+    notifyOnDone(rank, totalScore);
+    setBadge();
 }
 
 /* ── キャプチャ ── */
@@ -1567,7 +2474,7 @@ function openAIChat() {
 ・「🎨 色の基準を確認する」→ 青/黄/赤/緑の意味を確認
 ・manifest.json対応。PWAとしてホーム画面に追加してアプリとして使用可能
 ・IPはブラウザ内のみで処理。サーバー送信なし（AI回答を除く）
-・正式名称：精密デバイス診断 Pro Ultra / バージョン：Beta 1.5.93 / Chrome推奨 /初リリース2026年3月15日 /15日に合計3回中/小アップデートを配信済み
+・正式名称：精密デバイス診断 Pro Ultra / バージョン：Beta 1.6.0 / Chrome推奨 /初リリース2026年3月15日 /15日に合計3回中/小アップデートを配信済み
 
 ■ ランク判定の詳細
 基本：S=総合80以上かつ1%LOW 55fps以上かつCPU 78以上かつRAM 12GB以上 / A=総合65以上かつ1%LOW 45以上かつRAM 8GB以上 / B=総合48以上かつ1%LOW 25以上 / C=30以上 / D=30未満
@@ -1926,7 +2833,7 @@ async function proceedCapture(mode, devMode) {
 
         // 完了トースト
         const toast = document.createElement('div');
-        toast.textContent = '✅ 画像の生成が完了しました';
+        toast.textContent = tui().imgGenComplete;
         toast.style.cssText = 'position:fixed;bottom:32px;left:50%;transform:translateX(-50%);background:#1c1c1e;color:#fff;padding:14px 28px;border-radius:40px;font-size:0.95rem;font-weight:700;box-shadow:0 8px 32px rgba(0,0,0,0.5);border:1px solid #3a3a3c;z-index:999999;opacity:0;transition:opacity 0.3s;white-space:nowrap;';
         document.body.appendChild(toast);
         requestAnimationFrame(() => { toast.style.opacity = '1'; });
@@ -2183,11 +3090,11 @@ async function runSpeedTest() {
 }
 
 function retryDiagnostic() {
-    // UIリセット
+    const _t2 = _getLang();
     document.getElementById('rank-letter').textContent = '?';
     document.getElementById('rank-letter').className   = 'rank-D';
-    document.getElementById('status-title').textContent = 'ハードウェア精密スキャン中...';
-    document.getElementById('eval-msg').textContent     = '各コンポーネントの整合性を検証しています';
+    document.getElementById('status-title').textContent = _t2.statusTitle;
+    document.getElementById('eval-msg').textContent     = _t2.evalMsg;
     document.getElementById('b-fps-avg').textContent    = '-- FPS';
     document.getElementById('b-fps-low').textContent    = '-- FPS';
     document.getElementById('ai-btn').style.display      = 'none';
@@ -2422,7 +3329,7 @@ function updateAuthUI(user) {
         logoutBtn.style.display = 'block';
         if (user.photoURL) { avatar.src = user.photoURL; avatar.style.display = 'block'; }
         username.textContent = user.displayName || user.email || 'ユーザー';
-        document.getElementById('auth-sync-status').textContent = '✓ 同期中';
+        document.getElementById('auth-sync-status').textContent = tui().synced;
         if (badge) {
             badge.style.display = 'block';
             badge.innerHTML = '🔓 <strong>' + (user.displayName || 'ログイン中') + '</strong> でログイン中 — 履歴がクラウドに同期されます';
@@ -2464,39 +3371,39 @@ async function syncHistoryToCloud(history) {
         await _fbDb.collection('users').doc(_currentUser.uid)
             .collection('diagnosis_history').doc('data')
             .set({ history, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
-        document.getElementById('auth-sync-status').textContent = '✓ 同期済み';
+        document.getElementById('auth-sync-status').textContent = tui().syncOk;
     } catch(e) {
-        document.getElementById('auth-sync-status').textContent = '⚠ 同期失敗';
+        document.getElementById('auth-sync-status').textContent = tui().syncFail;
     }
 }
 
 async function syncHistoryFromCloud() {
     if (!_currentUser || !_fbDb) return;
     try {
-        document.getElementById('auth-sync-status').textContent = '同期中...';
+        document.getElementById('auth-sync-status').textContent = tui().syncing;
         const doc = await _fbDb.collection('users').doc(_currentUser.uid)
             .collection('diagnosis_history').doc('data').get();
         if (doc.exists) {
             const data = doc.data();
             if (data.history && Array.isArray(data.history)) {
                 localStorage.setItem('diag_history', JSON.stringify(data.history));
-                document.getElementById('auth-sync-status').textContent = '✓ 同期済み';
+                document.getElementById('auth-sync-status').textContent = tui().syncOk;
             }
         } else {
             // クラウドにデータなし → ローカルをクラウドに上げる
             const local = JSON.parse(localStorage.getItem('diag_history') || '[]');
             if (local.length > 0) await syncHistoryToCloud(local);
-            document.getElementById('auth-sync-status').textContent = '✓ 同期済み';
+            document.getElementById('auth-sync-status').textContent = tui().syncOk;
         }
     } catch(e) {
-        document.getElementById('auth-sync-status').textContent = '⚠ 同期失敗';
+        document.getElementById('auth-sync-status').textContent = tui().syncFail;
     }
 }
 
 function requireLogin(featureName, callback) {
     if (_currentUser) { callback(); return; }
     const msg = document.getElementById('auth-modal-msg');
-    msg.textContent = featureName + 'はログインが必要です。Googleアカウントで無料登録できます。';
+    msg.textContent = featureName + tui().loginMsg;
     document.getElementById('auth-modal').style.display = 'flex';
 }
 
@@ -2527,6 +3434,10 @@ document.addEventListener('keydown', e => {
     }
 });
 window.addEventListener('load',()=>{
+    // 設定読み込み・適用（エラーが起きても診断は必ず実行）
+    try { loadSettings(); } catch(e) { console.warn('loadSettings error:', e); }
+    try { applySettings(); } catch(e) { console.warn('applySettings error:', e); }
+
     document.getElementById('b-ua').textContent = navigator.userAgent;
     document.getElementById('dl-btn').addEventListener('click', downloadCapturedImage);
     initFirebase();
@@ -2536,7 +3447,20 @@ window.addEventListener('load',()=>{
     document.getElementById('friend-code-input')?.addEventListener('keydown', e => {
         if (e.key === 'Enter') checkFriendCode();
     });
+
+    // ── フローティング設定ボタン ──
+    const fab = document.createElement('button');
+    fab.id = 'settings-fab';
+    fab.textContent = '⚙️';
+    fab.onclick = openSettings;
+    fab.style.cssText = 'position:fixed;bottom:24px;right:20px;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#3a3a3c,#2a2a2a);border:1px solid #444;color:#fff;font-size:1.3rem;cursor:pointer;z-index:9000;box-shadow:0 4px 20px rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;';
+    document.body.appendChild(fab);
+
+    // 診断は必ず実行（設定エラーに関わらず）
     runBenchmark();
+
+    // バッジクリア
+    try { clearBadge(); } catch(e) {}
 });
 
 function initHelpIcons() {
@@ -2562,52 +3486,488 @@ function initHelpIcons() {
     });
 }
 
-const helpText = {
-  "CPU 論理コア数": "CPUのコア数です。多いほど同時に多くの処理を行えます。",
-  "システムメモリ容量": "端末のメモリ容量です。多いほど複数アプリを快適に動かせます。",
-  "GPU レンダラー": "GPUの種類です。グラフィック性能の目安になります。",
-  "GPU 最大テクスチャサイズ": "扱える画像サイズの上限です。大きいほど高精細描画が可能です。",
-  "実測 CPU ベンチスコア": "CPU性能を数値化したものです。",
-  "実測 GPU 描画スコア": "GPUの描画性能を示します。",
-  "実測メモリ帯域スコア": "メモリの転送速度の指標です。",
-  "実測平均フレームレート": "平均FPSです。高いほど滑らかに動作します。",
-  "実測 1% LOW フレームレート": "最低に近いFPSです。安定性を示します。",
-  "画面リフレッシュレート": "1秒間の画面更新回数です。",
-  "画面解像度": "画面のピクセル数です。",
-  "デバイスピクセル比": "画面の精細さを表します。",
-  "カラー深度 / HDR 対応": "色の表現力とHDR対応の有無です。",
-  "JS ヒープ上限": "JavaScriptが使える最大メモリ量です。",
-  "UIスレッド応答レイテンシ": "操作に対する反応速度です。",
-  "ネットワーク速度": "実際の通信速度です。",
-  "回線種別": "接続されているネットワークの種類です。",
-  "バッテリー残量": "現在の電池残量と状態です。",
-  "タッチポイント数": "同時に認識できるタッチ数です。",
-  "セキュア通信": "通信が暗号化されているかどうかです。",
-  "Cookie / IndexedDB": "データ保存機能の対応状況です。",
-  "WebGL バージョン": "3D描画機能のバージョンです。",
-  "WebGL 最大頂点属性数": "GPUの処理能力の指標の一つです。",
-  "WakeLock / 振動 API": "画面維持や振動機能の対応です。",
-  "PWA / Service Worker": "アプリ化やバックグラウンド処理機能です。",
-  "自動操縦検知": "ボット操作かどうかの判定です。",
-  "FPS ジッタースコア": "フレームの安定性を示します。",
-  "システム言語": "端末の言語設定です。",
-  "診断エンジンバージョン": "この診断ツールのバージョンです。",
-  "IP アドレス": "インターネット上の識別番号です。",
-  "ダークモード": "画面テーマ設定です。",
-  "使用ブラウザ": "現在使っているブラウザです。",
-  "デバイス機種": "端末の種類やモデルです。"
+// ── 診断項目の説明文（行番号1〜34対応・全11言語）──
+// ── 設定項目の＊説明文（多言語）──
+const SETTING_HELP_I18N = {
+    'ja': {
+        theme:        'アプリの配色を変更します。\n・ダーク：黒背景（デフォルト）\n・ライト：白背景\n・システム：OSの設定に自動追従\n📱 夜間はダーク推奨。',
+        fontSize:     'テキストの大きさを変更します。\n・小：13px / 普通：15px / 大：20px / カスタム：自由設定\n📱 見づらい場合は「大」かカスタムがおすすめです。',
+        language:     '表示言語を切り替えます。選択すると即座に反映されます。\n⚠️ ボタン・診断項目・設定などが翻訳されます。',
+        translateGuard:'Google翻訳拡張でレイアウトが崩れるのを防ぎます。\nONにするとGoogle翻訳が無効になります。\n💻 PCのChrome拡張がある場合はON推奨。',
+        soundOnDone:  '診断完了時にチャイム音を鳴らします。\n⚠️ サイレントモード中は鳴りません。\n📱 スマートフォン・💻 PC どちらでも動作。',
+        vibration:    '診断完了時に端末を振動させます。\n📱 スマートフォンのみ対応。PCでは動作しません。\n⚠️ iOS Safariでは動作しない場合があります。',
+        desktopNotify:'診断完了時にブラウザ通知を表示します。\n初回ONで許可ダイアログが表示されます。\n😴 お休み時間中は通知されません。\n💻 PC推奨。スマートフォンはPWA状態で安定。',
+        badge:        'PWAのアイコンにバッジを表示します。\n📱 Android PWAのみ対応。\n❌ iOSは非対応。',
+        quietStart:   'この時刻からお休み時間開始。\nデスクトップ通知を送りません。\nデフォルト：22:00',
+        quietEnd:     'お休み時間の終了時刻。\n開始より早い時刻で日をまたいで適用。\nデフォルト：6:40',
+        exportFormat: '診断レポートの保存形式。\n・PNG：画像（デフォルト・SNS向け）\n・CSV：表計算ソフト用\n・TXT：テキスト\n⚠️ CSV・TXTは開発中のためPNG保存になります。',
+        speedUnit:    '通信速度の表示単位。\n・Mbps：一般的な単位（デフォルト）\n・MB/s：Mbpsの約1/8\n例：100Mbps ≒ 12.5MB/s',
+        autoCheck:    'ページを開いたとき自動的に診断を開始します。',
+        clumsiGuard:  '再診断ボタンを押したとき確認ダイアログを表示。\n誤タップによるリセットを防げます。\n⚠️ OFFにすると確認なしで即座に再診断。',
+    },
+    'en': {
+        theme:        'Change the app color scheme.\n・Dark: Black background (default)\n・Light: White background\n・System: Follows OS setting',
+        fontSize:     'Change text size.\n・Small: 13px / Normal: 15px / Large: 20px / Custom: free input\n📱 Use Large or Custom if text is hard to read.',
+        language:     'Switch display language. Changes apply instantly.\n⚠️ Buttons, labels, and settings will be translated.',
+        translateGuard:'Prevents Google Translate extension from breaking the layout.\nON disables Google Translate.\n💻 Recommended ON if you have Chrome extension.',
+        soundOnDone:  'Play a chime when diagnosis completes.\n⚠️ Silent mode will mute it.\n📱 Works on both mobile and PC.',
+        vibration:    'Vibrate device when diagnosis completes.\n📱 Mobile only. Does not work on PC.\n⚠️ May not work on iOS Safari.',
+        desktopNotify:'Show browser notification when diagnosis completes.\nPermission dialog appears on first enable.\n😴 No notification during quiet hours.',
+        badge:        'Show badge on app icon.\n📱 Android PWA only.\n❌ iOS not supported.',
+        quietStart:   'Quiet hours start time. No desktop notifications during this period. Default: 22:00',
+        quietEnd:     'Quiet hours end time. Set earlier than start to span midnight. Default: 6:40',
+        exportFormat: 'Report export format.\n・PNG: Image (default, best for sharing)\n・CSV: Spreadsheet\n・TXT: Text\n⚠️ CSV/TXT still saves as PNG (in development).',
+        speedUnit:    'Network speed display unit.\n・Mbps: Common unit (default)\n・MB/s: ~1/8 of Mbps\nExample: 100Mbps ≈ 12.5MB/s',
+        autoCheck:    'Automatically start diagnosis when page opens.',
+        clumsiGuard:  'Show confirmation dialog before re-diagnosing.\nPrevents accidental resets.\n⚠️ OFF means immediate re-diagnosis without confirmation.',
+    },
 };
+// 他言語はjaにフォールバック（SETTING_HELP_I18N[lang] || SETTING_HELP_I18N['ja']）
+
+const HELP_TEXT_I18N = {
+    'ja': [
+        'CPUの論理コア数です。多いほど同時に多くの処理を並列実行できます。一般的な作業では4〜8コアで十分です。',
+        '端末の物理メモリ（RAM）容量です。多いほど複数のアプリやタブを同時に快適に動かせます。',
+        'GPUの種類・製品名です。グラフィック性能の目安になります。Apple GPU・NVIDIA・AMD・Intel等。',
+        'GPUが一度に扱える画像（テクスチャ）の最大サイズです。大きいほど高精細な3D描画が可能です。',
+        'このアプリによるCPU演算性能の実測値です。0〜100点で評価。75点以上が高性能の目安です。',
+        'WebGLシェーダーとCanvas描画によるGPU性能の実測値です。0〜100点で評価します。',
+        'メモリへの読み書き速度の実測値です。0〜100点で評価。低いと処理全体が遅くなります。',
+        '実際に計測した1秒間の平均フレーム数です。60FPS以上で滑らかな動作と感じられます。',
+        '最も重い場面での1%低フレーム数です。低いほどカクつきが目立ちます。55FPS以上が快適の目安。',
+        'ディスプレイの1秒間の画面更新回数の推定値です。60Hz・120Hz・144Hzなど。',
+        '物理的なピクセル数による実解像度です。DPRを掛けた値で、実際の表示精細さを示します。',
+        '論理ピクセルと物理ピクセルの比率です。2x以上がRetinaディスプレイ相当で高精細です。',
+        '色の表現力（ビット深度）とHDR対応の有無です。24bit以上・HDR対応が高品質の目安。',
+        'JavaScriptが使用できる最大メモリ量です。大きいほど重い処理をこなせます。Firefoxは非対応。',
+        'UIスレッドの応答遅延時間です。中央値が低いほどタップ・クリックへの反応が速いです。',
+        '実際にデータをダウンロードして計測した通信速度です。100Mbps以上が高速の目安。',
+        'ブラウザが認識している通信種別とAPI報告の帯域幅です。4G・WiFi等。参考値です。',
+        '現在のバッテリー残量と充電状態です。残量20%未満・非充電の場合はランクが下がります。',
+        '同時に認識できるタッチ点数です。10点以上がマルチタッチ対応の目安です。',
+        'ダークモードとハイコントラストモードの設定状態です。OSの設定を反映しています。',
+        '通信がHTTPS（暗号化）で行われているかどうかです。現代のWebでは必須の安全対策です。',
+        'Cookieの有効状態とIndexedDB（ブラウザ内データベース）の対応状況です。',
+        'WebGLのバージョンです。2.0が最新・高機能。非対応の場合は3D描画ができません。',
+        'GPUが一度に処理できる頂点属性の最大数です。16以上が高性能GPUの目安です。',
+        'WakeLock（画面維持）とVibration（振動）APIの対応状況です。主にモバイル向け機能。',
+        'PWA（ホーム画面追加）とService Worker（オフライン機能）の対応状況です。',
+        'WebDriverによる自動操縦（ボット）が検知されているかどうかです。通常は「正常」です。',
+        'フレームレートの安定性スコアです。0〜100点で評価。高いほどカクつきが少ない安定した動作です。',
+        '端末に設定されている言語とタイムゾーンです。情報として表示しています。',
+        'このアプリの診断エンジンのバージョンです。',
+        'WebRTCで取得したIPアドレスです。おおよその地域や利用プロバイダの特定に使われる場合があります。',
+        'OSのダークモード設定とハイコントラスト設定の状態です。',
+        '現在使用しているブラウザの種類です。',
+        'UAから推定した端末の機種名です。Safariでは詳細なモデルが取得できない場合があります。',
+    ],
+    'en': [
+        'Number of CPU logical cores. More cores allow more parallel processing. 4-8 cores is sufficient for general tasks.',
+        'Physical RAM capacity. More RAM lets you run more apps and tabs simultaneously.',
+        'GPU model name. Indicates graphics performance. Apple GPU, NVIDIA, AMD, Intel, etc.',
+        'Maximum texture size the GPU can handle. Larger = higher-quality 3D rendering.',
+        'CPU benchmark score measured by this app. 0-100. 75+ is high performance.',
+        'GPU rendering score via WebGL shaders and Canvas. 0-100 scale.',
+        'Memory read/write speed score. 0-100. Low scores slow down overall performance.',
+        'Measured average frames per second. 60+ FPS feels smooth.',
+        '1% low frame rate. Lower = more noticeable stuttering. 55+ FPS is comfortable.',
+        'Estimated display refresh rate. 60Hz, 120Hz, 144Hz, etc.',
+        'Physical pixel resolution. Higher = sharper display.',
+        'Ratio of logical to physical pixels. 2x+ is Retina-equivalent.',
+        'Color bit depth and HDR support. 24bit+ with HDR is high quality.',
+        'Maximum JS heap memory. Larger = can handle heavier processing. Firefox unsupported.',
+        'UI thread response latency. Lower median = faster tap/click response.',
+        'Network speed measured by actual download. 100Mbps+ is fast.',
+        'Connection type and API-reported bandwidth. 4G, WiFi, etc. Reference value.',
+        'Battery level and charging status. Below 20% uncharged lowers your rank.',
+        'Number of simultaneous touch points. 10+ supports full multi-touch.',
+        'Dark mode and high contrast mode state from OS settings.',
+        'Whether connection uses HTTPS encryption. Essential for modern web security.',
+        'Cookie enabled state and IndexedDB support.',
+        'WebGL version. 2.0 is latest. No support means no 3D rendering.',
+        'Max GPU vertex attributes. 16+ indicates a capable GPU.',
+        'WakeLock (keep screen on) and Vibration API support. Mainly mobile features.',
+        'PWA (add to home screen) and Service Worker (offline) support.',
+        'Whether WebDriver automation (bot) is detected. Normally "Normal".',
+        'Frame rate stability score. 0-100. Higher = less stuttering.',
+        'System language and timezone settings.',
+        'Diagnostic engine version of this app.',
+        'IP address obtained via WebRTC. May reveal approximate location/ISP.',
+        'OS dark mode and high contrast settings.',
+        'Current browser being used.',
+        'Device model estimated from UA. Detailed model may not be available in Safari.',
+    ],
+    'zh-hans': [
+        'CPU逻辑核心数。越多则可同时处理更多任务。日常使用4-8核已足够。',
+        '物理内存(RAM)容量。越大则可同时运行更多应用和标签页。',
+        'GPU型号名称。表示图形性能。Apple GPU、NVIDIA、AMD、Intel等。',
+        'GPU可处理的最大纹理尺寸。越大则可进行更高精度的3D渲染。',
+        '本应用测量的CPU基准分数。0-100分，75分以上为高性能。',
+        '通过WebGL着色器和Canvas测量的GPU渲染分数。0-100分。',
+        '内存读写速度分数。0-100分。分数低会导致整体处理速度变慢。',
+        '实测平均每秒帧数。60FPS以上感觉流畅。',
+        '1%低帧率。越低则卡顿越明显。55FPS以上为舒适标准。',
+        '显示器刷新率估计值。60Hz、120Hz、144Hz等。',
+        '物理像素分辨率。越高则显示越清晰。',
+        '逻辑像素与物理像素的比值。2倍以上相当于Retina屏。',
+        '色彩位深和HDR支持情况。24bit以上且支持HDR为高品质。',
+        'JavaScript可用的最大堆内存。越大则可处理更重的任务。Firefox不支持。',
+        'UI线程响应延迟。中位值越低则点击响应越快。',
+        '通过实际下载测量的网络速度。100Mbps以上为高速。',
+        '浏览器识别的连接类型和API报告带宽。4G、WiFi等。仅供参考。',
+        '当前电池电量和充电状态。低于20%且未充电时会降低评级。',
+        '可同时识别的触控点数量。10点以上支持完整多点触控。',
+        '操作系统深色模式和高对比度模式的设置状态。',
+        '连接是否使用HTTPS加密。现代网络安全的必要措施。',
+        'Cookie启用状态和IndexedDB支持情况。',
+        'WebGL版本。2.0为最新版本。不支持则无法进行3D渲染。',
+        'GPU最大顶点属性数。16以上表示GPU性能较强。',
+        'WakeLock(保持屏幕常亮)和振动API支持情况。主要为移动端功能。',
+        'PWA(添加到主屏幕)和Service Worker(离线功能)支持情况。',
+        '是否检测到WebDriver自动化(机器人)操作。正常情况下为"正常"。',
+        '帧率稳定性分数。0-100分。越高则卡顿越少。',
+        '系统语言和时区设置。',
+        '本应用的诊断引擎版本。',
+        '通过WebRTC获取的IP地址。可能用于推断大致位置或ISP。',
+        '操作系统深色模式和高对比度设置状态。',
+        '当前使用的浏览器。',
+        '从UA推断的设备型号。Safari可能无法获取详细型号。',
+    ],
+    'zh-hant': [
+        'CPU邏輯核心數。越多則可同時處理更多任務。日常使用4-8核已足夠。',
+        '物理記憶體(RAM)容量。越大則可同時執行更多應用程式和分頁。',
+        'GPU型號名稱。表示圖形效能。Apple GPU、NVIDIA、AMD、Intel等。',
+        'GPU可處理的最大紋理尺寸。越大則可進行更高精度的3D渲染。',
+        '本應用程式測量的CPU基準分數。0-100分，75分以上為高效能。',
+        '透過WebGL著色器和Canvas測量的GPU渲染分數。0-100分。',
+        '記憶體讀寫速度分數。0-100分。分數低會導致整體處理速度變慢。',
+        '實測平均每秒影格數。60FPS以上感覺流暢。',
+        '1%低影格率。越低則卡頓越明顯。55FPS以上為舒適標準。',
+        '顯示器更新率估計值。60Hz、120Hz、144Hz等。',
+        '物理像素解析度。越高則顯示越清晰。',
+        '邏輯像素與物理像素的比值。2倍以上相當於Retina螢幕。',
+        '色彩位深和HDR支援情況。24bit以上且支援HDR為高品質。',
+        'JavaScript可用的最大堆積記憶體。越大則可處理更重的任務。Firefox不支援。',
+        'UI執行緒回應延遲。中位值越低則點擊回應越快。',
+        '透過實際下載測量的網路速度。100Mbps以上為高速。',
+        '瀏覽器識別的連線類型和API報告頻寬。4G、WiFi等。僅供參考。',
+        '目前電池電量和充電狀態。低於20%且未充電時會降低評級。',
+        '可同時識別的觸控點數量。10點以上支援完整多點觸控。',
+        '作業系統深色模式和高對比度模式的設定狀態。',
+        '連線是否使用HTTPS加密。現代網路安全的必要措施。',
+        'Cookie啟用狀態和IndexedDB支援情況。',
+        'WebGL版本。2.0為最新版本。不支援則無法進行3D渲染。',
+        'GPU最大頂點屬性數。16以上表示GPU效能較強。',
+        'WakeLock(保持螢幕常亮)和振動API支援情況。主要為行動端功能。',
+        'PWA(新增到主畫面)和Service Worker(離線功能)支援情況。',
+        '是否偵測到WebDriver自動化(機器人)操作。正常情況下為「正常」。',
+        '影格率穩定性分數。0-100分。越高則卡頓越少。',
+        '系統語言和時區設定。',
+        '本應用程式的診斷引擎版本。',
+        '透過WebRTC取得的IP位址。可能用於推斷大致位置或ISP。',
+        '作業系統深色模式和高對比度設定狀態。',
+        '目前使用的瀏覽器。',
+        '從UA推斷的裝置型號。Safari可能無法取得詳細型號。',
+    ],
+    'ko': [
+        'CPU 논리 코어 수입니다. 많을수록 더 많은 작업을 병렬 처리할 수 있습니다.',
+        '물리적 RAM 용량입니다. 클수록 더 많은 앱과 탭을 동시에 실행할 수 있습니다.',
+        'GPU 모델명입니다. 그래픽 성능의 기준이 됩니다.',
+        'GPU가 처리할 수 있는 최대 텍스처 크기입니다. 클수록 고화질 3D 렌더링이 가능합니다.',
+        '이 앱이 측정한 CPU 벤치마크 점수입니다. 0-100점, 75점 이상이 고성능 기준입니다.',
+        'WebGL 셰이더와 Canvas로 측정한 GPU 렌더링 점수입니다. 0-100점.',
+        '메모리 읽기/쓰기 속도 점수입니다. 낮으면 전체 처리 속도가 느려집니다.',
+        '실측 평균 초당 프레임 수입니다. 60FPS 이상이면 부드럽게 느껴집니다.',
+        '1% 저프레임율입니다. 낮을수록 끊김이 두드러집니다. 55FPS 이상이 쾌적 기준.',
+        '디스플레이 주사율 추정값입니다. 60Hz, 120Hz, 144Hz 등.',
+        '물리적 픽셀 해상도입니다. 높을수록 화면이 선명합니다.',
+        '논리 픽셀 대 물리 픽셀 비율입니다. 2배 이상이 레티나 디스플레이 수준입니다.',
+        '색상 비트 심도와 HDR 지원 여부입니다. 24비트 이상 + HDR이 고품질 기준.',
+        'JavaScript가 사용할 수 있는 최대 힙 메모리입니다. Firefox는 미지원.',
+        'UI 스레드 응답 지연 시간입니다. 중앙값이 낮을수록 탭/클릭 반응이 빠릅니다.',
+        '실제 다운로드로 측정한 네트워크 속도입니다. 100Mbps 이상이 고속 기준.',
+        '브라우저가 인식하는 연결 유형과 API 보고 대역폭입니다. 4G, WiFi 등. 참고값.',
+        '현재 배터리 잔량과 충전 상태입니다. 20% 미만 비충전 시 등급이 하락합니다.',
+        '동시에 인식 가능한 터치 포인트 수입니다. 10개 이상이 멀티터치 지원 기준.',
+        '운영체제의 다크 모드 및 고대비 모드 설정 상태입니다.',
+        '연결이 HTTPS 암호화를 사용하는지 여부입니다. 현대 웹 보안의 필수 요소.',
+        'Cookie 활성화 상태와 IndexedDB 지원 여부입니다.',
+        'WebGL 버전입니다. 2.0이 최신. 미지원 시 3D 렌더링 불가.',
+        'GPU 최대 정점 속성 수입니다. 16 이상이 고성능 GPU 기준.',
+        'WakeLock(화면 유지)과 진동 API 지원 여부입니다. 주로 모바일 기능.',
+        'PWA(홈 화면 추가)와 Service Worker(오프라인 기능) 지원 여부입니다.',
+        'WebDriver 자동화(봇) 감지 여부입니다. 정상적으로는 "정상"으로 표시됩니다.',
+        '프레임율 안정성 점수입니다. 0-100점, 높을수록 끊김이 적습니다.',
+        '시스템 언어 및 시간대 설정입니다.',
+        '이 앱의 진단 엔진 버전입니다.',
+        'WebRTC로 얻은 IP 주소입니다. 대략적인 위치나 ISP 파악에 사용될 수 있습니다.',
+        '운영체제 다크 모드 및 고대비 설정 상태입니다.',
+        '현재 사용 중인 브라우저입니다.',
+        'UA에서 추정한 기기 모델입니다. Safari에서는 상세 모델을 확인하지 못할 수 있습니다.',
+    ],
+    'vi': [
+        'Số nhân logic CPU. Càng nhiều càng xử lý được nhiều tác vụ song song.',
+        'Dung lượng RAM vật lý. Càng lớn càng chạy được nhiều ứng dụng và tab cùng lúc.',
+        'Tên model GPU. Thể hiện hiệu suất đồ họa.',
+        'Kích thước texture tối đa GPU có thể xử lý. Càng lớn càng render 3D chất lượng cao.',
+        'Điểm benchmark CPU do ứng dụng đo. 0-100, từ 75 trở lên là hiệu suất cao.',
+        'Điểm GPU qua WebGL shader và Canvas. Thang 0-100.',
+        'Điểm tốc độ đọc/ghi bộ nhớ. Thấp sẽ làm chậm toàn bộ xử lý.',
+        'FPS trung bình thực đo. Từ 60FPS trở lên cảm thấy mượt.',
+        'FPS 1% thấp nhất. Càng thấp càng giật lag. Từ 55FPS trở lên là thoải mái.',
+        'Tần số quét màn hình ước tính. 60Hz, 120Hz, 144Hz...',
+        'Độ phân giải pixel vật lý. Càng cao màn hình càng sắc nét.',
+        'Tỷ lệ pixel logic/vật lý. Từ 2x trở lên tương đương Retina.',
+        'Độ sâu màu và hỗ trợ HDR. 24bit trở lên + HDR là chất lượng cao.',
+        'Bộ nhớ JS heap tối đa. Càng lớn xử lý tác vụ nặng càng tốt. Firefox không hỗ trợ.',
+        'Độ trễ UI thread. Trung vị càng thấp phản hồi chạm/click càng nhanh.',
+        'Tốc độ mạng đo thực tế bằng download. Từ 100Mbps trở lên là nhanh.',
+        'Loại kết nối và băng thông API báo cáo. 4G, WiFi... Giá trị tham khảo.',
+        'Mức pin và trạng thái sạc. Dưới 20% không sạc sẽ giảm xếp hạng.',
+        'Số điểm chạm đồng thời. Từ 10 trở lên hỗ trợ đa điểm chạm.',
+        'Trạng thái chế độ tối và độ tương phản cao từ cài đặt hệ điều hành.',
+        'Kết nối có dùng mã hóa HTTPS không. Bảo mật thiết yếu cho web hiện đại.',
+        'Trạng thái Cookie và hỗ trợ IndexedDB.',
+        'Phiên bản WebGL. 2.0 là mới nhất. Không hỗ trợ thì không render 3D được.',
+        'Số thuộc tính đỉnh tối đa GPU. Từ 16 trở lên là GPU mạnh.',
+        'Hỗ trợ WakeLock (giữ màn hình sáng) và Vibration API. Chủ yếu dành cho mobile.',
+        'Hỗ trợ PWA (thêm vào màn hình chính) và Service Worker (ngoại tuyến).',
+        'Có phát hiện tự động hóa WebDriver (bot) không. Thường sẽ hiển thị "Bình thường".',
+        'Điểm ổn định frame rate. 0-100. Càng cao càng ít giật.',
+        'Ngôn ngữ và múi giờ hệ thống.',
+        'Phiên bản engine chẩn đoán của ứng dụng.',
+        'Địa chỉ IP qua WebRTC. Có thể dùng để xác định vị trí gần đúng hoặc ISP.',
+        'Trạng thái chế độ tối và độ tương phản cao của hệ điều hành.',
+        'Trình duyệt đang sử dụng.',
+        'Model thiết bị ước tính từ UA. Safari có thể không lấy được model chi tiết.',
+    ],
+    'es': [
+        'Número de núcleos lógicos del CPU. Más núcleos permiten más procesamiento en paralelo.',
+        'Capacidad de RAM física. Más RAM permite ejecutar más apps y pestañas simultáneamente.',
+        'Nombre del modelo de GPU. Indica el rendimiento gráfico.',
+        'Tamaño máximo de textura que puede manejar la GPU. Mayor = mejor renderizado 3D.',
+        'Puntuación benchmark de CPU medida por esta app. 0-100, 75+ es alto rendimiento.',
+        'Puntuación de renderizado GPU via WebGL shaders y Canvas. Escala 0-100.',
+        'Puntuación de velocidad de lectura/escritura de memoria. Baja puntación ralentiza todo.',
+        'FPS promedio medido. 60+ FPS se siente fluido.',
+        'FPS 1% bajo. Más bajo = más tirones visibles. 55+ FPS es cómodo.',
+        'Tasa de refresco estimada. 60Hz, 120Hz, 144Hz, etc.',
+        'Resolución en píxeles físicos. Mayor = pantalla más nítida.',
+        'Relación de píxeles lógicos vs físicos. 2x+ equivale a pantalla Retina.',
+        'Profundidad de color y soporte HDR. 24bit+ con HDR es alta calidad.',
+        'Memoria heap JS máxima. Mayor = puede manejar tareas más pesadas. Firefox no compatible.',
+        'Latencia del hilo UI. Mediana más baja = respuesta más rápida al toque/clic.',
+        'Velocidad de red medida por descarga real. 100Mbps+ es rápido.',
+        'Tipo de conexión y ancho de banda reportado por API. 4G, WiFi, etc. Valor de referencia.',
+        'Nivel de batería y estado de carga. Menos del 20% sin cargar baja el rango.',
+        'Número de puntos táctiles simultáneos. 10+ soporta multitáctil completo.',
+        'Estado del modo oscuro y alto contraste de la configuración del SO.',
+        'Si la conexión usa cifrado HTTPS. Seguridad esencial para la web moderna.',
+        'Estado habilitado de cookies y soporte IndexedDB.',
+        'Versión de WebGL. 2.0 es la más reciente. Sin soporte = sin renderizado 3D.',
+        'Atributos de vértice máximos de GPU. 16+ indica GPU capaz.',
+        'Soporte WakeLock (mantener pantalla encendida) y API de vibración. Principalmente móvil.',
+        'Soporte PWA (añadir a pantalla de inicio) y Service Worker (offline).',
+        'Si se detecta automatización WebDriver (bot). Normalmente "Normal".',
+        'Puntuación de estabilidad de frame rate. 0-100. Mayor = menos tirones.',
+        'Configuración de idioma del sistema y zona horaria.',
+        'Versión del motor de diagnóstico de esta app.',
+        'Dirección IP obtenida via WebRTC. Puede revelar ubicación aproximada/ISP.',
+        'Estado del modo oscuro y alto contraste del SO.',
+        'Navegador actual en uso.',
+        'Modelo del dispositivo estimado desde UA. Safari puede no mostrar modelo detallado.',
+    ],
+    'pt': [
+        'Número de núcleos lógicos do CPU. Mais núcleos permitem mais processamento paralelo.',
+        'Capacidade de RAM física. Mais RAM permite executar mais apps e abas simultaneamente.',
+        'Nome do modelo de GPU. Indica o desempenho gráfico.',
+        'Tamanho máximo de textura que a GPU pode processar. Maior = melhor renderização 3D.',
+        'Pontuação benchmark de CPU medida por este app. 0-100, 75+ é alto desempenho.',
+        'Pontuação de renderização GPU via WebGL shaders e Canvas. Escala 0-100.',
+        'Pontuação de velocidade de leitura/escrita de memória. Baixa pontuação desacelera tudo.',
+        'FPS médio medido. 60+ FPS parece fluido.',
+        'FPS 1% baixo. Mais baixo = mais travamentos visíveis. 55+ FPS é confortável.',
+        'Taxa de atualização estimada. 60Hz, 120Hz, 144Hz, etc.',
+        'Resolução em pixels físicos. Maior = tela mais nítida.',
+        'Relação de pixels lógicos vs físicos. 2x+ equivale a tela Retina.',
+        'Profundidade de cor e suporte HDR. 24bit+ com HDR é alta qualidade.',
+        'Memória heap JS máxima. Maior = pode lidar com tarefas mais pesadas. Firefox não suportado.',
+        'Latência do thread de UI. Mediana mais baixa = resposta mais rápida ao toque/clique.',
+        'Velocidade de rede medida por download real. 100Mbps+ é rápido.',
+        'Tipo de conexão e largura de banda reportada por API. 4G, WiFi, etc. Valor de referência.',
+        'Nível de bateria e status de carga. Abaixo de 20% sem carregar baixa a classificação.',
+        'Número de pontos de toque simultâneos. 10+ suporta multitoque completo.',
+        'Estado do modo escuro e alto contraste das configurações do SO.',
+        'Se a conexão usa criptografia HTTPS. Segurança essencial para a web moderna.',
+        'Estado habilitado de cookies e suporte IndexedDB.',
+        'Versão do WebGL. 2.0 é a mais recente. Sem suporte = sem renderização 3D.',
+        'Atributos de vértice máximos da GPU. 16+ indica GPU capaz.',
+        'Suporte WakeLock (manter tela acesa) e API de vibração. Principalmente para mobile.',
+        'Suporte PWA (adicionar à tela inicial) e Service Worker (offline).',
+        'Se a automação WebDriver (bot) é detectada. Normalmente "Normal".',
+        'Pontuação de estabilidade de taxa de quadros. 0-100. Maior = menos travamentos.',
+        'Configuração de idioma do sistema e fuso horário.',
+        'Versão do motor de diagnóstico deste app.',
+        'Endereço IP obtido via WebRTC. Pode revelar localização aproximada/ISP.',
+        'Estado do modo escuro e alto contraste do SO.',
+        'Navegador atual em uso.',
+        'Modelo do dispositivo estimado a partir do UA. Safari pode não mostrar modelo detalhado.',
+    ],
+    'fr': [
+        'Nombre de cœurs logiques CPU. Plus de cœurs = plus de traitement parallèle.',
+        'Capacité RAM physique. Plus de RAM = plus d\'apps et d\'onglets simultanés.',
+        'Nom du modèle GPU. Indique les performances graphiques.',
+        'Taille maximale de texture que le GPU peut gérer. Plus grand = meilleur rendu 3D.',
+        'Score benchmark CPU mesuré par cette app. 0-100, 75+ est haute performance.',
+        'Score de rendu GPU via WebGL et Canvas. Échelle 0-100.',
+        'Score de vitesse lecture/écriture mémoire. Bas = ralentit tout le traitement.',
+        'FPS moyen mesuré. 60+ FPS semble fluide.',
+        'FPS 1% bas. Plus bas = saccades plus visibles. 55+ FPS est confortable.',
+        'Taux de rafraîchissement estimé. 60Hz, 120Hz, 144Hz, etc.',
+        'Résolution en pixels physiques. Plus élevée = écran plus net.',
+        'Ratio pixels logiques/physiques. 2x+ équivaut à un écran Retina.',
+        'Profondeur de couleur et support HDR. 24bit+ avec HDR est haute qualité.',
+        'Mémoire heap JS maximale. Plus grande = peut gérer des tâches plus lourdes. Firefox non supporté.',
+        'Latence du thread UI. Médiane plus basse = réponse plus rapide au toucher/clic.',
+        'Vitesse réseau mesurée par téléchargement réel. 100Mbps+ est rapide.',
+        'Type de connexion et bande passante rapportée par API. 4G, WiFi, etc. Valeur de référence.',
+        'Niveau de batterie et état de charge. En dessous de 20% non chargé abaisse le rang.',
+        'Nombre de points tactiles simultanés. 10+ supporte le multi-touch complet.',
+        'État du mode sombre et du contraste élevé depuis les paramètres OS.',
+        'Si la connexion utilise le chiffrement HTTPS. Sécurité essentielle pour le web moderne.',
+        'État activé des cookies et support IndexedDB.',
+        'Version WebGL. 2.0 est la plus récente. Sans support = pas de rendu 3D.',
+        'Attributs de sommet maximum du GPU. 16+ indique un GPU capable.',
+        'Support WakeLock (garder l\'écran allumé) et API de vibration. Principalement mobile.',
+        'Support PWA (ajouter à l\'écran d\'accueil) et Service Worker (hors ligne).',
+        'Si l\'automatisation WebDriver (bot) est détectée. Normalement "Normal".',
+        'Score de stabilité du taux de frames. 0-100. Plus élevé = moins de saccades.',
+        'Paramètres de langue et de fuseau horaire du système.',
+        'Version du moteur de diagnostic de cette app.',
+        'Adresse IP obtenue via WebRTC. Peut révéler la localisation approximative/FAI.',
+        'État du mode sombre et du contraste élevé du SO.',
+        'Navigateur actuellement utilisé.',
+        'Modèle d\'appareil estimé depuis l\'UA. Safari peut ne pas afficher le modèle détaillé.',
+    ],
+    'de': [
+        'Anzahl der CPU-Logikkerne. Mehr Kerne = mehr parallele Verarbeitung.',
+        'Physischer RAM-Speicher. Mehr RAM = mehr Apps und Tabs gleichzeitig.',
+        'GPU-Modellname. Zeigt die Grafikleistung an.',
+        'Maximale Texturgröße der GPU. Größer = besseres 3D-Rendering.',
+        'CPU-Benchmark-Score dieser App. 0-100, 75+ ist hohe Leistung.',
+        'GPU-Rendering-Score via WebGL und Canvas. Skala 0-100.',
+        'Speicher-Lese/Schreib-Geschwindigkeits-Score. Niedrig = verlangsamt alles.',
+        'Gemessene durchschnittliche FPS. 60+ FPS fühlt sich flüssig an.',
+        '1% Low FPS. Niedriger = mehr sichtbare Stottern. 55+ FPS ist komfortabel.',
+        'Geschätzte Bildwiederholrate. 60Hz, 120Hz, 144Hz usw.',
+        'Physische Pixel-Auflösung. Höher = schärferes Display.',
+        'Verhältnis von logischen zu physischen Pixeln. 2x+ entspricht Retina-Display.',
+        'Farbtiefe und HDR-Unterstützung. 24bit+ mit HDR ist hohe Qualität.',
+        'Maximaler JS-Heap-Speicher. Größer = kann schwerere Aufgaben bewältigen. Firefox nicht unterstützt.',
+        'UI-Thread-Latenz. Niedrigerer Median = schnellere Reaktion auf Tippen/Klicken.',
+        'Netzwerkgeschwindigkeit gemessen durch echten Download. 100Mbps+ ist schnell.',
+        'Verbindungstyp und API-gemeldete Bandbreite. 4G, WiFi usw. Referenzwert.',
+        'Akkustand und Ladestatus. Unter 20% ohne Laden senkt den Rang.',
+        'Anzahl gleichzeitiger Berührungspunkte. 10+ unterstützt vollständiges Multi-Touch.',
+        'Dunkelmodus und Hochkontrastmodus-Status aus den OS-Einstellungen.',
+        'Ob die Verbindung HTTPS-Verschlüsselung verwendet. Grundlegende Web-Sicherheit.',
+        'Cookie-Status und IndexedDB-Unterstützung.',
+        'WebGL-Version. 2.0 ist die neueste. Keine Unterstützung = kein 3D-Rendering.',
+        'Max. GPU-Vertex-Attribute. 16+ zeigt eine leistungsfähige GPU an.',
+        'WakeLock (Bildschirm aktiv halten) und Vibrations-API-Unterstützung. Hauptsächlich mobil.',
+        'PWA (zum Startbildschirm hinzufügen) und Service Worker (offline) Unterstützung.',
+        'Ob WebDriver-Automatisierung (Bot) erkannt wird. Normalerweise "Normal".',
+        'Framerate-Stabilitäts-Score. 0-100. Höher = weniger Stottern.',
+        'Systemsprache und Zeitzoneneinstellungen.',
+        'Diagnose-Engine-Version dieser App.',
+        'IP-Adresse über WebRTC. Kann ungefähren Standort/ISP enthüllen.',
+        'Dunkelmodus und Hochkontrast-Status des OS.',
+        'Aktuell verwendeter Browser.',
+        'Gerätemodell aus UA geschätzt. Safari zeigt möglicherweise kein detailliertes Modell.',
+    ],
+    'ru': [
+        'Количество логических ядер CPU. Больше ядер = больше параллельных задач.',
+        'Объём физической оперативной памяти. Больше RAM = больше приложений и вкладок одновременно.',
+        'Название модели GPU. Показывает производительность графики.',
+        'Максимальный размер текстуры GPU. Больше = лучший 3D-рендеринг.',
+        'Оценка CPU от этого приложения. 0-100, 75+ — высокая производительность.',
+        'Оценка GPU через WebGL и Canvas. Шкала 0-100.',
+        'Оценка скорости чтения/записи памяти. Низкая = замедляет всё.',
+        'Измеренный средний FPS. 60+ FPS ощущается плавно.',
+        '1% низкий FPS. Ниже = больше заметных рывков. 55+ FPS — комфортно.',
+        'Оценочная частота обновления экрана. 60Гц, 120Гц, 144Гц и т.д.',
+        'Разрешение в физических пикселях. Выше = чётче экран.',
+        'Соотношение логических и физических пикселей. 2x+ соответствует Retina-дисплею.',
+        'Глубина цвета и поддержка HDR. 24бит+ с HDR — высокое качество.',
+        'Максимальная куча JS. Больше = справляется с более тяжёлыми задачами. Firefox не поддерживает.',
+        'Задержка UI-потока. Меньше медианы = быстрее реакция на касание/клик.',
+        'Скорость сети, измеренная реальной загрузкой. 100 Мбит/с+ — быстро.',
+        'Тип соединения и пропускная способность от API. 4G, WiFi и т.д. Справочное значение.',
+        'Уровень заряда и статус зарядки. Ниже 20% без зарядки снижает ранг.',
+        'Количество одновременных точек касания. 10+ поддерживает полный мультитач.',
+        'Состояние тёмного режима и режима высокой контрастности в настройках ОС.',
+        'Использует ли соединение шифрование HTTPS. Основа безопасности современного веба.',
+        'Состояние cookies и поддержка IndexedDB.',
+        'Версия WebGL. 2.0 — последняя. Нет поддержки = нет 3D-рендеринга.',
+        'Максимальные атрибуты вершин GPU. 16+ указывает на мощный GPU.',
+        'Поддержка WakeLock (удержание экрана) и Vibration API. В основном мобильные функции.',
+        'Поддержка PWA (добавить на экран) и Service Worker (офлайн).',
+        'Обнаружена ли автоматизация WebDriver (бот). Обычно "Нормально".',
+        'Оценка стабильности частоты кадров. 0-100. Выше = меньше рывков.',
+        'Язык системы и настройки часового пояса.',
+        'Версия диагностического движка этого приложения.',
+        'IP-адрес через WebRTC. Может раскрыть приблизительное местоположение/ISP.',
+        'Состояние тёмного режима и высокой контрастности ОС.',
+        'Текущий используемый браузер.',
+        'Модель устройства, оценённая по UA. Safari может не отображать подробную модель.',
+    ],
+    'ja-hira': [
+        'CPUのこあのかずです。おおいほどたくさんのしごとができます。',
+        'めもりのようりょうです。おおいほどたくさんのあぷりをつかえます。',
+        'GPUのしゅるいです。えのひょうじのはやさのめやすになります。',
+        'GPUがあつかえるさいだいのがぞうのおおきさです。',
+        'このあぷりがはかったCPUのせいのうのてんすうです。',
+        'このあぷりがはかったGPUのせいのうのてんすうです。',
+        'めもりのよみかきのはやさのてんすうです。',
+        'じっさいにはかったへいきんFPSです。60いじょうがなめらかです。',
+        'いちばんおもいばめんでのFPSです。ひくいとかくかくします。',
+        'がめんのこうしんひんどのすいていちです。',
+        'がめんのかいぞうどです。たかいほどきれいです。',
+        'ろじかるぴくせるとふぃじかるぴくせるのひりつです。',
+        'いろのふかさとHDRのたいおうです。',
+        'JavaScriptがつかえるさいだいのめもりりょうです。',
+        'UIのおうとうそくどです。すくないほどはやいです。',
+        'じっさいにはかったつうしんそくどです。',
+        'つうしんのしゅるいです。',
+        'でんちののこりとじゅうでんのじょうたいです。',
+        'どうじにさわれるゆびのかずです。',
+        'だーくもーどのせっていです。',
+        'あんごうつうしんをつかっているかどうかです。',
+        'Cookieとほぞんきのうのたいおうです。',
+        'WebGLのばーじょんです。',
+        'GPUのさいだいちょうてんぞくせいすうです。',
+        'WakeLockとしんどうのたいおうです。',
+        'PWAとService Workerのたいおうです。',
+        'ぼっとそうさかどうかのはんていです。',
+        'FPSのあんていせいのてんすうです。',
+        'げんごとたいむぞーんです。',
+        'このしんだんあぷりのばーじょんです。',
+        'WebRTCでとったIPあどれすです。',
+        'だーくもーどのせっていです。',
+        'いまつかっているぶらうざです。',
+        'きしゅめいのすいていです。さふぁりではくわしいきしゅがわからないことがあります。',
+    ],
+};
+
+const helpText = HELP_TEXT_I18N['ja']; // 後方互換用（initHelpIconsで使用）
 
 document.addEventListener('click', e => {
     if (!e.target.classList.contains('help')) return;
-
-    const label = e.target.closest('.label').textContent
-    .replace(/[＊*]/g,'')
-    .trim();
-
-console.log(label); // ←追加
-
-    const found = Object.keys(helpText).find(k => label.includes(k));
-
-    alert(helpText[found] || "この項目の説明は準備中です。");
+    const rowEl = e.target.closest('[id^="row-"]');
+    if (!rowEl) return;
+    const rowId = parseInt(rowEl.id.replace('row-', ''));
+    const idx = rowId - 1; // 0始まり
+    const lang = (typeof _settings !== 'undefined' && _settings.language) ? _settings.language : 'ja';
+    const texts = HELP_TEXT_I18N[lang] || HELP_TEXT_I18N['ja'];
+    alert(texts[idx] || '説明は準備中です。');
 });

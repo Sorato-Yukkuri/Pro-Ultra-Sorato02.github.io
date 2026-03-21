@@ -8,17 +8,14 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="デバイス診断">
-    <!-- Apple Touch Icon: 専用ファイルがない場合は192pxのアイコンで代用 -->
-    <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-    <link rel="apple-touch-icon" sizes="192x192" href="android-chrome-192x192.png">
-    <link rel="apple-touch-icon" sizes="512x512" href="android-chrome-512x512.png">
+    <meta name="apple-mobile-web-app-title" content="DeviceCheck">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
     <link rel="icon" type="image/x-icon" href="favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
     <link rel="icon" type="image/png" sizes="192x192" href="android-chrome-192x192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="android-chrome-512x512.png">
-    <title>精密デバイス診断 Pro Ultra Beta1.5.93</title>
+    <title>精密デバイス診断 Pro Ultra Beta1.6.0</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -287,23 +284,31 @@
         
         <!-- バージョンタイトル -->
         <h2 style="margin: 0 0 20px; font-size: 1.4rem; font-weight: 900; color: var(--text); border-bottom: 2px solid var(--border); padding-bottom: 15px;">
-            🚀 Update Beta 1.5.2
+            🚀 Update Beta 1.6.0
         </h2>
         
         <!-- 【自由記述エリア】ここを書き換えるだけでOK -->
         <div id="update-text-area" style="font-size: 1rem; color: var(--text); line-height: 1.8; max-height: 450px; overflow-y: auto; margin-bottom: 25px; padding-right: 10px;">
             
-            <strong>【前回アプデBeta1.5の追加機能】<br>「友達コード」(現在は親友コードと変更しています。)機能を追加！</strong><br>
-            パスワードと好きな名前（ニックネーム）を入力するだけで、特定のグループとしてサインインできるようになりました。<br>サインイン状態はCookieに保存されます。保持期間は<strong>1ヶ月間</strong>です。期限が切れた場合は再度ログインしてください。(Beta1.6で自分でアカウントを作成できるように変更予定)<br><br>【今回アプデBeta1.5.2の修正】<br>・Beta1.6への告知を記入していなかったため修正<br>・AI機能でAIのモデルを聞くと拒否される仕様に変更<br>・アップデート情報機能のコードの書き直し<br>
+            <strong>【Beta 1.6.0 新機能】⚙️ 設定機能を追加！</strong><br>
+            画面右下の⚙️ボタンから設定を開けます。<br><br>
 
-            <br><br>
+            <strong>追加された設定項目：</strong><br>
+            ・<strong>テーマ変更</strong>（ダーク / ライト / システム追従）<br>
+            ・<strong>フォントサイズ変更</strong>（小 / 普通 / 大 / カスタム：スライダーで自由設定）<br>
+            ・<strong>表示言語</strong>（11言語対応：日本語・English・中文・한국어・Tiếng Việt・Español・Português・Français・Deutsch・Русский・にほんご）<br>
+            ・<strong>Google翻訳崩れ防止</strong><br>
+            ・<strong>診断終了音 / バイブレーション</strong><br>
+            ・<strong>完了時デスクトップ通知 / アイコンバッジ</strong><br>
+            ・<strong>お休み時間設定</strong>（指定時間帯は通知しない）<br>
+            ・<strong>データ書き出し形式</strong>（PNG / CSV / TXT）<br>
+            ・<strong>通信速度の単位</strong>（Mbps / MB/s）<br>
+            ・<strong>開いたとき自動診断 / うっかりガード</strong><br><br>
 
-            【バグ修正】<br>・巨大な ArrayBuffer を一括確保する処理が iOS のメモリ制限（Jetsam）に抵触し、<br>Safari が強制終了する問題を解決しました。<br><br>・iPhone端末でメモリーが64GBになる問題を解決し、80%正確のようにしました。<br><br>平均が60FPCに固定になる問題を修正
-<br>メモリ確保を小刻みなステップ（256MB/0.5GB単位）に変更し、安定性を向上させました。<br><br>【現状確認されているバグ】<br>・AI機能がエラーになる問題<br>・AI機能にて本アプリ以外のプロンクトを入れると返答しない問題<br><br>
-            【Beta1.6の告知】<br>Beta1.6のアップデートでは、「親友コード」の応募を開始します。これにより、管理者でなくてもグループを作れるようになります。
-                
-                
-            
+            <strong>【Beta 1.7の告知】</strong><br>
+            Beta 1.6でリリース予定だった「親友コード」の自己申請機能は、<strong>Beta 1.7に延期</strong>します。<br>
+            より安全で使いやすい仕組みを準備中です。お待ちください。<br><br>
+
             <!-- 次のアプデ文はこの下に追加していくだけでOK -->
 
         </div>
@@ -318,7 +323,7 @@
 
 <script>
     // バージョン識別キー（アプデのたびに末尾の数字などを変えてください）
-    const CURRENT_UPDATE_ID = "Beta_1.5.9";
+    const CURRENT_UPDATE_ID = "Beta_1.6.0";
 
     // 読み込み時に表示を判定
     window.addEventListener('DOMContentLoaded', () => {
