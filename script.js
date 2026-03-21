@@ -3689,8 +3689,13 @@ window.addEventListener('load',()=>{
         }, 3000);
     }
 
-    // バッジクリア
+    // バッジクリア（起動時・フォーカス時・タブ表示時の全イベントで確実に消す）
     try { clearBadge(); } catch(e) {}
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') { try { clearBadge(); } catch(e) {} }
+    });
+    window.addEventListener('focus', () => { try { clearBadge(); } catch(e) {} });
+    window.addEventListener('pageshow', () => { try { clearBadge(); } catch(e) {} });
 });
 
 function initHelpIcons() {
