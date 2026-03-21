@@ -276,6 +276,11 @@
   font-size:0.8rem;
   color:#888;
   cursor:pointer;
+  /* タップ領域を広げる（見た目は変わらない） */
+  padding: 12px;
+  margin-top: -12px;
+  margin-bottom: -12px;
+  margin-right: -12px;
 }
 
 /* スマホ向け: 小画面でボタン折り返し発生時も対応 */

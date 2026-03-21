@@ -867,11 +867,11 @@ function processFinalReport() {
     // 11. 物理解像度
     const physW=Math.round(screen.width*devicePixelRatio);
     const physH=Math.round(screen.height*devicePixelRatio);
-    setRow(11,physW+' × '+physH+' px',st(physW>=2560,physW>=1920));
+    setRow(11,physW+' × '+physH+' px','ok');
 
     // 12. DPR
     const dpr=window.devicePixelRatio;
-    setRow(12,dpr+'x',st(dpr>=3,dpr>=2));
+    setRow(12,dpr+'x','ok');
 
     // 13. カラー深度 / HDR
     const depth=screen.colorDepth;
