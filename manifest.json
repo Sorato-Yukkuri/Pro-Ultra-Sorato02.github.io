@@ -1,6 +1,6 @@
 {
   "name": "精密デバイス診断 Pro Ultra",
-  "short_name": "DeviceCheck",
+  "short_name": "デバイス診断",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0f172a",
