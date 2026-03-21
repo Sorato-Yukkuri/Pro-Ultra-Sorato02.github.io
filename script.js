@@ -478,53 +478,72 @@ function detectDeviceName() {
 
     // ===== iPhone =====
     if (/iPhone/.test(ua)) {
-        const w = screen.width;
-        const h = screen.height;
+        const w   = screen.width;
+        const h   = screen.height;
         const dpr = window.devicePixelRatio;
         const key = `${w}x${h}@${dpr}`;
 
-        const map = {
-            // SE系
-            "320x568@2": "iPhone SE",
-            "375x667@2": "iPhone SE (第2/3世代)",
+        // iOSバージョンを取得（世代判定に使用）
+        const _iosM = ua.match(/iPhone OS (\d+)_/);
+        const _ios  = _iosM ? parseInt(_iosM[1]) : 0;
 
-            // X〜11系
-            "375x812@3": "iPhone X / XS / 11 Pro",
+        // モデル番号を取得（Chromeなど一部ブラウザで取得可能）
+        const _modelM = ua.match(/iPhone(\d+),/);
+        const _mgen   = _modelM ? parseInt(_modelM[1]) : 0;
 
-            // XR / 11
-            "414x896@2": "iPhone XR / 11",
+        // ── SE系（解像度で確定） ──
+        if (key === '320x568@2') return 'iPhone SE (第1世代)';
+        if (key === '375x667@2') return 'iPhone SE (第2/3世代)';
 
-            // Max系（古）
-            "414x896@3": "iPhone XS Max / 11 Pro Max",
+        // ── mini系 ──
+        if (key === '360x780@3') return 'iPhone 12 / 13 mini';
 
-            // 12〜14（標準）
-            "390x844@3": "iPhone 12 / 13 / 14",
+        // ── 標準 6.1インチ系 390x844 ──
+        // 12/13/14 が同じ解像度
+        if (key === '390x844@3') {
+            if (_mgen === 14 || _mgen === 15 && false) return 'iPhone 14';  // gen14,7/14,8
+            if (_ios >= 18) return 'iPhone 14';  // iOS18でこの解像度 = 14
+            if (_ios === 17) return 'iPhone 14';
+            if (_ios === 16) return 'iPhone 14';
+            return 'iPhone 12 / 13 / 14';
+        }
 
-            // mini
-            "360x780@3": "iPhone 12 / 13 mini",
+        // ── Pro 6.1インチ系 393x852 ──
+        // 14 Pro / 15 / 15 Pro / 16 / 16 Pro が同じ解像度
+        if (key === '393x852@3') {
+            if (_mgen >= 17) return 'iPhone 16 (Pro)';   // gen17,1=16Pro gen17,3=16
+            if (_mgen === 16) return 'iPhone 15 (Pro)';  // gen16,1=15Pro
+            if (_mgen === 15 && _mgen >= 4) return 'iPhone 15'; // gen15,4=15
+            // iOSバージョンで推定
+            if (_ios >= 18) return 'iPhone 16 (Pro)';
+            if (_ios === 17) return 'iPhone 15 (Pro)';
+            if (_ios === 16) return 'iPhone 14 Pro';
+            return 'iPhone 14 Pro / 15 / 16';
+        }
 
-            // Pro（6.1）
-            "393x852@3": "iPhone 14 Pro",
+        // ── Plus / Pro Max 6.7インチ系 430x932 ──
+        // 14 Pro Max / 15 Plus / 15 Pro Max / 16 Plus / 16 Pro Max
+        if (key === '430x932@3') {
+            if (_mgen >= 17) return 'iPhone 16 Plus (Pro Max)';
+            if (_mgen === 16) return 'iPhone 15 Plus (Pro Max)';
+            if (_ios >= 18) return 'iPhone 16 Plus (Pro Max)';
+            if (_ios === 17) return 'iPhone 15 Plus (Pro Max)';
+            if (_ios === 16) return 'iPhone 14 Pro Max';
+            return 'iPhone 14 Pro Max / 15 Plus / 16 Plus';
+        }
 
-            // Pro Max（〜14）
-            "430x932@3": "iPhone 14 Pro Max",
+        // ── 旧XR/11系 ──
+        if (key === '414x896@2') return 'iPhone XR / 11';
+        if (key === '414x896@3') return 'iPhone XS Max / 11 Pro Max';
 
-            // ===== ここから追加 =====
+        // ── X/XS/11 Pro ──
+        if (key === '375x812@3') return 'iPhone X / XS / 11 Pro';
 
-            // 15 / 16 / 17（標準）
-            "393x852@3": "iPhone 15 / 16 / 17",
+        // ── 6/7/8系 ──
+        if (key === '375x667@3') return 'iPhone 6 / 7 / 8';
+        if (key === '414x736@3') return 'iPhone 6 Plus / 7 Plus / 8 Plus';
 
-            // Plus系
-            "430x932@3": "iPhone 15 Plus / 16 Plus / 17 Plus",
-
-            // Pro系
-            "393x852@3": "iPhone 15 Pro / 16 Pro / 17 Pro",
-
-            // Pro Max系
-            "430x932@3": "iPhone 15 Pro Max / 16 Pro Max / 17 Pro Max"
-        };
-
-        return map[key] || "iPhone";
+        return 'iPhone';
     }
 
     // ===== iPad =====
