@@ -3716,9 +3716,10 @@ async function submitJoinGroup() {
             errEl.style.display='block'; errEl.textContent='すでに参加しています'; return;
         }
 
-        const me = { uid: _currentUser?.uid || 'guest', name: _currentUser?.displayName || 'ゲスト', role: 'member', joinedAt: Date.now() };
+        const me = { uid: _currentUser?.uid || 'guest', name: _currentUser?.displayName || _currentUser?.email?.split('@')[0] || 'ゲスト', role: 'member', joinedAt: Date.now() };
         await _fbDb.collection('groups').doc(groupId).update({
-            members: firebase.firestore.FieldValue.arrayUnion(me)
+            members:    firebase.firestore.FieldValue.arrayUnion(me),
+            memberUids: firebase.firestore.FieldValue.arrayUnion(_currentUser?.uid || 'guest'),
         });
         alert(`✅ 「${group.icon} ${group.name}」に参加しました！`);
         renderFriendModalTop();
