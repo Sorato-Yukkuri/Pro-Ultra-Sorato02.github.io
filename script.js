@@ -4231,25 +4231,29 @@ function initFirebase() {
 function updateAuthUI(user) {
     const loginBtn  = document.getElementById('auth-login-btn');
     const logoutBtn = document.getElementById('auth-logout-btn');
+    const githubBtn = document.getElementById('auth-github-btn');
     const avatar    = document.getElementById('auth-avatar');
     const username  = document.getElementById('auth-username');
     const badge     = document.getElementById('auth-status-badge');
 
     if (user) {
-        loginBtn.style.display  = 'none';
-        logoutBtn.style.display = 'block';
+        if (loginBtn)  loginBtn.style.display  = 'none';
+        if (githubBtn) githubBtn.style.display  = 'none';
+        if (logoutBtn) logoutBtn.style.display = 'block';
+        // GitHubはdisplayNameがnullの場合があるのでemail/uidでフォールバック
+        const displayName = user.displayName || user.email?.split('@')[0] || 'ユーザー';
         if (user.photoURL) { avatar.src = user.photoURL; avatar.style.display = 'block'; }
-        username.textContent = user.displayName || user.email || 'ユーザー';
+        username.textContent = displayName;
         document.getElementById('auth-sync-status').textContent = tui().synced;
         if (badge) {
             badge.style.display = 'block';
-            badge.innerHTML = '🔓 <strong>' + (user.displayName || 'ログイン中') + '</strong> でログイン中 — 履歴がクラウドに同期されます';
+            badge.innerHTML = '🔓 <strong>' + displayName + '</strong> でログイン中 — 履歴がクラウドに同期されます';
         }
-        // ログイン状態でauth-barの上に余白を追加（固定ヘッダー分）
         document.body.style.paddingTop = '49px';
     } else {
-        loginBtn.style.display  = 'flex';
-        logoutBtn.style.display = 'none';
+        if (loginBtn)  loginBtn.style.display  = 'flex';
+        if (githubBtn) githubBtn.style.display  = 'flex';
+        if (logoutBtn) logoutBtn.style.display = 'none';
         avatar.style.display    = 'none';
         username.textContent    = '';
         document.getElementById('auth-sync-status').textContent = '';
