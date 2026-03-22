@@ -3613,6 +3613,449 @@ async function _hashCode(str) {
     return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
 }
 
+// ══════════════════════════════════════════════════════════════
+// 👥 グループシステム（Beta 1.8）
+// ══════════════════════════════════════════════════════════════
+
+let _groupIsPublic = false;
+let _groupIcon     = '🏆';
+let _myGroups      = []; // 所属グループキャッシュ
+
+// パスワードをSHA-256ハッシュ化
+async function _hashPass(pass) {
+    const buf  = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pass));
+    return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+// ── 親友コードモーダルのメイン画面 ──
+function openFriendModal() {
+    const modal = document.getElementById('friend-modal');
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    renderFriendModalTop();
+    modal.onclick = e => { if (e.target === modal) { modal.style.display='none'; document.body.style.overflow=''; } };
+}
+
+function renderFriendModalTop() {
+    const cont = document.getElementById('friend-modal-content');
+    const isLoggedIn = !!_currentUser;
+
+    cont.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:10px;">
+            ${isLoggedIn ? `
+                <button onclick="openGroupCreate()" style="padding:14px;border-radius:14px;background:linear-gradient(135deg,#ff9500,#ff6b00);color:#fff;border:none;font-size:0.95rem;font-weight:800;cursor:pointer;text-align:left;">
+                    ✨ 新しいグループを作成する
+                </button>
+                <button onclick="renderJoinGroup()" style="padding:14px;border-radius:14px;background:rgba(255,149,0,0.15);border:1px solid rgba(255,149,0,0.4);color:#ff9500;font-size:0.95rem;font-weight:800;cursor:pointer;text-align:left;">
+                    🔑 グループに参加する（コード入力）
+                </button>
+                <button onclick="renderMyGroups()" style="padding:14px;border-radius:14px;background:rgba(255,255,255,0.06);border:1px solid #333;color:#ccc;font-size:0.95rem;font-weight:800;cursor:pointer;text-align:left;">
+                    📋 参加中のグループ
+                </button>
+            ` : `
+                <div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:14px;padding:14px;margin-bottom:4px;">
+                    <p style="color:#a78bfa;font-size:0.85rem;margin:0 0 10px;">グループを作成・管理するにはGoogleログインが必要です。</p>
+                    <button onclick="signInWithGoogle()" style="width:100%;padding:10px;border-radius:10px;background:linear-gradient(135deg,#4285f4,#34a853);color:#fff;border:none;font-weight:700;cursor:pointer;font-size:0.88rem;">Googleでログイン</button>
+                </div>
+                <button onclick="renderJoinGroup()" style="padding:14px;border-radius:14px;background:rgba(255,149,0,0.15);border:1px solid rgba(255,149,0,0.4);color:#ff9500;font-size:0.95rem;font-weight:800;cursor:pointer;text-align:left;">
+                    🔑 グループに参加する（コード入力）
+                </button>
+            `}
+            <button onclick="renderPublicGroups()" style="padding:14px;border-radius:14px;background:rgba(255,255,255,0.04);border:1px solid #2a2a2a;color:#888;font-size:0.9rem;font-weight:700;cursor:pointer;text-align:left;">
+                🌐 公開グループ一覧を見る
+            </button>
+            <!-- 旧コード入力（別府小学校グループ等）-->
+            <div style="border-top:1px solid #2a2a2a;padding-top:14px;margin-top:4px;">
+                <p style="color:#555;font-size:0.78rem;margin:0 0 8px;">管理者から配布された旧コードをお持ちの方：</p>
+                <div style="display:flex;gap:8px;">
+                    <input id="friend-code-input" type="password" placeholder="旧コードを入力..." maxlength="20"
+                        style="flex:1;background:#1a1a1a;border:1px solid #333;border-radius:10px;padding:8px 12px;color:#fff;font-size:0.9rem;outline:none;text-align:center;letter-spacing:0.15em;">
+                    <button onclick="checkFriendCode()" style="padding:8px 14px;border-radius:10px;background:#333;color:#888;border:none;font-weight:700;cursor:pointer;font-size:0.85rem;">入力</button>
+                </div>
+                <div id="friend-code-error" style="color:#ff3b30;font-size:0.78rem;margin-top:6px;display:none;">コードが違います</div>
+            </div>
+        </div>`;
+}
+
+// ── グループ参加（コード入力）──
+function renderJoinGroup() {
+    const cont = document.getElementById('friend-modal-content');
+    cont.innerHTML = `
+        <button onclick="renderFriendModalTop()" style="background:none;border:none;color:#888;font-size:0.85rem;cursor:pointer;margin-bottom:16px;padding:0;">← 戻る</button>
+        <p style="color:#ccc;font-size:0.85rem;margin:0 0 16px;">グループのオーナーから教えてもらったグループIDとパスワードを入力してください。</p>
+        <div style="margin-bottom:12px;">
+            <label style="display:block;color:#ccc;font-size:0.82rem;font-weight:700;margin-bottom:6px;">グループID</label>
+            <input id="join-group-id" type="text" placeholder="グループID"
+                style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:10px 14px;color:#fff;font-size:0.95rem;outline:none;box-sizing:border-box;">
+        </div>
+        <div style="margin-bottom:16px;">
+            <label style="display:block;color:#ccc;font-size:0.82rem;font-weight:700;margin-bottom:6px;">パスワード</label>
+            <input id="join-group-pass" type="password" placeholder="パスワード"
+                style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:10px 14px;color:#fff;font-size:0.95rem;outline:none;box-sizing:border-box;">
+        </div>
+        <div id="join-group-error" style="color:#ff6b6b;font-size:0.82rem;margin-bottom:10px;display:none;"></div>
+        <button onclick="submitJoinGroup()" style="width:100%;padding:13px;border-radius:14px;background:linear-gradient(135deg,#ff9500,#ff6b00);color:#fff;border:none;font-weight:800;cursor:pointer;font-size:0.95rem;">参加する</button>`;
+}
+
+async function submitJoinGroup() {
+    if (!_fbDb) { alert('Firestoreが利用できません'); return; }
+    const groupId = document.getElementById('join-group-id')?.value.trim();
+    const pass    = document.getElementById('join-group-pass')?.value.trim();
+    const errEl   = document.getElementById('join-group-error');
+
+    if (!groupId || !pass) { errEl.style.display='block'; errEl.textContent='グループIDとパスワードを入力してください'; return; }
+
+    try {
+        const doc = await _fbDb.collection('groups').doc(groupId).get();
+        if (!doc.exists) { errEl.style.display='block'; errEl.textContent='グループが見つかりません'; return; }
+        const group = doc.data();
+        const hash  = await _hashPass(pass);
+        if (hash !== group.passwordHash) { errEl.style.display='block'; errEl.textContent='パスワードが違います'; return; }
+        if (group.members && group.members.length >= 5) { errEl.style.display='block'; errEl.textContent='このグループは満員です（5人上限）'; return; }
+        if (group.members && group.members.some(m => m.uid === _currentUser?.uid)) {
+            errEl.style.display='block'; errEl.textContent='すでに参加しています'; return;
+        }
+
+        const me = { uid: _currentUser?.uid || 'guest', name: _currentUser?.displayName || 'ゲスト', role: 'member', joinedAt: Date.now() };
+        await _fbDb.collection('groups').doc(groupId).update({
+            members: firebase.firestore.FieldValue.arrayUnion(me)
+        });
+        alert(`✅ 「${group.icon} ${group.name}」に参加しました！`);
+        renderFriendModalTop();
+    } catch(e) {
+        errEl.style.display='block'; errEl.textContent='エラー: ' + e.message;
+    }
+}
+
+// ── 参加中のグループ一覧 ──
+async function renderMyGroups() {
+    const cont = document.getElementById('friend-modal-content');
+    cont.innerHTML = `<button onclick="renderFriendModalTop()" style="background:none;border:none;color:#888;font-size:0.85rem;cursor:pointer;margin-bottom:16px;padding:0;">← 戻る</button>
+        <p style="color:#888;text-align:center;">読み込み中...</p>`;
+    if (!_fbDb || !_currentUser) return;
+
+    try {
+        const snap = await _fbDb.collection('groups')
+            .where('memberUids', 'array-contains', _currentUser.uid).get();
+        if (snap.empty) {
+            cont.innerHTML = `<button onclick="renderFriendModalTop()" style="background:none;border:none;color:#888;font-size:0.85rem;cursor:pointer;margin-bottom:16px;padding:0;">← 戻る</button>
+                <p style="color:#888;text-align:center;padding:20px;">まだグループに参加していません。</p>`;
+            return;
+        }
+        const cards = snap.docs.map(d => {
+            const g = d.data();
+            const isOwner = g.ownerId === _currentUser.uid;
+            return `<div style="background:#1a1a1a;border:1px solid ${isOwner?'#ff9500':'#2a2a2a'};border-radius:14px;padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:12px;cursor:pointer;" onclick="openGroupDetail('${d.id}')">
+                <div style="font-size:2rem;">${g.icon}</div>
+                <div style="flex:1;">
+                    <div style="font-weight:800;color:#fff;font-size:0.95rem;">${g.name}</div>
+                    <div style="color:#666;font-size:0.75rem;">${isOwner?'👑 オーナー':'👤 メンバー'} ・ ${g.members?.length||0}/5人 ${g.isPublic?'🌐 公開':'🔒 非公開'}</div>
+                </div>
+                <div style="color:#555;font-size:0.85rem;">›</div>
+            </div>`;
+        }).join('');
+        cont.innerHTML = `<button onclick="renderFriendModalTop()" style="background:none;border:none;color:#888;font-size:0.85rem;cursor:pointer;margin-bottom:16px;padding:0;">← 戻る</button>${cards}`;
+    } catch(e) {
+        cont.innerHTML = `<button onclick="renderFriendModalTop()" style="background:none;border:none;color:#888;font-size:0.85rem;cursor:pointer;margin-bottom:16px;padding:0;">← 戻る</button>
+            <p style="color:#ff6b6b;text-align:center;">エラー: ${e.message}</p>`;
+    }
+}
+
+// ── 公開グループ一覧 ──
+async function renderPublicGroups() {
+    const cont = document.getElementById('friend-modal-content');
+    cont.innerHTML = `<button onclick="renderFriendModalTop()" style="background:none;border:none;color:#888;font-size:0.85rem;cursor:pointer;margin-bottom:16px;padding:0;">← 戻る</button>
+        <p style="color:#888;text-align:center;">読み込み中...</p>`;
+    if (!_fbDb) return;
+
+    try {
+        const snap = await _fbDb.collection('groups').where('isPublic','==',true).limit(20).get();
+        if (snap.empty) {
+            cont.innerHTML = `<button onclick="renderFriendModalTop()" style="background:none;border:none;color:#888;font-size:0.85rem;cursor:pointer;margin-bottom:16px;padding:0;">← 戻る</button>
+                <p style="color:#888;text-align:center;padding:20px;">公開グループがまだありません。</p>`;
+            return;
+        }
+        const cards = snap.docs.map(d => {
+            const g   = d.data();
+            const full = (g.members?.length||0) >= 5;
+            return `<div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:14px;padding:14px;margin-bottom:10px;display:flex;align-items:center;gap:12px;">
+                <div style="font-size:2rem;">${g.icon}</div>
+                <div style="flex:1;">
+                    <div style="font-weight:800;color:#fff;font-size:0.95rem;">${g.name}</div>
+                    <div style="color:#666;font-size:0.75rem;">${g.members?.length||0}/5人 ・ ID: ${d.id}</div>
+                </div>
+                ${full
+                    ? '<div style="color:#ff6b6b;font-size:0.75rem;font-weight:700;">満員</div>'
+                    : `<button onclick="prefillJoin('${d.id}')" style="padding:6px 14px;border-radius:10px;background:rgba(255,149,0,0.2);border:1px solid rgba(255,149,0,0.4);color:#ff9500;font-size:0.8rem;font-weight:700;cursor:pointer;">参加</button>`
+                }
+            </div>`;
+        }).join('');
+        cont.innerHTML = `<button onclick="renderFriendModalTop()" style="background:none;border:none;color:#888;font-size:0.85rem;cursor:pointer;margin-bottom:16px;padding:0;">← 戻る</button>
+            <p style="color:#888;font-size:0.8rem;margin:0 0 12px;">グループIDとパスワードはオーナーに確認してください。</p>${cards}`;
+    } catch(e) {
+        cont.innerHTML = `<button onclick="renderFriendModalTop()" style="background:none;border:none;color:#888;font-size:0.85rem;cursor:pointer;margin-bottom:16px;padding:0;">← 戻る</button>
+            <p style="color:#ff6b6b;">エラー: ${e.message}</p>`;
+    }
+}
+
+function prefillJoin(groupId) {
+    renderJoinGroup();
+    setTimeout(() => {
+        const el = document.getElementById('join-group-id');
+        if (el) el.value = groupId;
+    }, 50);
+}
+
+// ── グループ作成 ──
+function openGroupCreate() {
+    if (!_currentUser) { alert('Googleログインが必要です'); return; }
+    _groupIcon     = '🏆';
+    _groupIsPublic = false;
+    document.getElementById('group-create-modal').style.display = 'flex';
+    document.getElementById('group-icon-selected').textContent  = '🏆';
+}
+
+function closeGroupCreate() {
+    document.getElementById('group-create-modal').style.display = 'none';
+}
+
+function toggleIconPicker() {
+    const p = document.getElementById('group-icon-picker');
+    p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+
+function selectGroupIcon(emoji) {
+    _groupIcon = emoji;
+    document.getElementById('group-icon-selected').textContent = emoji;
+    document.getElementById('group-icon-picker').style.display = 'none';
+}
+
+function toggleGroupPublic() {
+    _groupIsPublic = !_groupIsPublic;
+    const tog   = document.getElementById('group-public-toggle');
+    const thumb = document.getElementById('group-public-thumb');
+    tog.style.background = _groupIsPublic ? '#34c759' : '#555';
+    thumb.style.left  = _groupIsPublic ? 'auto' : '2px';
+    thumb.style.right = _groupIsPublic ? '2px'  : 'auto';
+}
+
+async function submitCreateGroup() {
+    if (!_fbDb || !_currentUser) return;
+    const name  = document.getElementById('group-name-input')?.value.trim();
+    const pass  = document.getElementById('group-pass-input')?.value;
+    const pass2 = document.getElementById('group-pass-confirm')?.value;
+    const errEl = document.getElementById('group-create-error');
+
+    if (!name)          { errEl.style.display='block'; errEl.textContent='グループ名を入力してください'; return; }
+    if (!pass)          { errEl.style.display='block'; errEl.textContent='パスワードを入力してください'; return; }
+    if (pass !== pass2) { errEl.style.display='block'; errEl.textContent='パスワードが一致しません'; return; }
+
+    try {
+        const hash = await _hashPass(pass);
+        const me   = { uid: _currentUser.uid, name: _currentUser.displayName || 'オーナー', role: 'owner', joinedAt: Date.now() };
+        const ref  = await _fbDb.collection('groups').add({
+            name,
+            icon:         _groupIcon,
+            passwordHash: hash,
+            isPublic:     _groupIsPublic,
+            ownerId:      _currentUser.uid,
+            ownerName:    _currentUser.displayName || 'オーナー',
+            members:      [me],
+            memberUids:   [_currentUser.uid],
+            createdAt:    Date.now(),
+        });
+        closeGroupCreate();
+        alert(`✅ グループ「${_groupIcon} ${name}」を作成しました！\n\nグループID: ${ref.id}\nこのIDを友達に教えてください。`);
+        renderFriendModalTop();
+    } catch(e) {
+        errEl.style.display='block'; errEl.textContent='エラー: ' + e.message;
+    }
+}
+
+// ── グループ詳細 ──
+async function openGroupDetail(groupId) {
+    if (!_fbDb) return;
+    const modal = document.getElementById('group-detail-modal');
+    const cont  = document.getElementById('group-detail-content');
+    modal.style.display = 'flex';
+    cont.innerHTML = '<p style="color:#888;text-align:center;">読み込み中...</p>';
+
+    try {
+        const doc = await _fbDb.collection('groups').doc(groupId).get();
+        if (!doc.exists) { cont.innerHTML='<p style="color:#ff6b6b;">グループが見つかりません</p>'; return; }
+        const g        = doc.data();
+        const isOwner  = g.ownerId === _currentUser?.uid;
+        const isSub    = g.members?.find(m => m.uid === _currentUser?.uid)?.role === 'sub';
+        const canDelete = isOwner || isSub;
+
+        document.getElementById('group-detail-title').textContent = g.icon + ' ' + g.name;
+
+        const memberRows = (g.members||[]).map(m => {
+            const roleLabel = m.role === 'owner' ? '👑' : m.role === 'sub' ? '⭐' : '👤';
+            const isMe      = m.uid === _currentUser?.uid;
+            const canKick   = canDelete && !isMe && m.role !== 'owner';
+            return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #2a2a2a;">
+                <div style="font-size:1.2rem;">${roleLabel}</div>
+                <div style="flex:1;">
+                    <div style="color:#fff;font-size:0.9rem;font-weight:700;">${m.name}${isMe?' (自分)':''}</div>
+                    <div style="color:#666;font-size:0.75rem;">${new Date(m.joinedAt).toLocaleDateString('ja-JP')} 参加</div>
+                </div>
+                ${canKick ? `<button onclick="requestDeleteMember('${groupId}','${m.uid}','${m.name}')" style="padding:4px 12px;border-radius:8px;background:rgba(255,59,48,0.15);border:1px solid rgba(255,59,48,0.3);color:#ff6b6b;font-size:0.75rem;font-weight:700;cursor:pointer;">削除申請</button>` : ''}
+                ${isOwner && m.role === 'member' ? `<button onclick="promoteToSub('${groupId}','${m.uid}')" style="padding:4px 12px;border-radius:8px;background:rgba(255,149,0,0.15);border:1px solid rgba(255,149,0,0.3);color:#ff9500;font-size:0.75rem;font-weight:700;cursor:pointer;">副オーナーに</button>` : ''}
+            </div>`;
+        }).join('');
+
+        // 保留中の削除申請
+        const pendingSnap = await _fbDb.collection('group_delete_requests')
+            .where('groupId','==',groupId).where('status','==','pending').get();
+        const pendingHtml = pendingSnap.docs.filter(d => d.data().targetUid === _currentUser?.uid).map(d => {
+            const req = d.data();
+            return `<div style="background:rgba(255,59,48,0.1);border:1px solid rgba(255,59,48,0.3);border-radius:12px;padding:12px;margin-bottom:10px;">
+                <p style="color:#ff6b6b;font-size:0.85rem;margin:0 0 8px;">⚠️ 「${req.requestedByName}」さんからあなたの削除申請が来ています</p>
+                <div style="display:flex;gap:8px;">
+                    <button onclick="approveDeletion('${d.id}','${groupId}')" style="flex:1;padding:8px;border-radius:10px;background:rgba(255,59,48,0.2);border:1px solid rgba(255,59,48,0.4);color:#ff6b6b;font-size:0.82rem;font-weight:700;cursor:pointer;">承認して退出</button>
+                    <button onclick="rejectDeletion('${d.id}')" style="flex:1;padding:8px;border-radius:10px;background:#222;border:1px solid #333;color:#888;font-size:0.82rem;font-weight:700;cursor:pointer;">拒否</button>
+                </div>
+            </div>`;
+        }).join('');
+
+        cont.innerHTML = `
+            ${pendingHtml}
+            <div style="background:#1a1a1a;border-radius:12px;padding:12px;margin-bottom:16px;">
+                <div style="color:#888;font-size:0.75rem;margin-bottom:4px;">グループID（参加者に共有）</div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <code style="color:#ff9500;font-size:0.9rem;flex:1;">${groupId}</code>
+                    <button onclick="navigator.clipboard.writeText('${groupId}').then(()=>alert('コピーしました！'))" style="padding:4px 10px;border-radius:8px;background:#333;border:none;color:#888;font-size:0.75rem;cursor:pointer;">コピー</button>
+                </div>
+                <div style="color:#555;font-size:0.72rem;margin-top:4px;">${g.isPublic?'🌐 公開':'🔒 非公開'} ・ ${g.members?.length||0}/5人</div>
+            </div>
+            <div style="margin-bottom:16px;">${memberRows}</div>
+            ${isOwner ? `
+                <div style="display:grid;gap:8px;margin-top:16px;border-top:1px solid #2a2a2a;padding-top:16px;">
+                    <button onclick="editGroupName('${groupId}')" style="padding:10px;border-radius:12px;background:rgba(0,122,255,0.1);border:1px solid rgba(0,122,255,0.3);color:#6bb5ff;font-size:0.85rem;font-weight:700;cursor:pointer;">✏️ グループ名を変更</button>
+                    <button onclick="editGroupPass('${groupId}')" style="padding:10px;border-radius:12px;background:rgba(0,122,255,0.1);border:1px solid rgba(0,122,255,0.3);color:#6bb5ff;font-size:0.85rem;font-weight:700;cursor:pointer;">🔑 パスワードを変更</button>
+                    <button onclick="dissolveGroup('${groupId}')" style="padding:10px;border-radius:12px;background:rgba(255,59,48,0.1);border:1px solid rgba(255,59,48,0.3);color:#ff6b6b;font-size:0.85rem;font-weight:700;cursor:pointer;">🗑 グループを解散</button>
+                </div>
+            ` : `
+                <button onclick="leaveGroup('${groupId}')" style="width:100%;margin-top:16px;padding:10px;border-radius:12px;background:rgba(255,59,48,0.1);border:1px solid rgba(255,59,48,0.3);color:#ff6b6b;font-size:0.85rem;font-weight:700;cursor:pointer;">退出する</button>
+            `}`;
+    } catch(e) {
+        cont.innerHTML = `<p style="color:#ff6b6b;">エラー: ${e.message}</p>`;
+    }
+}
+
+function closeGroupDetail() {
+    document.getElementById('group-detail-modal').style.display = 'none';
+}
+
+// ── メンバー削除申請 ──
+async function requestDeleteMember(groupId, targetUid, targetName) {
+    if (!_fbDb || !_currentUser) return;
+    if (!confirm(`「${targetName}」さんの削除を申請しますか？\n相手が承認するとグループから退出されます。`)) return;
+    try {
+        await _fbDb.collection('group_delete_requests').add({
+            groupId,
+            targetUid,
+            targetName,
+            requestedBy:     _currentUser.uid,
+            requestedByName: _currentUser.displayName || 'オーナー',
+            status:          'pending',
+            createdAt:       Date.now(),
+        });
+        alert('✅ 削除申請を送りました。相手の承認をお待ちください。');
+    } catch(e) { alert('エラー: ' + e.message); }
+}
+
+async function approveDeletion(requestId, groupId) {
+    if (!_fbDb || !_currentUser) return;
+    if (!confirm('削除申請を承認してグループを退出しますか？')) return;
+    try {
+        // メンバー配列から自分を除去
+        const doc = await _fbDb.collection('groups').doc(groupId).get();
+        const g   = doc.data();
+        const newMembers  = g.members.filter(m => m.uid !== _currentUser.uid);
+        const newMemberUids = g.memberUids.filter(u => u !== _currentUser.uid);
+        await _fbDb.collection('groups').doc(groupId).update({ members: newMembers, memberUids: newMemberUids });
+        await _fbDb.collection('group_delete_requests').doc(requestId).update({ status: 'approved' });
+        alert('✅ グループから退出しました');
+        closeGroupDetail();
+        renderFriendModalTop();
+    } catch(e) { alert('エラー: ' + e.message); }
+}
+
+async function rejectDeletion(requestId) {
+    if (!_fbDb) return;
+    await _fbDb.collection('group_delete_requests').doc(requestId).update({ status: 'rejected' });
+    alert('❌ 削除申請を拒否しました');
+    closeGroupDetail();
+}
+
+// ── 副オーナーに昇格 ──
+async function promoteToSub(groupId, targetUid) {
+    if (!_fbDb || !_currentUser) return;
+    if (!confirm('このメンバーを副オーナーに昇格しますか？')) return;
+    try {
+        const doc = await _fbDb.collection('groups').doc(groupId).get();
+        const g   = doc.data();
+        const newMembers = g.members.map(m => m.uid === targetUid ? { ...m, role: 'sub' } : m);
+        await _fbDb.collection('groups').doc(groupId).update({ members: newMembers });
+        alert('✅ 副オーナーに昇格しました');
+        openGroupDetail(groupId);
+    } catch(e) { alert('エラー: ' + e.message); }
+}
+
+// ── グループ名変更 ──
+async function editGroupName(groupId) {
+    const newName = prompt('新しいグループ名を入力してください（20文字以内）');
+    if (!newName || !newName.trim()) return;
+    if (newName.trim().length > 20) { alert('20文字以内で入力してください'); return; }
+    try {
+        await _fbDb.collection('groups').doc(groupId).update({ name: newName.trim() });
+        alert('✅ グループ名を変更しました');
+        openGroupDetail(groupId);
+    } catch(e) { alert('エラー: ' + e.message); }
+}
+
+// ── パスワード変更 ──
+async function editGroupPass(groupId) {
+    const newPass = prompt('新しいパスワードを入力してください');
+    if (!newPass) return;
+    const confirm2 = prompt('もう一度入力してください');
+    if (newPass !== confirm2) { alert('パスワードが一致しません'); return; }
+    try {
+        const hash = await _hashPass(newPass);
+        await _fbDb.collection('groups').doc(groupId).update({ passwordHash: hash });
+        alert('✅ パスワードを変更しました');
+    } catch(e) { alert('エラー: ' + e.message); }
+}
+
+// ── グループ解散 ──
+async function dissolveGroup(groupId) {
+    if (!confirm('本当にグループを解散しますか？\nこの操作は取り消せません。')) return;
+    try {
+        await _fbDb.collection('groups').doc(groupId).delete();
+        alert('✅ グループを解散しました');
+        closeGroupDetail();
+        renderFriendModalTop();
+    } catch(e) { alert('エラー: ' + e.message); }
+}
+
+// ── グループ退出（メンバー）──
+async function leaveGroup(groupId) {
+    if (!_currentUser || !_fbDb) return;
+    if (!confirm('グループを退出しますか？')) return;
+    try {
+        const doc = await _fbDb.collection('groups').doc(groupId).get();
+        const g   = doc.data();
+        const newMembers    = g.members.filter(m => m.uid !== _currentUser.uid);
+        const newMemberUids = g.memberUids.filter(u => u !== _currentUser.uid);
+        await _fbDb.collection('groups').doc(groupId).update({ members: newMembers, memberUids: newMemberUids });
+        alert('✅ グループから退出しました');
+        closeGroupDetail();
+        renderFriendModalTop();
+    } catch(e) { alert('エラー: ' + e.message); }
+}
+
 const _CODE_MAP = {
     'ef56e0095f7d7fa387680bd5c14f6462a0948ccc16079503c6d5a721b05519d9': '56aP5bKh5biC56uL5Yil5bqc5bCP5a2m5qCh'
 };
