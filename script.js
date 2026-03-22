@@ -3285,7 +3285,7 @@ function showHistoryModal() {
     const maxHistory = _currentUser ? 5 : 3;
     const benefitBadge = _currentUser
         ? '<div style="background:linear-gradient(135deg,#6366f1,#a78bfa);color:#fff;font-size:0.75rem;font-weight:700;padding:4px 12px;border-radius:20px;display:inline-block;margin-bottom:12px;">⭐ ログイン特典：最大5件保存 / 固定機能解放</div>'
-        : '<div style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a78bfa;font-size:0.75rem;font-weight:700;padding:4px 12px;border-radius:20px;display:inline-block;margin-bottom:12px;cursor:pointer;" onclick="signInWithGoogle()">🔒 Googleログインで最大5件保存・固定機能が解放</div>';
+        : '<div style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a78bfa;font-size:0.75rem;font-weight:700;padding:4px 12px;border-radius:20px;display:inline-block;margin-bottom:12px;cursor:pointer;" onclick="openLoginModal()">🔒 ログインで最大5件保存・固定機能が解放</div>';
 
     if (history.length === 0) {
         cont.innerHTML = benefitBadge + '<p style="color:var(--sub-text);text-align:center;padding:20px;">まだ診断結果がありません。</p>';
@@ -3654,8 +3654,8 @@ function renderFriendModalTop() {
                 </button>
             ` : `
                 <div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:14px;padding:14px;margin-bottom:4px;">
-                    <p style="color:#a78bfa;font-size:0.85rem;margin:0 0 10px;">グループを作成・管理するにはGoogleログインが必要です。</p>
-                    <button onclick="signInWithGoogle()" style="width:100%;padding:10px;border-radius:10px;background:linear-gradient(135deg,#4285f4,#34a853);color:#fff;border:none;font-weight:700;cursor:pointer;font-size:0.88rem;">Googleでログイン</button>
+                    <p style="color:#a78bfa;font-size:0.85rem;margin:0 0 10px;">グループを作成・管理するにはログインが必要です。</p>
+                    <button onclick="openLoginModal()" style="width:100%;padding:10px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;font-weight:700;cursor:pointer;font-size:0.88rem;">🔐 ログインする（Google / GitHub）</button>
                 </div>
                 <button onclick="renderJoinGroup()" style="padding:14px;border-radius:14px;background:rgba(255,149,0,0.15);border:1px solid rgba(255,149,0,0.4);color:#ff9500;font-size:0.95rem;font-weight:800;cursor:pointer;text-align:left;">
                     🔑 グループに参加する（コード入力）
@@ -3808,7 +3808,7 @@ function prefillJoin(groupId) {
 
 // ── グループ作成 ──
 function openGroupCreate() {
-    if (!_currentUser) { alert('Googleログインが必要です'); return; }
+    if (!_currentUser) { openLoginModal(); return; }
     _groupIcon     = '🏆';
     _groupIsPublic = false;
     document.getElementById('group-create-modal').style.display = 'flex';
@@ -4206,7 +4206,11 @@ function initFirebase() {
         _fbAuth.onAuthStateChanged(user => {
             _currentUser = user;
             updateAuthUI(user);
-            if (user) syncHistoryFromCloud();
+            if (user) {
+                syncHistoryFromCloud();
+                // Redirectログイン後にtui()が準備できてるか保証するため再適用
+                try { applyLanguage(); } catch(e) {}
+            }
         });
 
         // Redirectログイン後の結果を受け取る
@@ -4326,6 +4330,10 @@ async function syncHistoryFromCloud() {
     } catch(e) {
         document.getElementById('auth-sync-status').textContent = tui().syncFail;
     }
+}
+
+function openLoginModal() {
+    document.getElementById('auth-modal').style.display = 'flex';
 }
 
 function requireLogin(featureName, callback) {
