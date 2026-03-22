@@ -15,7 +15,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
     <link rel="icon" type="image/png" sizes="192x192" href="android-chrome-192x192.png">
     <link rel="icon" type="image/png" sizes="512x512" href="android-chrome-512x512.png">
-    <title>精密デバイス診断 Pro Ultra Beta1.6.0</title>
+    <title>精密デバイス診断 Pro Ultra Beta1.7.5</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
@@ -284,30 +284,47 @@
         
         <!-- バージョンタイトル -->
         <h2 style="margin: 0 0 20px; font-size: 1.4rem; font-weight: 900; color: var(--text); border-bottom: 2px solid var(--border); padding-bottom: 15px;">
-            🚀 Update Beta 1.6.0
+            🚀 Update Beta 1.7.5
         </h2>
         
         <!-- 【自由記述エリア】ここを書き換えるだけでOK -->
         <div id="update-text-area" style="font-size: 1rem; color: var(--text); line-height: 1.8; max-height: 450px; overflow-y: auto; margin-bottom: 25px; padding-right: 10px;">
             
-            <strong>【Beta 1.6.0 新機能】⚙️ 設定機能を追加！</strong><br>
-            画面右下の⚙️ボタンから設定を開けます。<br><br>
+            <strong>【Beta 1.7.5 大型アップデート！】</strong><br><br>
 
-            <strong>追加された設定項目：</strong><br>
-            ・<strong>テーマ変更</strong>（ダーク / ライト / システム追従）<br>
-            ・<strong>フォントサイズ変更</strong>（小 / 普通 / 大 / カスタム：スライダーで自由設定）<br>
-            ・<strong>表示言語</strong>（11言語対応：日本語・English・中文・한국어・Tiếng Việt・Español・Português・Français・Deutsch・Русский・にほんご）<br>
-            ・<strong>Google翻訳崩れ防止</strong><br>
-            ・<strong>診断終了音 / バイブレーション</strong><br>
-            ・<strong>完了時デスクトップ通知 / アイコンバッジ</strong><br>
-            ・<strong>お休み時間設定</strong>（指定時間帯は通知しない）<br>
-            ・<strong>データ書き出し形式</strong>（PNG / CSV / TXT）<br>
-            ・<strong>通信速度の単位</strong>（Mbps / MB/s）<br>
-            ・<strong>開いたとき自動診断 / うっかりガード</strong><br><br>
+            <strong>🆚 デバイス対戦（NEW！）</strong><br>
+            診断完了後に「🆚 デバイス対戦」ボタンが出現。友達と診断結果を比較して勝負できます！<br>
+            ・<strong>Firestoreコード方式</strong>：6桁コードを発行→友達がコード入力→対戦（有効期限20分）<br>
+            ・<strong>QR/URL方式</strong>：QRコードまたはURLをシェア→友達が診断後に自動で対戦画面<br>
+            ・項目ごとに勝ち負けを🟢🔴で色分け表示<br><br>
 
-            <strong>【Beta 1.7の告知】</strong><br>
-            Beta 1.6でリリース予定だった「親友コード」の自己申請機能は、<strong>Beta 1.7に延期</strong>します。<br>
-            より安全で使いやすい仕組みを準備中です。お待ちください。<br><br>
+            <strong>💬 フィードバック・バグ報告（NEW！）</strong><br>
+            画面下部の「💬 フィードバック」から、バグ報告・機能要望などを送信できます。<br>
+            匿名で送信されます。デバイス情報の添付も選択できます。<br><br>
+
+            <strong>📈 スコア推移グラフ（NEW！）</strong><br>
+            「📊 過去の診断結果を見る」に診断スコアの推移グラフを追加。2件以上たまると表示されます。<br><br>
+
+            <strong>📌 履歴の固定機能（ログイン特典）</strong><br>
+            Googleログイン済みの方は、過去の診断結果を「固定」できるようになりました。固定した結果は常に先頭に表示されます。<br><br>
+
+            <strong>💾 履歴5件保存（ログイン特典）</strong><br>
+            Googleログイン済みの方は、保存件数が3件→<strong>5件</strong>に拡張されます。<br><br>
+
+            <strong>⚙️ 設定機能の強化</strong><br>
+            ・<strong>フォント変更</strong>：システム標準・ゴシック・明朝・丸ゴシック・等幅から選択。Chromeでは端末インストール済みフォントも使用可能<br>
+            ・<strong>カスタムフォントサイズ</strong>：スライダーで10〜32pxを自由設定<br>
+            ・<strong>サウンドプリセット</strong>：デフォルト・ベル・ビープ・ファンファーレの4種＋カスタム音声ファイル（MP3/WAV/FLAC）対応。試聴ボタン付き<br><br>
+
+            <strong>📄 書き出し形式の追加</strong><br>
+            ・<strong>CSV</strong>：診断結果を表計算ソフト（Excel等）で開けるCSVとして書き出し<br>
+            ・<strong>PDF</strong>：jsPDFで本物のPDFファイルとして書き出し（スマホ対応）<br><br>
+
+            <strong>📋 利用規約を追加</strong><br>
+            画面下部の「📋 利用規約」から確認できます。11言語対応。<br><br>
+
+            <strong>【Beta 1.7.0での告知】</strong><br>
+            Beta 1.6で延期していた「親友コード」の自己申請機能は、<strong>Beta 1.8</strong>での実装を目標に開発中です。<br><br>
 
             <!-- 次のアプデ文はこの下に追加していくだけでOK -->
 
@@ -323,7 +340,7 @@
 
 <script>
     // バージョン識別キー（アプデのたびに末尾の数字などを変えてください）
-    const CURRENT_UPDATE_ID = "Beta_1.6.0";
+    const CURRENT_UPDATE_ID = "Beta_1.7.5";
 
     // 読み込み時に表示を判定
     window.addEventListener('DOMContentLoaded', () => {
