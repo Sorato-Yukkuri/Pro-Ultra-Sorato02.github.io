@@ -4284,10 +4284,14 @@ async function signInWithGitHub() {
     document.getElementById('auth-modal').style.display = 'none';
     try {
         const provider = new firebase.auth.GithubAuthProvider();
-        await _fbAuth.signInWithRedirect(provider);
+        await _fbAuth.signInWithPopup(provider);
     } catch(e) {
-        if (e.code !== 'auth/popup-closed-by-user') {
-            alert("GitHubログインに失敗しました: " + e.message);
+        if (e.code === 'auth/account-exists-with-different-credential') {
+            alert('このメールアドレスはすでにGoogleで登録済みです。Googleでログインしてください。');
+        } else if (e.code === 'auth/popup-blocked') {
+            alert('ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。');
+        } else if (e.code !== 'auth/popup-closed-by-user') {
+            alert('GitHubログインに失敗しました: ' + e.message);
         }
     }
 }
