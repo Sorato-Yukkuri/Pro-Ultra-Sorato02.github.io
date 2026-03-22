@@ -4209,6 +4209,19 @@ function initFirebase() {
             if (user) syncHistoryFromCloud();
         });
 
+        // Redirectログイン後の結果を受け取る
+        _fbAuth.getRedirectResult().then(result => {
+            if (result && result.user) {
+                // ログイン成功（onAuthStateChangedでも処理されるので特に何もしない）
+            }
+        }).catch(e => {
+            if (e.code === 'auth/account-exists-with-different-credential') {
+                alert('このメールアドレスはすでに別の方法（Google等）で登録済みです。Googleでログインしてください。');
+            } else if (e.code) {
+                alert('ログインに失敗しました: ' + e.message);
+            }
+        });
+
         document.getElementById('auth-bar').style.display = 'flex';
     } catch(e) {
         console.error("Firebase初期化エラー:", e);
@@ -4263,11 +4276,9 @@ async function signInWithGitHub() {
     document.getElementById('auth-modal').style.display = 'none';
     try {
         const provider = new firebase.auth.GithubAuthProvider();
-        await _fbAuth.signInWithPopup(provider);
+        await _fbAuth.signInWithRedirect(provider);
     } catch(e) {
-        if (e.code === 'auth/account-exists-with-different-credential') {
-            alert("このメールアドレスは別の方法でログイン済みです。Googleでログインしてください。");
-        } else if (e.code !== 'auth/popup-closed-by-user') {
+        if (e.code !== 'auth/popup-closed-by-user') {
             alert("GitHubログインに失敗しました: " + e.message);
         }
     }
