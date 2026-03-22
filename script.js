@@ -628,6 +628,9 @@ function applyLanguage() {
         const d = TERMS_I18N[lang] || TERMS_I18N['ja'];
         const footerLabel = document.getElementById('footer-terms-label');
         if (footerLabel) footerLabel.textContent = d.footer;
+        const fbLabel = document.getElementById('footer-feedback-label');
+        const fbD = FB_I18N[lang] || FB_I18N['ja'];
+        if (fbLabel) fbLabel.textContent = fbD.title.replace('💬 ', '');
     } catch(e) {}
 
     } catch(e) { console.warn('applyLanguage error:', e); }
@@ -2364,6 +2367,7 @@ function processFinalReport() {
     document.getElementById('share-hint').style.display='block';
     document.getElementById('history-btn').style.display='block';
     document.getElementById('speed-btn').style.display='block';
+    document.getElementById('battle-btn').style.display='block';
     document.getElementById('retry-btn').style.display='block';
 
     // 診断完了トースト
@@ -2386,6 +2390,14 @@ function processFinalReport() {
     vibrateOnDone();
     setTimeout(() => { notifyOnDone(rank, totalScore); }, 800);
     setBadge();
+
+    // URLパラメータから対戦相手がいれば自動表示
+    if (window._pendingBattleOpponent) {
+        setTimeout(() => {
+            showBattleResult(_getBattleData(), window._pendingBattleOpponent, 'URL');
+            window._pendingBattleOpponent = null;
+        }, 1000);
+    }
 }
 
 /* ── キャプチャ ── */
@@ -3255,7 +3267,8 @@ function saveResultToHistory(totalScore, rank, scores, ramGB, avgFps, lowFps, ne
         };
         const history = JSON.parse(localStorage.getItem('diag_history') || '[]');
         history.unshift(entry);
-        if (history.length > 3) history.splice(3);
+        const maxHistory = _currentUser ? 5 : 3;
+        if (history.length > maxHistory) history.splice(maxHistory);
         localStorage.setItem('diag_history', JSON.stringify(history));
         // クラウド同期
         syncHistoryToCloud(history);
@@ -3268,16 +3281,30 @@ function showHistoryModal() {
     let history = [];
     try { history = JSON.parse(localStorage.getItem('diag_history') || '[]'); } catch(e) {}
 
+    // ログイン特典バッジ
+    const maxHistory = _currentUser ? 5 : 3;
+    const benefitBadge = _currentUser
+        ? '<div style="background:linear-gradient(135deg,#6366f1,#a78bfa);color:#fff;font-size:0.75rem;font-weight:700;padding:4px 12px;border-radius:20px;display:inline-block;margin-bottom:12px;">⭐ ログイン特典：最大5件保存 / 固定機能解放</div>'
+        : '<div style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a78bfa;font-size:0.75rem;font-weight:700;padding:4px 12px;border-radius:20px;display:inline-block;margin-bottom:12px;cursor:pointer;" onclick="signInWithGoogle()">🔒 Googleログインで最大5件保存・固定機能が解放</div>';
+
     if (history.length === 0) {
-        cont.innerHTML = '<p style="color:var(--sub-text);text-align:center;padding:20px;">まだ診断結果がありません。</p>';
+        cont.innerHTML = benefitBadge + '<p style="color:var(--sub-text);text-align:center;padding:20px;">まだ診断結果がありません。</p>';
     } else {
+        // 固定されたものを先頭に
+        const pinned   = history.filter(h => h.pinned);
+        const unpinned = history.filter(h => !h.pinned);
+        const sorted   = [...pinned, ...unpinned];
+
         const rankColors = {S:'#ff3b30',A:'#ff9500',B:'#34c759',C:'#007aff',D:'#8e8e93'};
-        cont.innerHTML = history.map((h, i) => `
-            <div data-card-index="${i}" style="background:#1a1a1a;border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:12px;">
+        const cards = sorted.map((h, i) => {
+            const origIdx = history.indexOf(h);
+            return `
+            <div data-card-index="${origIdx}" style="background:#1a1a1a;border:1px solid ${h.pinned ? '#6366f1' : 'var(--border)'};border-radius:16px;padding:18px;margin-bottom:12px;${h.pinned ? 'box-shadow:0 0 12px rgba(99,102,241,0.2);' : ''}">
                 <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px;">
                     <div style="width:52px;height:52px;border-radius:12px;background:#000;border:3px solid ${rankColors[h.rank]||'#888'};display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:900;color:${rankColors[h.rank]||'#888'};">${h.rank}</div>
                     <div style="flex:1;min-width:0;">
                         <div class="history-name-area">${h.name ? `<div style="font-weight:800;font-size:0.9rem;color:#6bb5ff;margin-bottom:2px;">📌 ${h.name}</div>` : ''}</div>
+                        ${h.pinned ? '<div style="font-size:0.72rem;color:#a78bfa;font-weight:700;margin-bottom:2px;">📍 固定中</div>' : ''}
                         <div style="font-weight:800;font-size:1.1rem;">総合スコア ${h.totalScore}/100</div>
                         <div style="color:var(--sub-text);font-size:0.82rem;">${h.date}</div>
                     </div>
@@ -3291,24 +3318,126 @@ function showHistoryModal() {
                     <div style="background:#222;border-radius:8px;padding:8px;text-align:center;"><div style="color:var(--sub-text);">NET</div><div style="font-weight:800;">${h.networkMbps!=null?h.networkMbps+'M':'--'}</div></div>
                 </div>
                 <div style="display:flex;gap:8px;margin-top:10px;">
-                    <button data-action="rename" data-index="${i}" style="flex:1;padding:9px;border-radius:10px;background:rgba(0,122,255,0.15);border:1px solid rgba(0,122,255,0.3);color:#6bb5ff;font-size:0.82rem;font-weight:700;cursor:pointer;">✏️ 名前をつける</button>
-                    <button data-action="delete" data-index="${i}" style="flex:1;padding:9px;border-radius:10px;background:rgba(255,59,48,0.15);border:1px solid rgba(255,59,48,0.3);color:#ff6b6b;font-size:0.82rem;font-weight:700;cursor:pointer;">🗑 削除</button>
+                    ${_currentUser ? `<button data-action="pin" data-index="${origIdx}" style="flex:1;padding:9px;border-radius:10px;background:${h.pinned ? 'rgba(99,102,241,0.3)' : 'rgba(99,102,241,0.1)'};border:1px solid rgba(99,102,241,0.4);color:#a78bfa;font-size:0.82rem;font-weight:700;cursor:pointer;">${h.pinned ? '📍 固定解除' : '📌 固定'}</button>` : ''}
+                    <button data-action="rename" data-index="${origIdx}" style="flex:1;padding:9px;border-radius:10px;background:rgba(0,122,255,0.15);border:1px solid rgba(0,122,255,0.3);color:#6bb5ff;font-size:0.82rem;font-weight:700;cursor:pointer;">✏️ 名前をつける</button>
+                    <button data-action="delete" data-index="${origIdx}" style="flex:1;padding:9px;border-radius:10px;background:rgba(255,59,48,0.15);border:1px solid rgba(255,59,48,0.3);color:#ff6b6b;font-size:0.82rem;font-weight:700;cursor:pointer;">🗑 削除</button>
                 </div>
-            </div>
-        `).join('');
+            </div>`;
+        }).join('');
+
+        // スコア推移グラフ（2件以上のとき表示）
+        let graphHtml = '';
+        if (history.length >= 2) {
+            graphHtml = `
+            <div style="background:#1a1a1a;border:1px solid var(--border);border-radius:16px;padding:16px;margin-bottom:12px;">
+                <div style="font-size:0.85rem;font-weight:800;color:var(--sub-text);margin-bottom:10px;">📈 スコア推移</div>
+                <canvas id="score-chart" height="120" style="width:100%;"></canvas>
+            </div>`;
+        }
+
+        cont.innerHTML = benefitBadge + graphHtml + cards;
+
+        // グラフ描画
+        if (history.length >= 2) {
+            const ctx = document.getElementById('score-chart');
+            if (ctx) drawScoreChart(ctx, [...history].reverse());
+        }
     }
     modal.style.display = 'flex';
 
-    // イベント委譲（innerHTML経由のonclickは効かないため）
     cont.onclick = (e) => {
         const btn = e.target.closest('button[data-action]');
         if (!btn) return;
         const idx = parseInt(btn.dataset.index);
+        if (btn.dataset.action === 'pin')           togglePin(idx);
         if (btn.dataset.action === 'rename')        renameHistory(idx);
         if (btn.dataset.action === 'rename-save')   saveRename(idx);
         if (btn.dataset.action === 'rename-cancel') showHistoryModal();
         if (btn.dataset.action === 'delete')        deleteHistory(idx);
     };
+}
+
+function togglePin(idx) {
+    try {
+        const history = JSON.parse(localStorage.getItem('diag_history') || '[]');
+        if (!history[idx]) return;
+        history[idx].pinned = !history[idx].pinned;
+        localStorage.setItem('diag_history', JSON.stringify(history));
+        showHistoryModal();
+    } catch(e) {}
+}
+
+function drawScoreChart(canvas, history) {
+    const W = canvas.offsetWidth || 300;
+    canvas.width  = W * 2;
+    canvas.height = 240;
+    canvas.style.width  = '100%';
+    canvas.style.height = '120px';
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.scale(2, 2);
+    const w = W, h = 120;
+    const pad = { top: 10, right: 16, bottom: 28, left: 32 };
+    const cw = w - pad.left - pad.right;
+    const ch = h - pad.top - pad.bottom;
+
+    const scores   = history.map(h => h.totalScore);
+    const labels   = history.map(h => h.date.slice(5, 10)); // MM/DD
+    const maxS     = Math.max(...scores, 60);
+    const minS     = Math.max(0, Math.min(...scores) - 10);
+    const n        = scores.length;
+
+    const xPos = i => pad.left + (i / (n - 1)) * cw;
+    const yPos = s => pad.top + ch - ((s - minS) / (maxS - minS)) * ch;
+
+    // グリッド線
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth   = 1;
+    [0, 0.5, 1].forEach(t => {
+        const y = pad.top + ch * t;
+        ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(pad.left + cw, y); ctx.stroke();
+    });
+
+    // グラデーション塗り
+    const grad = ctx.createLinearGradient(0, pad.top, 0, pad.top + ch);
+    grad.addColorStop(0, 'rgba(0,122,255,0.35)');
+    grad.addColorStop(1, 'rgba(0,122,255,0)');
+    ctx.beginPath();
+    ctx.moveTo(xPos(0), yPos(scores[0]));
+    scores.forEach((s, i) => { if (i > 0) ctx.lineTo(xPos(i), yPos(s)); });
+    ctx.lineTo(xPos(n-1), pad.top + ch);
+    ctx.lineTo(xPos(0),   pad.top + ch);
+    ctx.closePath();
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    // ライン
+    ctx.beginPath();
+    ctx.strokeStyle = '#007aff';
+    ctx.lineWidth   = 2.5;
+    ctx.lineJoin    = 'round';
+    scores.forEach((s, i) => { i === 0 ? ctx.moveTo(xPos(i), yPos(s)) : ctx.lineTo(xPos(i), yPos(s)); });
+    ctx.stroke();
+
+    // 点とスコア値
+    scores.forEach((s, i) => {
+        ctx.beginPath();
+        ctx.arc(xPos(i), yPos(s), 4, 0, Math.PI * 2);
+        ctx.fillStyle   = '#fff';
+        ctx.strokeStyle = '#007aff';
+        ctx.lineWidth   = 2;
+        ctx.fill(); ctx.stroke();
+        ctx.fillStyle  = '#fff';
+        ctx.font       = 'bold 9px sans-serif';
+        ctx.textAlign  = 'center';
+        ctx.fillText(s, xPos(i), yPos(s) - 8);
+    });
+
+    // 日付ラベル
+    ctx.fillStyle  = 'rgba(255,255,255,0.4)';
+    ctx.font       = '8px sans-serif';
+    ctx.textAlign  = 'center';
+    labels.forEach((l, i) => ctx.fillText(l, xPos(i), h - 4));
 }
 
 /* ── ページ読み込み速度テスト ── */
@@ -3427,6 +3556,7 @@ function retryDiagnostic() {
     document.getElementById('share-hint').style.display  = 'none';
     document.getElementById('history-btn').style.display = 'none';
     document.getElementById('speed-btn').style.display   = 'none';
+    document.getElementById('battle-btn').style.display  = 'none';
     document.getElementById('retry-btn').style.display   = 'none';
     const trEl = document.getElementById('time-remaining');
     if (trEl) trEl.textContent = '';
@@ -3762,6 +3892,9 @@ window.addEventListener('load',()=>{
     // 設定読み込み・適用（エラーが起きても診断は必ず実行）
     try { loadSettings(); } catch(e) { console.warn('loadSettings error:', e); }
     try { applySettings(); } catch(e) { console.warn('applySettings error:', e); }
+
+    // URLに対戦パラメータがあれば保持
+    _checkBattleURL();
 
     document.getElementById('b-ua').textContent = navigator.userAgent;
     document.getElementById('dl-btn').addEventListener('click', downloadCapturedImage);
@@ -4206,6 +4339,402 @@ const TERMS_I18N = {
 <p style="color:#555;font-size:0.8rem;margin-top:20px;">Последнее обновление: _TERMS_DATE_ | Pro Ultra Beta 1.6.0</p>`
     },
 };
+
+// ══════════════════════════════════════════════════════════════
+// 💬 フィードバック（Formspree）
+// ══════════════════════════════════════════════════════════════
+const FORMSPREE_ID = 'mojkzbvz';
+let _fbDeviceAttach = true;
+
+const FB_I18N = {
+    'ja':      { title:'💬 フィードバック', desc:'バグ報告・機能要望など、お気軽にどうぞ。匿名で送信されます。', catLabel:'カテゴリ', bodyLabel:'内容', bodyPlaceholder:'詳しく教えてください...', deviceLabel:'デバイス情報を添付する（ランク・スコア等）', submit:'📨 送信する', sending:'送信中...', success:'✅ 送信しました！ありがとうございます。', error:'❌ 送信に失敗しました。もう一度お試しください。', catBug:'🐛 バグ報告', catFeature:'✨ 機能要望', catOther:'💭 その他', close:'閉じる' },
+    'en':      { title:'💬 Feedback', desc:'Bug reports, feature requests — all welcome. Sent anonymously.', catLabel:'Category', bodyLabel:'Details', bodyPlaceholder:'Please describe in detail...', deviceLabel:'Attach device info (rank, score, etc.)', submit:'📨 Send', sending:'Sending...', success:'✅ Sent! Thank you.', error:'❌ Failed to send. Please try again.', catBug:'🐛 Bug Report', catFeature:'✨ Feature Request', catOther:'💭 Other', close:'Close' },
+    'zh-hans': { title:'💬 反馈', desc:'欢迎提交错误报告和功能建议，匿名发送。', catLabel:'类别', bodyLabel:'内容', bodyPlaceholder:'请详细描述...', deviceLabel:'附加设备信息（等级、分数等）', submit:'📨 发送', sending:'发送中...', success:'✅ 已发送！感谢您的反馈。', error:'❌ 发送失败，请重试。', catBug:'🐛 错误报告', catFeature:'✨ 功能建议', catOther:'💭 其他', close:'关闭' },
+    'zh-hant': { title:'💬 回饋', desc:'歡迎提交錯誤報告和功能建議，匿名發送。', catLabel:'類別', bodyLabel:'內容', bodyPlaceholder:'請詳細描述...', deviceLabel:'附加裝置資訊（等級、分數等）', submit:'📨 發送', sending:'發送中...', success:'✅ 已發送！感謝您的回饋。', error:'❌ 發送失敗，請重試。', catBug:'🐛 錯誤報告', catFeature:'✨ 功能建議', catOther:'💭 其他', close:'關閉' },
+    'ko':      { title:'💬 피드백', desc:'버그 보고, 기능 요청 등 편하게 보내주세요. 익명으로 전송됩니다.', catLabel:'카테고리', bodyLabel:'내용', bodyPlaceholder:'자세히 설명해 주세요...', deviceLabel:'기기 정보 첨부 (등급, 점수 등)', submit:'📨 전송', sending:'전송 중...', success:'✅ 전송되었습니다! 감사합니다.', error:'❌ 전송 실패. 다시 시도해 주세요.', catBug:'🐛 버그 보고', catFeature:'✨ 기능 요청', catOther:'💭 기타', close:'닫기' },
+    'vi':      { title:'💬 Phản hồi', desc:'Báo lỗi, yêu cầu tính năng — đều được chào đón. Gửi ẩn danh.', catLabel:'Danh mục', bodyLabel:'Nội dung', bodyPlaceholder:'Vui lòng mô tả chi tiết...', deviceLabel:'Đính kèm thông tin thiết bị (hạng, điểm, v.v.)', submit:'📨 Gửi', sending:'Đang gửi...', success:'✅ Đã gửi! Cảm ơn bạn.', error:'❌ Gửi thất bại. Vui lòng thử lại.', catBug:'🐛 Báo lỗi', catFeature:'✨ Yêu cầu tính năng', catOther:'💭 Khác', close:'Đóng' },
+    'es':      { title:'💬 Comentarios', desc:'Informes de errores, solicitudes de funciones — todo bienvenido. Enviado de forma anónima.', catLabel:'Categoría', bodyLabel:'Detalles', bodyPlaceholder:'Por favor describe con detalle...', deviceLabel:'Adjuntar info del dispositivo (rango, puntuación, etc.)', submit:'📨 Enviar', sending:'Enviando...', success:'✅ ¡Enviado! Gracias.', error:'❌ Error al enviar. Inténtalo de nuevo.', catBug:'🐛 Reporte de error', catFeature:'✨ Solicitud de función', catOther:'💭 Otro', close:'Cerrar' },
+    'pt':      { title:'💬 Feedback', desc:'Relatórios de bugs, solicitações de recursos — tudo bem-vindo. Enviado anonimamente.', catLabel:'Categoria', bodyLabel:'Detalhes', bodyPlaceholder:'Por favor descreva em detalhes...', deviceLabel:'Anexar info do dispositivo (rank, pontuação, etc.)', submit:'📨 Enviar', sending:'Enviando...', success:'✅ Enviado! Obrigado.', error:'❌ Falha ao enviar. Tente novamente.', catBug:'🐛 Relatório de bug', catFeature:'✨ Solicitação de recurso', catOther:'💭 Outro', close:'Fechar' },
+    'fr':      { title:'💬 Commentaires', desc:'Rapports de bugs, demandes de fonctionnalités — tout est bienvenu. Envoyé anonymement.', catLabel:'Catégorie', bodyLabel:'Détails', bodyPlaceholder:'Veuillez décrire en détail...', deviceLabel:"Joindre les infos de l'appareil (rang, score, etc.)", submit:'📨 Envoyer', sending:'Envoi en cours...', success:'✅ Envoyé ! Merci.', error:'❌ Échec de l\'envoi. Veuillez réessayer.', catBug:'🐛 Rapport de bug', catFeature:'✨ Demande de fonctionnalité', catOther:'💭 Autre', close:'Fermer' },
+    'de':      { title:'💬 Feedback', desc:'Fehlerberichte, Funktionswünsche — alles willkommen. Anonym gesendet.', catLabel:'Kategorie', bodyLabel:'Details', bodyPlaceholder:'Bitte beschreiben Sie im Detail...', deviceLabel:'Geräteinformationen anhängen (Rang, Score, etc.)', submit:'📨 Senden', sending:'Wird gesendet...', success:'✅ Gesendet! Danke.', error:'❌ Senden fehlgeschlagen. Bitte erneut versuchen.', catBug:'🐛 Fehlerbericht', catFeature:'✨ Funktionswunsch', catOther:'💭 Sonstiges', close:'Schließen' },
+    'ru':      { title:'💬 Обратная связь', desc:'Отчёты об ошибках, пожелания — всё приветствуется. Отправляется анонимно.', catLabel:'Категория', bodyLabel:'Описание', bodyPlaceholder:'Пожалуйста, опишите подробно...', deviceLabel:'Прикрепить информацию об устройстве (ранг, счёт и т.д.)', submit:'📨 Отправить', sending:'Отправка...', success:'✅ Отправлено! Спасибо.', error:'❌ Ошибка отправки. Попробуйте ещё раз.', catBug:'🐛 Сообщение об ошибке', catFeature:'✨ Пожелание', catOther:'💭 Другое', close:'Закрыть' },
+    'ja-hira': { title:'💬 ふぃーどばっく', desc:'ばぐほうこくやきのうようぼうなど、きがるにどうぞ。とくめいでそうしんされます。', catLabel:'かてごり', bodyLabel:'ないよう', bodyPlaceholder:'くわしくおしえてください...', deviceLabel:'でばいすじょうほうをてんぷする', submit:'📨 そうしんする', sending:'そうしんちゅう...', success:'✅ そうしんしました！', error:'❌ そうしんしっぱい。もういちどおためしください。', catBug:'🐛 ばぐほうこく', catFeature:'✨ きのうようぼう', catOther:'💭 そのほか', close:'とじる' },
+};
+
+function _fbT() { return FB_I18N[_settings.language] || FB_I18N['ja']; }
+
+function openFeedback() {
+    const d = _fbT();
+    const modal = document.getElementById('feedback-modal');
+    // テキスト更新
+    document.getElementById('feedback-title').textContent       = d.title;
+    document.getElementById('feedback-desc').textContent        = d.desc;
+    document.getElementById('feedback-cat-label').textContent   = d.catLabel;
+    document.getElementById('feedback-body-label').textContent  = d.bodyLabel;
+    document.getElementById('feedback-body').placeholder        = d.bodyPlaceholder;
+    document.getElementById('feedback-device-label').textContent = d.deviceLabel;
+    document.getElementById('feedback-submit-label').textContent = d.submit;
+    document.getElementById('feedback-status').textContent      = '';
+    // カテゴリボタン
+    const cats = document.getElementById('feedback-cats');
+    cats.children[0].textContent = d.catBug;
+    cats.children[1].textContent = d.catFeature;
+    cats.children[2].textContent = d.catOther;
+    // デバイス添付トグル（デフォルトON）
+    _fbDeviceAttach = true;
+    _updateFbDeviceToggle();
+    // テキストエリアクリア
+    document.getElementById('feedback-body').value = '';
+    // 最初のカテゴリをアクティブに
+    document.querySelectorAll('.fb-cat').forEach((b, i) => b.classList.toggle('active', i === 0));
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    modal.onclick = e => { if (e.target === modal) closeFeedback(); };
+}
+
+function closeFeedback() {
+    const modal = document.getElementById('feedback-modal');
+    if (modal) modal.style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+function selectFbCat(btn) {
+    document.querySelectorAll('.fb-cat').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+}
+
+function toggleFbDevice() {
+    _fbDeviceAttach = !_fbDeviceAttach;
+    _updateFbDeviceToggle();
+}
+
+function _updateFbDeviceToggle() {
+    const tog   = document.getElementById('fb-device-toggle');
+    const thumb = document.getElementById('fb-device-thumb');
+    if (!tog || !thumb) return;
+    tog.style.background = _fbDeviceAttach ? '#34c759' : '#555';
+    thumb.style.right    = _fbDeviceAttach ? '2px' : 'auto';
+    thumb.style.left     = _fbDeviceAttach ? 'auto' : '2px';
+}
+
+async function submitFeedback() {
+    const d       = _fbT();
+    const body    = document.getElementById('feedback-body').value.trim();
+    const catBtn  = document.querySelector('.fb-cat.active');
+    const cat     = catBtn ? catBtn.getAttribute('data-val') : 'other';
+    const catText = catBtn ? catBtn.textContent.trim() : 'other';
+    const status  = document.getElementById('feedback-status');
+    const submitBtn = document.getElementById('feedback-submit');
+
+    if (!body) {
+        status.style.color = '#ff6b6b';
+        status.textContent = '内容を入力してください。';
+        return;
+    }
+
+    // デバイス情報
+    let deviceInfo = '';
+    if (_fbDeviceAttach) {
+        const rank  = document.getElementById('rank-letter')?.textContent || '?';
+        const eval_ = document.getElementById('eval-msg')?.textContent   || '';
+        const lang  = _settings.language;
+        const ua    = navigator.userAgent.slice(0, 120);
+        const rankEmoji = { S:'🔴 S', A:'🟠 A', B:'🟢 B', C:'🔵 C', D:'⚫ D' };
+        deviceInfo  = `\n\n--- Device Info ---\nRank: ${rankEmoji[rank] || rank}\n${eval_}\nLang: ${lang}\nUA: ${ua}`;
+    }
+
+    submitBtn.disabled = true;
+    document.getElementById('feedback-submit-label').textContent = d.sending;
+    status.textContent = '';
+
+    try {
+        const res = await fetch(`https://formspree.io/f/${FORMSPREE_ID}`, {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+            body:    JSON.stringify({
+                category: catText,
+                message:  body + deviceInfo,
+                _subject: `[ProUltra Feedback] ${catText}`,
+            })
+        });
+        const json = await res.json().catch(() => ({}));
+        if (res.ok) {
+            status.style.color = '#34c759';
+            status.textContent = d.success;
+            document.getElementById('feedback-body').value = '';
+            setTimeout(() => closeFeedback(), 2000);
+        } else {
+            const errMsg = json.errors?.map(e => e.message).join(', ') || `HTTP ${res.status}`;
+            throw new Error(errMsg);
+        }
+    } catch(e) {
+        status.style.color = '#ff6b6b';
+        status.textContent = d.error + ' (' + (e.message || 'unknown') + ')';
+    } finally {
+        submitBtn.disabled = false;
+        document.getElementById('feedback-submit-label').textContent = d.submit;
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// 🆚 デバイス対戦システム
+// ══════════════════════════════════════════════════════════════
+
+// 自分の診断結果をオブジェクトにまとめる
+function _getBattleData() {
+    const rank  = document.getElementById('rank-letter')?.textContent || '?';
+    const eval_ = document.getElementById('eval-msg')?.textContent   || '';
+    return {
+        rank,
+        evalMsg: eval_,
+        totalScore: parseInt(eval_.match(/(\d+)\/100/)?.[1] || 0),
+        cpu:  scores.cpu,
+        gpu:  scores.gpu,
+        mem:  scores.mem,
+        fps:  scores.fps,
+        ram:  diag.memResult?.gb || 0,
+        net:  diag.networkMbps  || 0,
+        avgFps: diag.avgFps    || 0,
+        lowFps: diag.lowFps    || 0,
+        device: diag.deviceName || '--',
+        ua: navigator.userAgent.slice(0, 80),
+        ts: Date.now(),
+    };
+}
+
+// 6桁コード生成
+function _genCode() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+function openBattle() {
+    const modal = document.getElementById('battle-modal');
+    const cont  = document.getElementById('battle-content');
+    cont.innerHTML = `
+        <p style="color:#888;font-size:0.85rem;margin:0 0 20px;line-height:1.6;">友達と診断結果を比較します。方式を選んでください。</p>
+        <div style="display:grid;gap:12px;margin-bottom:20px;">
+            <button onclick="battleFirestore()" style="padding:16px;border-radius:16px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;font-size:1rem;font-weight:800;cursor:pointer;text-align:left;">
+                🔢 Firestoreコード方式<br>
+                <span style="font-size:0.78rem;font-weight:400;opacity:0.85;">6桁コードを発行→友達がコード入力（有効期限20分）</span>
+            </button>
+            <button onclick="battleURL()" style="padding:16px;border-radius:16px;background:linear-gradient(135deg,#ff6b35,#ff2d55);color:#fff;border:none;font-size:1rem;font-weight:800;cursor:pointer;text-align:left;">
+                🔗 QRコード・URL方式<br>
+                <span style="font-size:0.78rem;font-weight:400;opacity:0.85;">QRまたはURLをシェア→オフラインでも使える</span>
+            </button>
+        </div>
+        <div style="border-top:1px solid #2a2a2a;padding-top:16px;">
+            <p style="color:#888;font-size:0.85rem;margin:0 0 10px;">友達からコード・URLをもらった場合：</p>
+            <div style="display:flex;gap:8px;">
+                <input id="battle-code-input" type="text" maxlength="6" placeholder="6桁コードを入力"
+                    style="flex:1;background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:10px 14px;color:#fff;font-size:1rem;outline:none;text-align:center;letter-spacing:0.2em;">
+                <button onclick="joinBattleCode()" style="padding:10px 18px;border-radius:12px;background:#007aff;color:#fff;border:none;font-weight:800;cursor:pointer;">参加</button>
+            </div>
+        </div>`;
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    modal.onclick = e => { if (e.target === modal) closeBattle(); };
+}
+
+function closeBattle() {
+    document.getElementById('battle-modal').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+// ── Firestore方式：コード発行 ──
+async function battleFirestore() {
+    if (!_fbDb) {
+        alert('Firestoreが利用できません。URLコード方式をお使いください。');
+        return;
+    }
+    const code = _genCode();
+    const data = _getBattleData();
+    const cont = document.getElementById('battle-content');
+    cont.innerHTML = '<p style="color:#888;text-align:center;padding:20px;">コードを発行中...</p>';
+
+    try {
+        await _fbDb.collection('battles').doc(code).set({
+            ...data,
+            expires: Date.now() + 20 * 60 * 1000, // 20分
+        });
+
+        cont.innerHTML = `
+            <p style="color:#34c759;font-size:0.85rem;margin:0 0 16px;text-align:center;">✅ コードを発行しました！友達に教えてください</p>
+            <div style="background:#1a1a1a;border:2px solid #6366f1;border-radius:16px;padding:20px;text-align:center;margin-bottom:16px;">
+                <div style="font-size:2.4rem;font-weight:900;letter-spacing:0.3em;color:#fff;">${code}</div>
+                <div style="color:#888;font-size:0.78rem;margin-top:8px;">⏱ 有効期限：20分</div>
+            </div>
+            <div style="border-top:1px solid #2a2a2a;padding-top:16px;">
+                <p style="color:#888;font-size:0.85rem;margin:0 0 10px;">友達が診断を終えたらコードを入力してもらってください。<br>自分も相手の結果を見たい場合は下に入力：</p>
+                <div style="display:flex;gap:8px;">
+                    <input id="battle-code-input" type="text" maxlength="6" placeholder="相手のコードを入力"
+                        style="flex:1;background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:10px 14px;color:#fff;font-size:1rem;outline:none;text-align:center;letter-spacing:0.2em;">
+                    <button onclick="joinBattleCode()" style="padding:10px 18px;border-radius:12px;background:#007aff;color:#fff;border:none;font-weight:800;cursor:pointer;">対戦</button>
+                </div>
+            </div>`;
+    } catch(e) {
+        cont.innerHTML = `<p style="color:#ff6b6b;text-align:center;">エラー: ${e.message}</p>`;
+    }
+}
+
+// ── Firestore方式：コードで参加 ──
+async function joinBattleCode() {
+    const code = (document.getElementById('battle-code-input')?.value || '').trim();
+    if (code.length !== 6) { alert('6桁のコードを入力してください'); return; }
+    if (!_fbDb) { alert('Firestoreが利用できません'); return; }
+
+    try {
+        const doc = await _fbDb.collection('battles').doc(code).get();
+        if (!doc.exists) { alert('コードが見つかりません'); return; }
+        const opponent = doc.data();
+        if (Date.now() > opponent.expires) { alert('このコードは有効期限切れです'); return; }
+        closeBattle();
+        showBattleResult(_getBattleData(), opponent, 'Firestore');
+    } catch(e) {
+        alert('エラー: ' + e.message);
+    }
+}
+
+// ── URL/QR方式 ──
+function battleURL() {
+    const data   = _getBattleData();
+    const params = new URLSearchParams({
+        r:  data.rank,
+        s:  data.totalScore,
+        cp: data.cpu,
+        gp: data.gpu,
+        mm: data.mem,
+        fp: data.fps,
+        rm: data.ram,
+        nt: Math.round(data.net),
+        af: data.avgFps,
+        lf: data.lowFps,
+        dv: data.device.slice(0, 30),
+    });
+    const url  = location.origin + location.pathname + '?' + params.toString();
+    const cont = document.getElementById('battle-content');
+
+    cont.innerHTML = `
+        <p style="color:#888;font-size:0.85rem;margin:0 0 16px;">このURLまたはQRコードを友達に送ってください。友達が診断後に自動で対戦画面が開きます。</p>
+        <div style="background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:12px;margin-bottom:12px;display:flex;align-items:center;gap:8px;">
+            <div id="battle-url-text" style="flex:1;color:#6bb5ff;font-size:0.72rem;word-break:break-all;line-height:1.4;">${url}</div>
+            <button onclick="navigator.clipboard.writeText('${url.replace(/'/g,"\\'")}').then(()=>alert('コピーしました！'))" style="flex-shrink:0;padding:8px 14px;border-radius:10px;background:#007aff;color:#fff;border:none;font-weight:700;cursor:pointer;font-size:0.82rem;">コピー</button>
+        </div>
+        <div style="text-align:center;background:#fff;border-radius:12px;padding:12px;margin-bottom:12px;">
+            <canvas id="battle-qr" width="180" height="180"></canvas>
+        </div>
+        <p style="color:#555;font-size:0.75rem;text-align:center;">QRコードをスキャン→診断→対戦結果が表示されます</p>`;
+
+    // QRコード生成（qrcode.js CDN）
+    _generateQR(url);
+}
+
+function _generateQR(url) {
+    const script = document.getElementById('qrcode-script');
+    const draw = () => {
+        const canvas = document.getElementById('battle-qr');
+        if (!canvas || !window.QRCode) return;
+        QRCode.toCanvas(canvas, url, { width: 180, margin: 1, color: { dark:'#000', light:'#fff' } });
+    };
+    if (window.QRCode) { draw(); return; }
+    const s  = document.createElement('script');
+    s.id     = 'qrcode-script';
+    s.src    = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+    s.onload = draw;
+    document.head.appendChild(s);
+}
+
+// ── URLパラメータから対戦相手データを取得 ──
+function _checkBattleURL() {
+    const p = new URLSearchParams(location.search);
+    if (!p.get('r') || !p.get('s')) return;
+    const opponent = {
+        rank:       p.get('r'),
+        totalScore: parseInt(p.get('s') || 0),
+        cpu:        parseInt(p.get('cp') || 0),
+        gpu:        parseInt(p.get('gp') || 0),
+        mem:        parseInt(p.get('mm') || 0),
+        fps:        parseInt(p.get('fp') || 0),
+        ram:        parseFloat(p.get('rm') || 0),
+        net:        parseInt(p.get('nt') || 0),
+        avgFps:     parseInt(p.get('af') || 0),
+        lowFps:     parseInt(p.get('lf') || 0),
+        device:     p.get('dv') || '--',
+        fromURL:    true,
+    };
+    // 診断完了後に自動表示
+    window._pendingBattleOpponent = opponent;
+}
+
+// ── 対戦結果表示 ──
+function showBattleResult(me, opponent, mode) {
+    const modal = document.getElementById('battle-result-modal');
+    const cont  = document.getElementById('battle-result-content');
+    const rankColors = {S:'#ff3b30',A:'#ff9500',B:'#34c759',C:'#007aff',D:'#8e8e93'};
+
+    const items = [
+        { label:'総合スコア', me: me.totalScore,  op: opponent.totalScore,  unit:'pt', higher: true },
+        { label:'CPU',        me: me.cpu,          op: opponent.cpu,         unit:'pt', higher: true },
+        { label:'GPU',        me: me.gpu,          op: opponent.gpu,         unit:'pt', higher: true },
+        { label:'MEM帯域',    me: me.mem,          op: opponent.mem,         unit:'pt', higher: true },
+        { label:'FPS安定',    me: me.fps,          op: opponent.fps,         unit:'pt', higher: true },
+        { label:'RAM',        me: me.ram,          op: opponent.ram,         unit:'GB', higher: true },
+        { label:'平均FPS',    me: me.avgFps,       op: opponent.avgFps,      unit:'',   higher: true },
+        { label:'1%LOW FPS',  me: me.lowFps,       op: opponent.lowFps,      unit:'',   higher: true },
+        { label:'ネット速度', me: Math.round(me.net), op: Math.round(opponent.net), unit:'M', higher: true },
+    ];
+
+    let meWins = 0, opWins = 0;
+    const rows = items.map(item => {
+        const meVal = item.me  || 0;
+        const opVal = item.op  || 0;
+        const meWin = item.higher ? meVal > opVal : meVal < opVal;
+        const opWin = item.higher ? opVal > meVal : opVal < meVal;
+        if (meWin) meWins++;
+        if (opWin) opWins++;
+        const meBg  = meWin ? 'rgba(52,199,89,0.15)'  : opWin ? 'rgba(255,59,48,0.08)' : 'rgba(255,255,255,0.04)';
+        const opBg  = opWin ? 'rgba(52,199,89,0.15)'  : meWin ? 'rgba(255,59,48,0.08)' : 'rgba(255,255,255,0.04)';
+        const meCol = meWin ? '#34c759' : opWin ? '#ff6b6b' : '#ccc';
+        const opCol = opWin ? '#34c759' : meWin ? '#ff6b6b' : '#ccc';
+        return `<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:4px;align-items:center;margin-bottom:6px;">
+            <div style="background:${meBg};border-radius:10px;padding:8px 10px;text-align:right;">
+                <span style="font-weight:900;font-size:1rem;color:${meCol};">${meVal}${item.unit}</span>
+                ${meWin ? '<span style="margin-left:4px;font-size:0.7rem;">✅</span>' : ''}
+            </div>
+            <div style="text-align:center;color:#555;font-size:0.72rem;font-weight:700;white-space:nowrap;padding:0 4px;">${item.label}</div>
+            <div style="background:${opBg};border-radius:10px;padding:8px 10px;text-align:left;">
+                ${opWin ? '<span style="margin-right:4px;font-size:0.7rem;">✅</span>' : ''}
+                <span style="font-weight:900;font-size:1rem;color:${opCol};">${opVal}${item.unit}</span>
+            </div>
+        </div>`;
+    }).join('');
+
+    const winner = meWins > opWins ? '🏆 あなたの勝ち！' : opWins > meWins ? '😭 相手の勝ち！' : '🤝 引き分け！';
+    const winnerColor = meWins > opWins ? '#34c759' : opWins > meWins ? '#ff6b6b' : '#ff9500';
+
+    cont.innerHTML = `
+        <div style="text-align:center;margin-bottom:20px;padding:16px;background:rgba(255,255,255,0.04);border-radius:16px;">
+            <div style="font-size:1.4rem;font-weight:900;color:${winnerColor};margin-bottom:6px;">${winner}</div>
+            <div style="color:#888;font-size:0.85rem;">あなた ${meWins}勝 - ${opWins}勝 相手</div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:4px;margin-bottom:12px;">
+            <div style="text-align:center;">
+                <div style="width:52px;height:52px;border-radius:12px;background:#000;border:3px solid ${rankColors[me.rank]||'#888'};display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:900;color:${rankColors[me.rank]||'#888'};margin:0 auto 4px;">${me.rank}</div>
+                <div style="color:#fff;font-size:0.8rem;font-weight:700;">あなた</div>
+                <div style="color:#888;font-size:0.72rem;">${(me.device||'').slice(0,16)}</div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:900;color:#ff2d55;">VS</div>
+            <div style="text-align:center;">
+                <div style="width:52px;height:52px;border-radius:12px;background:#000;border:3px solid ${rankColors[opponent.rank]||'#888'};display:flex;align-items:center;justify-content:center;font-size:1.5rem;font-weight:900;color:${rankColors[opponent.rank]||'#888'};margin:0 auto 4px;">${opponent.rank}</div>
+                <div style="color:#fff;font-size:0.8rem;font-weight:700;">相手</div>
+                <div style="color:#888;font-size:0.72rem;">${(opponent.device||'').slice(0,16)}</div>
+            </div>
+        </div>
+        ${rows}
+        <button onclick="document.getElementById('battle-result-modal').style.display='none'" style="width:100%;margin-top:16px;padding:13px;border-radius:14px;background:#1a1a1a;border:1px solid #333;color:#888;font-weight:700;cursor:pointer;">閉じる</button>`;
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
 
 function openTerms() {
     const lang = _settings.language;

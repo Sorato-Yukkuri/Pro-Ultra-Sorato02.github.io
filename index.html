@@ -355,13 +355,16 @@
         <button id="ai-btn" onclick="openAIChat()">🤖 AIアドバイザーに相談する</button>
         <button id="history-btn" onclick="showHistoryModal()">📊 過去の診断結果を見る</button>
         <button id="speed-btn"   onclick="showSpeedModal()">⚡ ページ読み込み速度テスト</button>
+        <button id="battle-btn"  onclick="openBattle()" style="display:none;">🆚 デバイス対戦</button>
         <button id="retry-btn"   onclick="guardedRetry()">🔄 再診断する</button>
 
         <div class="action-zone-footer">
             <button onclick="openTerms()" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--sub-text);font-size:0.8rem;cursor:pointer;padding:7px 16px;border-radius:20px;display:flex;align-items:center;gap:5px;font-weight:600;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.12)';this.style.color='var(--text)'" onmouseout="this.style.background='rgba(255,255,255,0.06)';this.style.color='var(--sub-text)'">
                 📋 <span id="footer-terms-label">利用規約</span>
             </button>
-            <!-- 今後ここにフィードバックなど追加予定 -->
+            <button onclick="openFeedback()" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--sub-text);font-size:0.8rem;cursor:pointer;padding:7px 16px;border-radius:20px;display:flex;align-items:center;gap:5px;font-weight:600;transition:all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.12)';this.style.color='var(--text)'" onmouseout="this.style.background='rgba(255,255,255,0.06)';this.style.color='var(--sub-text)'">
+                💬 <span id="footer-feedback-label">フィードバック</span>
+            </button>
         </div>
     </div>
 </div>
@@ -402,6 +405,83 @@
         </div>
     </div>
 </div>
+<!-- ── デバイス対戦モーダル ── -->
+<div id="battle-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:999995;justify-content:center;align-items:flex-start;padding:20px;box-sizing:border-box;overflow-y:auto;">
+    <div style="background:#111;border:1px solid #2a2a2a;border-radius:24px;width:100%;max-width:600px;margin:0 auto;">
+        <div style="position:sticky;top:0;background:#111;border-radius:24px 24px 0 0;padding:20px 24px 16px;border-bottom:1px solid #2a2a2a;display:flex;justify-content:space-between;align-items:center;">
+            <h2 style="margin:0;font-size:1.1rem;font-weight:900;color:#fff;">🆚 デバイス対戦</h2>
+            <button onclick="closeBattle()" style="background:#222;border:none;color:#888;width:32px;height:32px;border-radius:50%;font-size:1.1rem;cursor:pointer;">✕</button>
+        </div>
+        <div id="battle-content" style="padding:20px 24px 28px;"></div>
+    </div>
+</div>
+
+<!-- ── 対戦結果モーダル ── -->
+<div id="battle-result-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.97);z-index:999996;justify-content:center;align-items:flex-start;padding:20px;box-sizing:border-box;overflow-y:auto;">
+    <div style="background:#111;border:1px solid #2a2a2a;border-radius:24px;width:100%;max-width:700px;margin:0 auto;">
+        <div style="position:sticky;top:0;background:#111;border-radius:24px 24px 0 0;padding:20px 24px 16px;border-bottom:1px solid #2a2a2a;display:flex;justify-content:space-between;align-items:center;">
+            <h2 style="margin:0;font-size:1.1rem;font-weight:900;color:#fff;">🏆 対戦結果</h2>
+            <button onclick="document.getElementById('battle-result-modal').style.display='none'" style="background:#222;border:none;color:#888;width:32px;height:32px;border-radius:50%;font-size:1.1rem;cursor:pointer;">✕</button>
+        </div>
+        <div id="battle-result-content" style="padding:20px 24px 28px;"></div>
+    </div>
+</div>
+
+<!-- ── フィードバックモーダル ── -->
+<div id="feedback-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:999995;justify-content:center;align-items:center;padding:20px;box-sizing:border-box;overflow-y:auto;">
+    <div style="background:#111;border:1px solid #2a2a2a;border-radius:24px;width:100%;max-width:520px;">
+        <div style="position:sticky;top:0;background:#111;border-radius:24px 24px 0 0;padding:20px 24px 16px;border-bottom:1px solid #2a2a2a;display:flex;justify-content:space-between;align-items:center;">
+            <h2 id="feedback-title" style="margin:0;font-size:1.1rem;font-weight:900;color:#fff;">💬 フィードバック</h2>
+            <button onclick="closeFeedback()" style="background:#222;border:none;color:#888;width:32px;height:32px;border-radius:50%;font-size:1.1rem;cursor:pointer;">✕</button>
+        </div>
+        <div style="padding:20px 24px;">
+            <p id="feedback-desc" style="color:#888;font-size:0.85rem;margin:0 0 20px;line-height:1.6;">バグ報告・機能要望など、お気軽にどうぞ。匿名で送信されます。</p>
+
+            <!-- カテゴリ -->
+            <div style="margin-bottom:16px;">
+                <label id="feedback-cat-label" style="display:block;color:#ccc;font-size:0.82rem;font-weight:700;margin-bottom:8px;">カテゴリ</label>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;" id="feedback-cats">
+                    <button class="fb-cat active" data-val="bug" onclick="selectFbCat(this)">🐛 バグ報告</button>
+                    <button class="fb-cat" data-val="feature" onclick="selectFbCat(this)">✨ 機能要望</button>
+                    <button class="fb-cat" data-val="other" onclick="selectFbCat(this)">💭 その他</button>
+                </div>
+            </div>
+
+            <!-- 内容 -->
+            <div style="margin-bottom:16px;">
+                <label id="feedback-body-label" style="display:block;color:#ccc;font-size:0.82rem;font-weight:700;margin-bottom:8px;">内容</label>
+                <textarea id="feedback-body" rows="5" placeholder="詳しく教えてください..."
+                    style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:14px;padding:12px 16px;color:#fff;font-size:0.9rem;resize:vertical;outline:none;box-sizing:border-box;font-family:inherit;line-height:1.6;"
+                    onfocus="this.style.borderColor='#007aff'" onblur="this.style.borderColor='#333'"></textarea>
+            </div>
+
+            <!-- デバイス情報添付 -->
+            <div style="margin-bottom:20px;display:flex;align-items:center;gap:10px;">
+                <div onclick="toggleFbDevice()" id="fb-device-toggle" style="width:44px;height:26px;border-radius:13px;background:#34c759;position:relative;cursor:pointer;flex-shrink:0;transition:background 0.2s;">
+                    <div id="fb-device-thumb" style="position:absolute;top:2px;right:2px;width:22px;height:22px;border-radius:50%;background:#fff;transition:all 0.2s;"></div>
+                </div>
+                <span id="feedback-device-label" style="color:#ccc;font-size:0.85rem;">デバイス情報を添付する（ランク・スコア等）</span>
+            </div>
+
+            <!-- 送信ボタン -->
+            <button id="feedback-submit" onclick="submitFeedback()" style="width:100%;padding:14px;border-radius:14px;background:var(--accent);color:#fff;border:none;font-size:1rem;font-weight:800;cursor:pointer;transition:opacity 0.2s;">
+                📨 <span id="feedback-submit-label">送信する</span>
+            </button>
+            <p id="feedback-status" style="text-align:center;font-size:0.85rem;margin:12px 0 0;min-height:20px;"></p>
+        </div>
+    </div>
+</div>
+
+<style>
+.fb-cat {
+    background:rgba(255,255,255,0.06);border:1px solid #333;color:#888;
+    padding:7px 14px;border-radius:20px;font-size:0.82rem;font-weight:600;cursor:pointer;
+    transition:all 0.2s;
+}
+.fb-cat.active {
+    background:var(--accent);border-color:var(--accent);color:#fff;
+}
+</style>
 <script src="script.js"></script>
 
 <!-- ── 利用規約モーダル ── -->

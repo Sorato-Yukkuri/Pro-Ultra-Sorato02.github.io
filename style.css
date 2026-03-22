@@ -130,6 +130,14 @@
             transition:transform 0.2s;
         }
         #speed-btn:active { transform:scale(0.98); }
+        #battle-btn {
+            display:none;width:100%;padding:18px;border-radius:22px;
+            background:linear-gradient(135deg,#ff2d55,#ff6b35);color:#fff;border:none;
+            font-size:1.1rem;font-weight:800;cursor:pointer;
+            box-shadow:0 12px 35px rgba(255,45,85,0.3);
+            transition:transform 0.2s;
+        }
+        #battle-btn:active { transform:scale(0.98); }
 
         /* 共通モーダル追加スタイル */
         .extra-modal {
