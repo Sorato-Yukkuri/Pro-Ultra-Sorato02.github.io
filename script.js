@@ -4207,11 +4207,7 @@ function initFirebase() {
         _fbAuth.onAuthStateChanged(user => {
             _currentUser = user;
             updateAuthUI(user);
-            if (user) {
-                syncHistoryFromCloud();
-                // Redirectログイン後にtui()が準備できてるか保証するため再適用
-                try { applyLanguage(); } catch(e) {}
-            }
+            if (user) syncHistoryFromCloud();
         });
 
         // Redirectログイン後の結果を受け取る
@@ -4243,8 +4239,13 @@ function updateAuthUI(user) {
         if (loginBtn)  loginBtn.style.display  = 'none';
         if (githubBtn) githubBtn.style.display  = 'none';
         if (logoutBtn) logoutBtn.style.display = 'block';
-        // GitHubはdisplayNameがnullの場合があるのでemail/uidでフォールバック
-        const displayName = user.displayName || user.email?.split('@')[0] || 'ユーザー';
+        // GitHubはdisplayNameがnull・emailも非公開の場合があるのでproviderDataから取得
+        const githubData = user.providerData?.find(p => p.providerId === 'github.com');
+        const displayName = user.displayName
+            || githubData?.displayName
+            || githubData?.email?.split('@')[0]
+            || user.email?.split('@')[0]
+            || 'ユーザー';
         if (user.photoURL) { avatar.src = user.photoURL; avatar.style.display = 'block'; }
         username.textContent = displayName;
         document.getElementById('auth-sync-status').textContent = tui().synced;
