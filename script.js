@@ -32,6 +32,7 @@ const DEFAULT_SETTINGS = {
     clumsiGuard:    true,        // うっかりガード
     translateGuard: true,        // Google翻訳崩れ防止
     customFontSize: 15,          // カスタムフォントサイズ(px)
+    fontFamily:     'system',    // フォントファミリー
 };
 
 let _settings = { ...DEFAULT_SETTINGS };
@@ -93,7 +94,7 @@ const I18N = {
             settingsTitle:'⚙️ 設定', settingsReset:'🔄 設定をリセット', settingsResetConfirm:'設定をすべてデフォルトに戻しますか？',
             secAppearance:'🎨 外観', secLanguage:'🌐 言語', secNotify:'🔔 通知・フィードバック', secQuiet:'😴 お休み時間', secData:'💾 データ・操作',
             labelTheme:'テーマ', optDark:'ダーク', optLight:'ライト', optSystem:'システム',
-            labelFontSize:'フォントサイズ', optSmall:'小', optNormal:'普通', optLarge:'大', optCustom:'カスタム', labelCustomSize:'カスタムサイズ',
+            labelFontSize:'フォントサイズ', optSmall:'小', optNormal:'普通', optLarge:'大', optCustom:'カスタム', labelCustomSize:'カスタムサイズ', labelFont:'フォント', fontSystem:'システム標準', fontGothic:'ゴシック体', fontSerif:'明朝体・セリフ', fontRounded:'丸ゴシック', fontMono:'等幅フォント', labelFont:'フォント', fontSystem:'システム標準', fontGothic:'ゴシック体', fontSerif:'明朝体・セリフ', fontRounded:'丸ゴシック', fontMono:'等幅',
             labelLanguage:'表示言語',
             labelTransGuard:'Google翻訳崩れ防止', labelSound:'診断終了音', labelSoundPreset:'サウンドプリセット', soundDefault:'デフォルト（チャイム）', soundBell:'ベル', soundBeep:'ビープ', soundFanfare:'ファンファーレ', soundCustom:'カスタム（ファイル）', labelSoundFile:'カスタム音声ファイル', soundFileHint:'MP3・WAV・FLACに対応', soundUploadBtn:'📁 ファイルを選択', soundFileLoaded:'読み込み済み', soundFileClear:'削除', labelVibration:'バイブレーション',
             labelDesktopNotify:'完了時デスクトップ通知', labelBadge:'アイコンバッジ表示',
@@ -175,7 +176,7 @@ const I18N = {
             settingsTitle:'⚙️ Settings', settingsReset:'🔄 Reset Settings', settingsResetConfirm:'Reset all settings to default?',
             secAppearance:'🎨 Appearance', secLanguage:'🌐 Language', secNotify:'🔔 Notifications & Feedback', secQuiet:'😴 Quiet Hours', secData:'💾 Data & Operations',
             labelTheme:'Theme', optDark:'Dark', optLight:'Light', optSystem:'System',
-            labelFontSize:'Font Size', optSmall:'Small', optNormal:'Normal', optLarge:'Large', optCustom:'Custom', labelCustomSize:'Custom Size',
+            labelFontSize:'Font Size', optSmall:'Small', optNormal:'Normal', optLarge:'Large', optCustom:'Custom', labelCustomSize:'Custom Size', labelFont:'Font', fontSystem:'System Default', fontGothic:'Gothic / Sans-serif', fontSerif:'Serif / Mincho', fontRounded:'Rounded', fontMono:'Monospace', labelFont:'Font', fontSystem:'System Default', fontGothic:'Gothic (Sans)', fontSerif:'Serif / Mincho', fontRounded:'Rounded', fontMono:'Monospace',
             labelLanguage:'Display Language',
             labelTransGuard:'Google Translate Guard', labelSound:'Completion Sound', labelSoundPreset:'Sound Preset', soundDefault:'Default (Chime)', soundBell:'Bell', soundBeep:'Beep', soundFanfare:'Fanfare', soundCustom:'Custom (File)', labelSoundFile:'Custom Sound File', soundFileHint:'MP3, WAV, FLAC supported', soundUploadBtn:'📁 Choose File', soundFileLoaded:'File loaded', soundFileClear:'Remove', labelVibration:'Vibration',
             labelDesktopNotify:'Desktop Notification', labelBadge:'App Icon Badge',
@@ -621,6 +622,14 @@ function applyLanguage() {
         if (_modalCancel) _modalCancel.textContent = ui.cancelBtn;
     } catch(e) {}
 
+    // ── フッターバーのテキスト更新 ──
+    try {
+        const lang = _settings.language;
+        const d = TERMS_I18N[lang] || TERMS_I18N['ja'];
+        const footerLabel = document.getElementById('footer-terms-label');
+        if (footerLabel) footerLabel.textContent = d.footer;
+    } catch(e) {}
+
     } catch(e) { console.warn('applyLanguage error:', e); }
 }
 
@@ -641,6 +650,22 @@ function applySettings() {
     const fmap = { small: '13px', normal: '15px', large: '20px', custom: (_settings.customFontSize||15)+'px' };
     root.style.setProperty('--base-font-size', fmap[_settings.fontSize] || '15px');
 
+    // ── フォントファミリー ──
+    const fontPresets = {
+        'system':  '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif',
+        'serif':   'Georgia, "Times New Roman", "Hiragino Mincho ProN", "Yu Mincho", serif',
+        'mono':    '"SF Mono", "Fira Code", "JetBrains Mono", Consolas, monospace',
+        'rounded': '"Hiragino Maru Gothic ProN", "M PLUS Rounded 1c", "Nunito", sans-serif',
+        'gothic':  '"Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", sans-serif',
+    };
+    const ff = _settings.fontFamily || 'system';
+    if (fontPresets[ff]) {
+        root.style.setProperty('--app-font', fontPresets[ff]);
+    } else {
+        // カスタムフォント（Local Font Access APIで取得したもの）
+        root.style.setProperty('--app-font', `"${ff}", sans-serif`);
+    }
+
     // ── Google翻訳崩れ防止 ──
     const metaNoTrans = document.querySelector('meta[name="google"]');
     if (_settings.translateGuard) {
@@ -660,6 +685,27 @@ function applySettings() {
 }
 
 // ── 診断終了音（Web Audio API）──
+// SE系判定（375x667@2 = SE2/3世代、320x568@2 = SE1世代）
+function _isIPhoneSE() {
+    const ua = navigator.userAgent;
+    if (!/iphone/i.test(ua)) return false;
+    const w = screen.width, h = screen.height, dpr = window.devicePixelRatio;
+    const key = Math.min(w,h) + 'x' + Math.max(w,h) + '@' + dpr;
+    return key === '320x568@2' || key === '375x667@2';
+}
+
+// SE系のみ：AudioContextをタップ時に事前初期化して使い回す
+let _audioCtx = null;
+function _initAudioCtx() {
+    if (!_isIPhoneSE() || _audioCtx) return;
+    try {
+        _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (_audioCtx.state === 'suspended') _audioCtx.resume().catch(() => {});
+    } catch(e) {}
+}
+document.addEventListener('touchstart', _initAudioCtx, { once: true });
+document.addEventListener('click',      _initAudioCtx, { once: true });
+
 function playDoneSound() {
     if (!_settings.soundOnDone) return;
     const preset = _settings.soundPreset || 'default';
@@ -674,15 +720,16 @@ function playDoneSound() {
         return;
     }
 
-    // Web Audio APIプリセット
+    // SE系は事前初期化した_audioCtxを使い回す、それ以外は毎回新規作成
     try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const ctx = (_isIPhoneSE() && _audioCtx)
+            ? _audioCtx
+            : new (window.AudioContext || window.webkitAudioContext)();
+
         const play = () => {
             if (preset === 'bell') {
-                // 澄んだベル音
                 [880, 1108, 1318].forEach((freq, i) => {
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
+                    const osc = ctx.createOscillator(); const gain = ctx.createGain();
                     osc.connect(gain); gain.connect(ctx.destination);
                     osc.type = 'sine'; osc.frequency.value = freq;
                     const t = ctx.currentTime + i * 0.18;
@@ -691,9 +738,7 @@ function playDoneSound() {
                     osc.start(t); osc.stop(t + 0.8);
                 });
             } else if (preset === 'beep') {
-                // 短いビープ音
-                const osc = ctx.createOscillator();
-                const gain = ctx.createGain();
+                const osc = ctx.createOscillator(); const gain = ctx.createGain();
                 osc.connect(gain); gain.connect(ctx.destination);
                 osc.type = 'square'; osc.frequency.value = 880;
                 const t = ctx.currentTime;
@@ -701,10 +746,8 @@ function playDoneSound() {
                 gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
                 osc.start(t); osc.stop(t + 0.12);
             } else if (preset === 'fanfare') {
-                // ファンファーレ風
                 [523, 659, 784, 1047, 784, 1047, 1319].forEach((freq, i) => {
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
+                    const osc = ctx.createOscillator(); const gain = ctx.createGain();
                     osc.connect(gain); gain.connect(ctx.destination);
                     osc.type = 'triangle'; osc.frequency.value = freq;
                     const t = ctx.currentTime + i * 0.1;
@@ -713,10 +756,8 @@ function playDoneSound() {
                     osc.start(t); osc.stop(t + 0.15);
                 });
             } else {
-                // default: C-E-G-Cチャイム
                 [523, 659, 784, 1047].forEach((freq, i) => {
-                    const osc = ctx.createOscillator();
-                    const gain = ctx.createGain();
+                    const osc = ctx.createOscillator(); const gain = ctx.createGain();
                     osc.connect(gain); gain.connect(ctx.destination);
                     osc.type = 'sine'; osc.frequency.value = freq;
                     const t = ctx.currentTime + i * 0.12;
@@ -743,15 +784,13 @@ function vibrateOnDone() {
 // ── デスクトップ通知 ──
 async function notifyOnDone(rank, score) {
     if (!_settings.desktopNotify) return;
-    // お休み時間チェック
     if (isQuietTime()) return;
-    if (Notification.permission === 'default') {
-        await Notification.requestPermission();
-    }
+    // 許可済みの場合のみ通知（requestPermissionはここでは呼ばない）
     if (Notification.permission === 'granted') {
-        new Notification('診断完了！', {
-            body: `ランク ${rank} / 総合スコア ${score}点`,
-            icon: './android-chrome-192x192.png'
+        new Notification('診断完了！' + rank, {
+            body: `総合スコア ${score}点`,
+            icon: './android-chrome-192x192.png',
+            silent: true
         });
     }
 }
@@ -803,7 +842,7 @@ function guardedRetry() {
 // ══════════════════════════════════════════════════════════════
 // ⚙️ 設定モーダル UI
 // ══════════════════════════════════════════════════════════════
-function openSettings() {
+async function openSettings() {
     let modal = document.getElementById('settings-modal');
     if (!modal) {
         modal = document.createElement('div');
@@ -813,6 +852,7 @@ function openSettings() {
     }
 
     const ui = tui();
+    const _fontRow = await settingFontFamily(ui);
     // ＊の説明文はHELP_TEXT_I18N経由（設定項目は別途）
     // 設定モーダル内の説明文はI18Nから取得
     modal.innerHTML = `
@@ -827,6 +867,7 @@ function openSettings() {
             settingSelect(ui.labelTheme, 'theme', [['dark',ui.optDark],['light',ui.optLight],['system',ui.optSystem]], 'theme'),
             settingSelect(ui.labelFontSize, 'fontSize', [['small',ui.optSmall],['normal',ui.optNormal],['large',ui.optLarge],['custom',ui.optCustom||'カスタム']], 'fontSize'),
             _settings.fontSize === 'custom' ? settingCustomFontSize(ui.labelCustomSize||'カスタムサイズ') : '',
+            _fontRow,
         ].filter(Boolean))}
 
         ${settingSection(ui.secLanguage, [
@@ -957,6 +998,78 @@ function clearSoundFile() {
     _settings.soundFileDataUrl = null;
     saveSettings();
     openSettings();
+}
+
+async function settingFontFamily(ui) {
+    const label = ui.labelFont || 'フォント';
+    const cur   = _settings.fontFamily || 'system';
+    const presets = [
+        ['system',  ui.fontSystem  || 'システム標準'],
+        ['gothic',  ui.fontGothic  || 'ゴシック体'],
+        ['serif',   ui.fontSerif   || '明朝体・セリフ'],
+        ['rounded', ui.fontRounded || '丸ゴシック'],
+        ['mono',    ui.fontMono    || '等幅フォント'],
+    ];
+
+    let localFonts = [];
+    if ('queryLocalFonts' in window) {
+        try {
+            const fonts = await window.queryLocalFonts();
+            const families = [...new Set(fonts.map(f => f.family))].sort();
+            localFonts = families.slice(0, 80);
+        } catch(e) {}
+    }
+
+    const presetOpts = presets.map(([v, t]) =>
+        '<option value="' + v + '" ' + (v === cur ? 'selected' : '') + '>' + t + '</option>'
+    ).join('');
+    const localOpts = localFonts.length > 0
+        ? '<optgroup label="─ インストール済みフォント ─">'
+          + localFonts.map(f => '<option value="' + f + '" ' + (f === cur ? 'selected' : '') + '>' + f + '</option>').join('')
+          + '</optgroup>'
+        : '';
+
+    const ctrl = '<select onchange="changeSetting(\'fontFamily\',this.value)"'
+        + ' style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:10px;font-size:0.85rem;cursor:pointer;max-width:160px;">'
+        + presetOpts + localOpts
+        + '</select>';
+    return settingRow(label, ctrl, 'fontFamily');
+}
+
+async function settingFontFamily(ui) {
+    const label = ui.labelFont || 'フォント';
+    const cur   = _settings.fontFamily || 'system';
+    const presets = [
+        ['system',  ui.fontSystem  || 'システム標準'],
+        ['gothic',  ui.fontGothic  || 'ゴシック体'],
+        ['serif',   ui.fontSerif   || '明朝体・セリフ'],
+        ['rounded', ui.fontRounded || '丸ゴシック'],
+        ['mono',    ui.fontMono    || '等幅フォント'],
+    ];
+
+    let localFonts = [];
+    if ('queryLocalFonts' in window) {
+        try {
+            const fonts = await window.queryLocalFonts();
+            const families = [...new Set(fonts.map(f => f.family))].sort();
+            localFonts = families.slice(0, 80);
+        } catch(e) {}
+    }
+
+    const presetOpts = presets.map(([v, t]) =>
+        '<option value="' + v + '" ' + (v === cur ? 'selected' : '') + '>' + t + '</option>'
+    ).join('');
+    const localOpts = localFonts.length > 0
+        ? '<optgroup label="─ インストール済みフォント ─">'
+          + localFonts.map(f => '<option value="' + f + '" ' + (f === cur ? 'selected' : '') + '>' + f + '</option>').join('')
+          + '</optgroup>'
+        : '';
+
+    const ctrl = '<select onchange="changeSetting(\'fontFamily\',this.value)"'
+        + ' style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:10px;font-size:0.85rem;cursor:pointer;max-width:160px;">'
+        + presetOpts + localOpts
+        + '</select>';
+    return settingRow(label, ctrl, 'fontFamily');
 }
 
 function settingCustomFontSize(label) {
@@ -2268,9 +2381,10 @@ function processFinalReport() {
     saveResultToHistory(totalScore, rank, scores, ramGB, diag.avgFps, diag.lowFps, diag.networkMbps);
 
     // 設定に応じたフィードバック
+    // 完了音を先に鳴らす→通知はわずかに遅らせて干渉を防ぐ
     playDoneSound();
     vibrateOnDone();
-    notifyOnDone(rank, totalScore);
+    setTimeout(() => { notifyOnDone(rank, totalScore); }, 800);
     setBadge();
 }
 
@@ -3739,6 +3853,8 @@ const SETTING_HELP_I18N = {
         speedUnit:    '通信速度の表示単位。\n・Mbps：一般的な単位（デフォルト）\n・MB/s：Mbpsの約1/8\n例：100Mbps ≒ 12.5MB/s',
         autoCheck:    'ページを開いたとき自動的に診断を開始します。',
         clumsiGuard:  '再診断ボタンを押したとき確認ダイアログを表示。\n誤タップによるリセットを防げます。\n⚠️ OFFにすると確認なしで即座に再診断。',
+        fontFamily:   'フォントの種類を変更します。\nChromeなら端末にインストールされているフォントも選択できます（許可が必要）。',
+        fontFamily:   'アプリ全体のフォントを変更します。\nプリセット5種類から選択できます。\n📱 端末にインストール済みのフォントも選択できます（Chrome対応・要許可）。',
     },
     'en': {
         theme:        'Change the app color scheme.\n・Dark: Black background (default)\n・Light: White background\n・System: Follows OS setting',
@@ -3755,9 +3871,361 @@ const SETTING_HELP_I18N = {
         speedUnit:    'Network speed display unit.\n・Mbps: Common unit (default)\n・MB/s: ~1/8 of Mbps\nExample: 100Mbps ≈ 12.5MB/s',
         autoCheck:    'Automatically start diagnosis when page opens.',
         clumsiGuard:  'Show confirmation dialog before re-diagnosing.\nPrevents accidental resets.\n⚠️ OFF means immediate re-diagnosis without confirmation.',
+        fontFamily:   'Change the font style.\nOn Chrome, you can also pick fonts installed on your device (permission required).',
+        fontFamily:   'Change the font for the entire app.\nChoose from 5 presets.\n📱 Local device fonts also available (Chrome, requires permission).',
     },
 };
 // 他言語はjaにフォールバック（SETTING_HELP_I18N[lang] || SETTING_HELP_I18N['ja']）
+
+// ══════════════════════════════════════════════════════════════
+// 📋 利用規約（11言語対応）
+// ══════════════════════════════════════════════════════════════
+const TERMS_I18N = {
+    'ja': {
+        title: '📋 利用規約',
+        footer: '利用規約',
+        close: '閉じる',
+        body: `<h3 style="color:#fff;margin:0 0 12px;">精密デバイス診断 Pro Ultra 利用規約</h3>
+<p>本ウェブアプリ（以下「本サービス」）をご利用いただく前に、以下の利用規約をよくお読みください。本サービスを利用した時点で、本規約に同意したものとみなします。</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">1. 推奨環境</h4>
+<p>推奨ブラウザは <strong style="color:#34c759;">Google Chrome</strong> です。<br>Safari（特にiOS Safari）では、一部機能（音声・通知・WebGL等）が正常に動作しない場合があります。Safari以外のブラウザの使用を推奨します。</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">2. 取得情報について</h4>
+<p>本サービスは、診断のためにデバイスのハードウェア情報・ブラウザ情報・IPアドレス等を取得します。これらの情報はすべてブラウザ内のみで処理され、当サービスのサーバーには送信されません。ただし、IP取得のため外部API（ipify.org）への通信が発生します。</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">3. IPアドレスの取り扱い</h4>
+<p>本サービスでは、WebRTCおよび外部APIを通じてIPアドレスを取得・表示します。<strong style="color:#ff9500;">スクリーンショットにIPアドレスを含めてSNS等に公開した場合、おおよその居住地域や利用プロバイダが特定される危険があります。</strong><br>これにより損害が生じた場合でも、<strong style="color:#ff6b6b;">本ウェブアプリおよびその開発者は一切の責任を負いません。</strong>IPアドレスの公開には十分ご注意ください。</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">4. 診断結果の正確性</h4>
+<p>本サービスの診断結果はブラウザAPIから取得した推定値であり、実際のハードウェアスペックと異なる場合があります。診断結果の正確性を保証するものではありません。</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">5. 免責事項</h4>
+<p>本サービスの利用により生じた損害（データ損失・プライバシー侵害・機器の不具合等）について、開発者は一切の責任を負いません。自己責任のもとでご利用ください。</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">6. 規約の変更について</h4>
+<p>気が向いたり、何か理由があれば規約が変わることがあります。でも大きな変更のときはアップデート情報でちゃんとお知らせするので安心してください。変更後も使い続けてくれたら「了解～」ってことにさせてください🙏</p>
+
+<p style="color:#555;font-size:0.8rem;margin-top:20px;">最終更新：_TERMS_DATE_ | 精密デバイス診断 Pro Ultra Beta 1.6.0</p>`
+    },
+    'ja-hira': {
+        title: '📋 りようきやく',
+        footer: 'りようきやく',
+        close: 'とじる',
+        body: `<h3 style="color:#fff;margin:0 0 12px;">せいみつでばいすしんだん Pro Ultra りようきやく</h3>
+<p>このあぷりをつかうまえに、よくよんでください。つかったじてんで、どういしたとみなします。</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">1. すいしょうかんきょう</h4>
+<p>すいしょうぶらうざは <strong style="color:#34c759;">Google Chrome</strong> です。<br>Safari（とくにiOS Safari）では、いちぶのきのうがただしくうごかないことがあります。</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">2. とりあつかうじょうほう</h4>
+<p>このあぷりは、でばいすのじょうほうやIPあどれすをしゅとくします。これらはぶらうざないだけでしょりされ、さーばーにはそうしんされません。</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">3. IPあどれすについて</h4>
+<p>すくりーんしょっとにIPあどれすをふくめてこうかいすると、すんでいるばしょがわかるかもしれません。<strong style="color:#ff6b6b;">このあぷりはそのせきにんをおいません。</strong></p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">4. しんだんけっかについて</h4>
+<p>しんだんけっかはすいていちです。じっさいのすぺっくとちがうことがあります。</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">5. めんせきじこう</h4>
+<p>このあぷりをつかってしょうじたそんがいについて、かいはつしゃはせきにんをおいません。</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">6. きやくのへんこう</h4>
+<p>このきやくは、よこくなくかわることがあります。かわったあとにこのあぷりをつかうと、あたらしいきやくにどういしたとみなします。おおきなへんこうのときはあぷでとじょうほうでおしらせします。</p>
+
+<p style="color:#555;font-size:0.8rem;margin-top:20px;">Pro Ultra Beta 1.6.0</p>`
+    },
+    'en': {
+        title: '📋 Terms of Use',
+        footer: 'Terms of Use',
+        close: 'Close',
+        body: `<h3 style="color:#fff;margin:0 0 12px;">Precise Device Diagnostics Pro Ultra — Terms of Use</h3>
+<p>Please read these Terms of Use carefully before using this web application (the "Service"). By using the Service, you agree to be bound by these terms.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">1. Recommended Environment</h4>
+<p>The recommended browser is <strong style="color:#34c759;">Google Chrome</strong>.<br>Some features (audio, notifications, WebGL, etc.) may not function correctly in Safari, especially iOS Safari. We recommend using a non-Safari browser.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">2. Information Collected</h4>
+<p>The Service collects device hardware information, browser information, and IP addresses for diagnostic purposes. All data is processed locally in your browser and is never sent to our servers. However, an external API (ipify.org) is used to obtain your public IP address.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">3. IP Address Handling</h4>
+<p>This Service retrieves and displays your IP address via WebRTC and external APIs. <strong style="color:#ff9500;">If you share a screenshot containing your IP address on social media or other public platforms, your approximate location and ISP may be identifiable.</strong><br><strong style="color:#ff6b6b;">The developer of this application accepts no responsibility for any damages arising from such disclosure.</strong> Please exercise caution when sharing your IP address.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">4. Accuracy of Results</h4>
+<p>Diagnostic results are estimates derived from browser APIs and may differ from actual hardware specifications. We do not guarantee the accuracy of any diagnostic results.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">5. Disclaimer</h4>
+<p>The developer accepts no liability for any damages (including data loss, privacy breaches, or device issues) arising from the use of this Service. Use at your own risk.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">6. Changes to Terms</h4>
+<p>We might update these terms occasionally if needed. If anything major changes, we'll let you know through the in-app update info. Continuing to use the app after that means you're cool with it 🙏</p>
+
+<p style="color:#555;font-size:0.8rem;margin-top:20px;">Last updated: _TERMS_DATE_ | Pro Ultra Beta 1.6.0</p>`
+    },
+    'zh-hans': {
+        title: '📋 使用条款',
+        footer: '使用条款',
+        close: '关闭',
+        body: `<h3 style="color:#fff;margin:0 0 12px;">精密设备诊断 Pro Ultra 使用条款</h3>
+<p>在使用本网络应用（以下简称"本服务"）之前，请仔细阅读以下使用条款。使用本服务即表示您同意本条款。</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">1. 推荐环境</h4>
+<p>推荐使用 <strong style="color:#34c759;">Google Chrome</strong> 浏览器。<br>Safari（尤其是 iOS Safari）可能无法正常使用部分功能（音频、通知、WebGL等）。建议使用非Safari浏览器。</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">2. 收集的信息</h4>
+<p>本服务为诊断目的收集设备硬件信息、浏览器信息及IP地址。所有数据均在您的浏览器本地处理，不会发送至我们的服务器。但会使用外部API（ipify.org）获取您的公网IP地址。</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">3. IP地址处理</h4>
+<p>本服务通过WebRTC和外部API获取并显示您的IP地址。<strong style="color:#ff9500;">如果您将含有IP地址的截图发布到社交媒体等公开平台，可能导致您的大致位置和ISP被识别。</strong><br><strong style="color:#ff6b6b;">因此造成的任何损害，本应用及其开发者概不负责。</strong>请谨慎处理您的IP地址信息。</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">4. 诊断结果的准确性</h4>
+<p>诊断结果是从浏览器API获取的估算值，可能与实际硬件规格有所不同。我们不保证诊断结果的准确性。</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">5. 免责声明</h4>
+<p>因使用本服务而产生的任何损害（包括数据丢失、隐私泄露或设备问题），开发者不承担任何责任。请自行承担使用风险。</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">6. 条款变更</h4>
+<p>如果需要，我们可能会偶尔更新这些条款。有重大变更时，我们会在应用内的更新信息中告知您。继续使用即表示您接受变更 🙏</p>
+
+<p style="color:#555;font-size:0.8rem;margin-top:20px;">最后更新：2026年3月 | Pro Ultra Beta 1.6.0</p>`
+    },
+    'zh-hant': {
+        title: '📋 使用條款',
+        footer: '使用條款',
+        close: '關閉',
+        body: `<h3 style="color:#fff;margin:0 0 12px;">精密裝置診斷 Pro Ultra 使用條款</h3>
+<p>在使用本網路應用程式（以下簡稱「本服務」）之前，請仔細閱讀以下使用條款。使用本服務即表示您同意本條款。</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">1. 推薦環境</h4>
+<p>推薦使用 <strong style="color:#34c759;">Google Chrome</strong> 瀏覽器。<br>Safari（尤其是 iOS Safari）可能無法正常使用部分功能（音訊、通知、WebGL等）。建議使用非Safari瀏覽器。</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">2. 收集的資訊</h4>
+<p>本服務為診斷目的收集裝置硬體資訊、瀏覽器資訊及IP位址。所有資料均在您的瀏覽器本機處理，不會傳送至我們的伺服器。但會使用外部API（ipify.org）取得您的公網IP位址。</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">3. IP位址處理</h4>
+<p>本服務透過WebRTC和外部API取得並顯示您的IP位址。<strong style="color:#ff9500;">若您將含有IP位址的截圖發布至社群媒體等公開平台，可能導致您的大致位置和ISP被識別。</strong><br><strong style="color:#ff6b6b;">因此造成的任何損害，本應用程式及其開發者概不負責。</strong>請謹慎處理您的IP位址資訊。</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">4. 診斷結果的準確性</h4>
+<p>診斷結果是從瀏覽器API取得的估算值，可能與實際硬體規格有所不同。我們不保證診斷結果的準確性。</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">5. 免責聲明</h4>
+<p>因使用本服務而產生的任何損害（包括資料遺失、隱私洩露或裝置問題），開發者不承擔任何責任。請自行承擔使用風險。</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">6. 條款變更</h4>
+<p>如有需要，我們可能會偶爾更新這些條款。有重大變更時，我們會在應用程式內的更新資訊中告知您。繼續使用即表示您接受變更 🙏</p>
+
+<p style="color:#555;font-size:0.8rem;margin-top:20px;">最後更新：_TERMS_DATE_ | Pro Ultra Beta 1.6.0</p>`
+    },
+    'ko': {
+        title: '📋 이용약관',
+        footer: '이용약관',
+        close: '닫기',
+        body: `<h3 style="color:#fff;margin:0 0 12px;">정밀 기기 진단 Pro Ultra 이용약관</h3>
+<p>이 웹 애플리케이션(이하 "본 서비스")을 이용하시기 전에 아래 이용약관을 주의 깊게 읽어주세요. 본 서비스를 이용하면 본 약관에 동의한 것으로 간주합니다.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">1. 권장 환경</h4>
+<p>권장 브라우저는 <strong style="color:#34c759;">Google Chrome</strong>입니다.<br>Safari(특히 iOS Safari)에서는 일부 기능(오디오, 알림, WebGL 등)이 정상적으로 작동하지 않을 수 있습니다. Safari 이외의 브라우저 사용을 권장합니다.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">2. 수집 정보</h4>
+<p>본 서비스는 진단 목적으로 기기 하드웨어 정보, 브라우저 정보 및 IP 주소를 수집합니다. 모든 데이터는 브라우저 내에서만 처리되며 서버로 전송되지 않습니다. 단, 외부 API(ipify.org)를 통해 공인 IP 주소를 가져옵니다.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">3. IP 주소 처리</h4>
+<p>본 서비스는 WebRTC 및 외부 API를 통해 IP 주소를 가져와 표시합니다. <strong style="color:#ff9500;">IP 주소가 포함된 스크린샷을 SNS 등 공개 플랫폼에 공유하면 대략적인 위치와 ISP가 식별될 수 있습니다.</strong><br><strong style="color:#ff6b6b;">이로 인해 발생한 모든 손해에 대해 본 애플리케이션 및 개발자는 일절 책임지지 않습니다.</strong> IP 주소 공개에 충분히 주의하세요.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">4. 진단 결과의 정확성</h4>
+<p>진단 결과는 브라우저 API에서 얻은 추정값이며 실제 하드웨어 사양과 다를 수 있습니다. 진단 결과의 정확성을 보장하지 않습니다.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">5. 면책 사항</h4>
+<p>본 서비스 이용으로 발생한 모든 손해(데이터 손실, 개인정보 침해, 기기 문제 등)에 대해 개발자는 일절 책임지지 않습니다. 자신의 책임 하에 이용하세요.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">6. 약관 변경</h4>
+<p>필요에 따라 약관이 변경될 수 있어요. 중요한 변경이 있을 때는 앱 내 업데이트 정보로 알려드릴게요. 계속 사용하시면 변경에 동의하신 것으로 볼게요 🙏</p>
+
+<p style="color:#555;font-size:0.8rem;margin-top:20px;">최종 업데이트: _TERMS_DATE_ | Pro Ultra Beta 1.6.0</p>`
+    },
+    'vi': {
+        title: '📋 Điều khoản sử dụng',
+        footer: 'Điều khoản',
+        close: 'Đóng',
+        body: `<h3 style="color:#fff;margin:0 0 12px;">Chẩn đoán thiết bị chính xác Pro Ultra — Điều khoản sử dụng</h3>
+<p>Vui lòng đọc kỹ Điều khoản sử dụng này trước khi sử dụng ứng dụng web (sau đây gọi là "Dịch vụ"). Bằng cách sử dụng Dịch vụ, bạn đồng ý với các điều khoản này.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">1. Môi trường khuyến nghị</h4>
+<p>Trình duyệt được khuyến nghị là <strong style="color:#34c759;">Google Chrome</strong>.<br>Một số tính năng (âm thanh, thông báo, WebGL, v.v.) có thể không hoạt động đúng trên Safari, đặc biệt là iOS Safari.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">2. Thông tin thu thập</h4>
+<p>Dịch vụ thu thập thông tin phần cứng thiết bị, thông tin trình duyệt và địa chỉ IP cho mục đích chẩn đoán. Tất cả dữ liệu được xử lý cục bộ trong trình duyệt của bạn và không bao giờ được gửi đến máy chủ của chúng tôi. Tuy nhiên, API bên ngoài (ipify.org) được sử dụng để lấy địa chỉ IP công cộng của bạn.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">3. Xử lý địa chỉ IP</h4>
+<p>Dịch vụ này lấy và hiển thị địa chỉ IP của bạn qua WebRTC và API bên ngoài. <strong style="color:#ff9500;">Nếu bạn chia sẻ ảnh chụp màn hình chứa địa chỉ IP lên mạng xã hội hoặc các nền tảng công khai khác, vị trí gần đúng và ISP của bạn có thể bị xác định.</strong><br><strong style="color:#ff6b6b;">Nhà phát triển ứng dụng này không chịu trách nhiệm về bất kỳ thiệt hại nào phát sinh từ việc tiết lộ đó.</strong></p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">4. Độ chính xác của kết quả</h4>
+<p>Kết quả chẩn đoán là ước tính từ API trình duyệt và có thể khác với thông số phần cứng thực tế. Chúng tôi không đảm bảo độ chính xác của bất kỳ kết quả chẩn đoán nào.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">5. Miễn trách nhiệm</h4>
+<p>Nhà phát triển không chịu trách nhiệm về bất kỳ thiệt hại nào phát sinh từ việc sử dụng Dịch vụ này. Sử dụng theo rủi ro của bạn.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">6. Thay đổi điều khoản</h4>
+<p>Chúng tôi có thể cập nhật điều khoản khi cần. Nếu có thay đổi lớn, chúng tôi sẽ thông báo qua mục cập nhật trong ứng dụng. Tiếp tục sử dụng có nghĩa là bạn đồng ý với thay đổi 🙏</p>
+
+<p style="color:#555;font-size:0.8rem;margin-top:20px;">Cập nhật lần cuối: _TERMS_DATE_ | Pro Ultra Beta 1.6.0</p>`
+    },
+    'es': {
+        title: '📋 Términos de uso',
+        footer: 'Términos',
+        close: 'Cerrar',
+        body: `<h3 style="color:#fff;margin:0 0 12px;">Diagnóstico de dispositivos Pro Ultra — Términos de uso</h3>
+<p>Lea detenidamente estos Términos de uso antes de utilizar esta aplicación web (el "Servicio"). Al utilizar el Servicio, acepta estar sujeto a estos términos.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">1. Entorno recomendado</h4>
+<p>El navegador recomendado es <strong style="color:#34c759;">Google Chrome</strong>.<br>Algunas funciones (audio, notificaciones, WebGL, etc.) pueden no funcionar correctamente en Safari, especialmente en iOS Safari. Se recomienda usar un navegador distinto a Safari.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">2. Información recopilada</h4>
+<p>El Servicio recopila información de hardware del dispositivo, información del navegador y direcciones IP con fines de diagnóstico. Todos los datos se procesan localmente en su navegador y nunca se envían a nuestros servidores. Sin embargo, se utiliza una API externa (ipify.org) para obtener su dirección IP pública.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">3. Manejo de la dirección IP</h4>
+<p>Este Servicio obtiene y muestra su dirección IP mediante WebRTC y APIs externas. <strong style="color:#ff9500;">Si comparte una captura de pantalla que contiene su dirección IP en redes sociales u otras plataformas públicas, su ubicación aproximada y proveedor de internet podrían ser identificados.</strong><br><strong style="color:#ff6b6b;">El desarrollador de esta aplicación no acepta ninguna responsabilidad por los daños derivados de dicha divulgación.</strong></p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">4. Precisión de los resultados</h4>
+<p>Los resultados del diagnóstico son estimaciones derivadas de las APIs del navegador y pueden diferir de las especificaciones reales del hardware. No garantizamos la precisión de ningún resultado de diagnóstico.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">5. Exención de responsabilidad</h4>
+<p>El desarrollador no acepta ninguna responsabilidad por los daños (incluyendo pérdida de datos, violaciones de privacidad o problemas con dispositivos) derivados del uso de este Servicio. Úselo bajo su propio riesgo.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">6. Cambios en los términos</h4>
+<p>Podemos actualizar estos términos de vez en cuando si es necesario. Si hay cambios importantes, te avisaremos en la info de actualización de la app. Seguir usando la app significa que estás de acuerdo 🙏</p>
+
+<p style="color:#555;font-size:0.8rem;margin-top:20px;">Última actualización: _TERMS_DATE_ | Pro Ultra Beta 1.6.0</p>`
+    },
+    'pt': {
+        title: '📋 Termos de uso',
+        footer: 'Termos',
+        close: 'Fechar',
+        body: `<h3 style="color:#fff;margin:0 0 12px;">Diagnóstico de dispositivos Pro Ultra — Termos de uso</h3>
+<p>Leia atentamente estes Termos de uso antes de utilizar este aplicativo web (o "Serviço"). Ao utilizar o Serviço, você concorda em estar vinculado a estes termos.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">1. Ambiente recomendado</h4>
+<p>O navegador recomendado é o <strong style="color:#34c759;">Google Chrome</strong>.<br>Alguns recursos (áudio, notificações, WebGL, etc.) podem não funcionar corretamente no Safari, especialmente no iOS Safari. Recomendamos usar um navegador diferente do Safari.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">2. Informações coletadas</h4>
+<p>O Serviço coleta informações de hardware do dispositivo, informações do navegador e endereços IP para fins de diagnóstico. Todos os dados são processados localmente no seu navegador e nunca são enviados aos nossos servidores. No entanto, uma API externa (ipify.org) é usada para obter seu endereço IP público.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">3. Tratamento do endereço IP</h4>
+<p>Este Serviço obtém e exibe seu endereço IP via WebRTC e APIs externas. <strong style="color:#ff9500;">Se você compartilhar uma captura de tela contendo seu endereço IP em redes sociais ou outras plataformas públicas, sua localização aproximada e ISP podem ser identificados.</strong><br><strong style="color:#ff6b6b;">O desenvolvedor deste aplicativo não aceita nenhuma responsabilidade por danos decorrentes dessa divulgação.</strong></p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">4. Precisão dos resultados</h4>
+<p>Os resultados do diagnóstico são estimativas derivadas das APIs do navegador e podem diferir das especificações reais do hardware. Não garantimos a precisão de nenhum resultado de diagnóstico.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">5. Isenção de responsabilidade</h4>
+<p>O desenvolvedor não aceita nenhuma responsabilidade por danos (incluindo perda de dados, violações de privacidade ou problemas com dispositivos) decorrentes do uso deste Serviço. Use por sua conta e risco.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">6. Alterações nos termos</h4>
+<p>Podemos atualizar estes termos de vez em quando, se necessário. Se houver mudanças importantes, avisaremos nas informações de atualização do app. Continuar usando significa que você concorda 🙏</p>
+
+<p style="color:#555;font-size:0.8rem;margin-top:20px;">Última atualização: _TERMS_DATE_ | Pro Ultra Beta 1.6.0</p>`
+    },
+    'fr': {
+        title: '📋 Conditions d\'utilisation',
+        footer: 'Conditions',
+        close: 'Fermer',
+        body: `<h3 style="color:#fff;margin:0 0 12px;">Diagnostic précis d'appareil Pro Ultra — Conditions d'utilisation</h3>
+<p>Veuillez lire attentivement ces Conditions d'utilisation avant d'utiliser cette application web (le « Service »). En utilisant le Service, vous acceptez d'être lié par ces conditions.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">1. Environnement recommandé</h4>
+<p>Le navigateur recommandé est <strong style="color:#34c759;">Google Chrome</strong>.<br>Certaines fonctionnalités (audio, notifications, WebGL, etc.) peuvent ne pas fonctionner correctement sur Safari, en particulier iOS Safari. Nous recommandons d'utiliser un navigateur autre que Safari.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">2. Informations collectées</h4>
+<p>Le Service collecte des informations sur le matériel de l'appareil, des informations sur le navigateur et des adresses IP à des fins de diagnostic. Toutes les données sont traitées localement dans votre navigateur et ne sont jamais envoyées à nos serveurs. Cependant, une API externe (ipify.org) est utilisée pour obtenir votre adresse IP publique.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">3. Traitement de l'adresse IP</h4>
+<p>Ce Service obtient et affiche votre adresse IP via WebRTC et des APIs externes. <strong style="color:#ff9500;">Si vous partagez une capture d'écran contenant votre adresse IP sur les réseaux sociaux ou d'autres plateformes publiques, votre emplacement approximatif et votre FAI pourraient être identifiés.</strong><br><strong style="color:#ff6b6b;">Le développeur de cette application n'accepte aucune responsabilité pour les dommages résultant d'une telle divulgation.</strong></p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">4. Précision des résultats</h4>
+<p>Les résultats du diagnostic sont des estimations dérivées des APIs du navigateur et peuvent différer des spécifications matérielles réelles. Nous ne garantissons pas la précision des résultats de diagnostic.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">5. Clause de non-responsabilité</h4>
+<p>Le développeur n'accepte aucune responsabilité pour les dommages (y compris la perte de données, les violations de la vie privée ou les problèmes d'appareil) résultant de l'utilisation de ce Service. Utilisez à vos propres risques.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">6. Modifications des conditions</h4>
+<p>Nous pouvons mettre à jour ces conditions de temps en temps si nécessaire. En cas de changement important, nous vous en informerons via les infos de mise à jour de l'appli. Continuer à utiliser l'appli signifie que vous êtes d'accord 🙏</p>
+
+<p style="color:#555;font-size:0.8rem;margin-top:20px;">Dernière mise à jour : _TERMS_DATE_ | Pro Ultra Beta 1.6.0</p>`
+    },
+    'de': {
+        title: '📋 Nutzungsbedingungen',
+        footer: 'Nutzungsbedingungen',
+        close: 'Schließen',
+        body: `<h3 style="color:#fff;margin:0 0 12px;">Präzise Gerätediagnose Pro Ultra — Nutzungsbedingungen</h3>
+<p>Bitte lesen Sie diese Nutzungsbedingungen sorgfältig durch, bevor Sie diese Webanwendung (den „Dienst") nutzen. Durch die Nutzung des Dienstes stimmen Sie diesen Bedingungen zu.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">1. Empfohlene Umgebung</h4>
+<p>Der empfohlene Browser ist <strong style="color:#34c759;">Google Chrome</strong>.<br>Einige Funktionen (Audio, Benachrichtigungen, WebGL usw.) funktionieren in Safari, insbesondere iOS Safari, möglicherweise nicht korrekt. Wir empfehlen die Verwendung eines Nicht-Safari-Browsers.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">2. Gesammelte Informationen</h4>
+<p>Der Dienst sammelt Gerätehardwareinformationen, Browserinformationen und IP-Adressen für Diagnosezwecke. Alle Daten werden lokal in Ihrem Browser verarbeitet und niemals an unsere Server gesendet. Es wird jedoch eine externe API (ipify.org) verwendet, um Ihre öffentliche IP-Adresse abzurufen.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">3. Umgang mit IP-Adressen</h4>
+<p>Dieser Dienst ruft Ihre IP-Adresse über WebRTC und externe APIs ab und zeigt sie an. <strong style="color:#ff9500;">Wenn Sie einen Screenshot mit Ihrer IP-Adresse in sozialen Medien oder anderen öffentlichen Plattformen teilen, könnten Ihr ungefährer Standort und Ihr ISP identifiziert werden.</strong><br><strong style="color:#ff6b6b;">Der Entwickler dieser Anwendung übernimmt keine Haftung für Schäden, die durch eine solche Offenlegung entstehen.</strong></p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">4. Genauigkeit der Ergebnisse</h4>
+<p>Diagnoseergebnisse sind Schätzungen aus Browser-APIs und können von den tatsächlichen Hardwarespezifikationen abweichen. Wir garantieren nicht die Genauigkeit der Diagnoseergebnisse.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">5. Haftungsausschluss</h4>
+<p>Der Entwickler übernimmt keine Haftung für Schäden (einschließlich Datenverlust, Datenschutzverletzungen oder Geräteprobleme), die durch die Nutzung dieses Dienstes entstehen. Nutzung auf eigene Gefahr.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">6. Änderungen der Bedingungen</h4>
+<p>Wir können diese Bedingungen gelegentlich aktualisieren, wenn nötig. Bei wichtigen Änderungen informieren wir dich über die Update-Infos in der App. Die weitere Nutzung bedeutet, dass du einverstanden bist 🙏</p>
+
+<p style="color:#555;font-size:0.8rem;margin-top:20px;">Zuletzt aktualisiert: _TERMS_DATE_ | Pro Ultra Beta 1.6.0</p>`
+    },
+    'ru': {
+        title: '📋 Условия использования',
+        footer: 'Условия',
+        close: 'Закрыть',
+        body: `<h3 style="color:#fff;margin:0 0 12px;">Точная диагностика устройств Pro Ultra — Условия использования</h3>
+<p>Пожалуйста, внимательно прочитайте настоящие Условия использования перед использованием данного веб-приложения («Сервис»). Используя Сервис, вы соглашаетесь соблюдать эти условия.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">1. Рекомендуемая среда</h4>
+<p>Рекомендуемый браузер — <strong style="color:#34c759;">Google Chrome</strong>.<br>Некоторые функции (звук, уведомления, WebGL и др.) могут работать некорректно в Safari, особенно в iOS Safari. Рекомендуем использовать браузер, отличный от Safari.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">2. Собираемая информация</h4>
+<p>Сервис собирает информацию об аппаратном обеспечении устройства, браузере и IP-адресах в диагностических целях. Все данные обрабатываются локально в вашем браузере и никогда не отправляются на наши серверы. Однако для получения вашего публичного IP-адреса используется внешний API (ipify.org).</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">3. Обработка IP-адреса</h4>
+<p>Данный Сервис получает и отображает ваш IP-адрес через WebRTC и внешние API. <strong style="color:#ff9500;">Если вы поделитесь скриншотом, содержащим ваш IP-адрес, в социальных сетях или других публичных платформах, ваше приблизительное местоположение и провайдер могут быть определены.</strong><br><strong style="color:#ff6b6b;">Разработчик данного приложения не несёт никакой ответственности за ущерб, возникший в результате такого раскрытия информации.</strong></p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">4. Точность результатов</h4>
+<p>Результаты диагностики являются оценками, полученными из API браузера, и могут отличаться от фактических характеристик оборудования. Мы не гарантируем точность результатов диагностики.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">5. Отказ от ответственности</h4>
+<p>Разработчик не несёт ответственности за любой ущерб (включая потерю данных, нарушение конфиденциальности или проблемы с устройствами), возникший в результате использования данного Сервиса. Используйте на свой страх и риск.</p>
+
+<h4 style="color:#eee;margin:16px 0 6px;">6. Изменения условий</h4>
+<p>Мы можем иногда обновлять эти условия при необходимости. О важных изменениях сообщим через обновления в приложении. Продолжение использования означает ваше согласие 🙏</p>
+
+<p style="color:#555;font-size:0.8rem;margin-top:20px;">Последнее обновление: _TERMS_DATE_ | Pro Ultra Beta 1.6.0</p>`
+    },
+};
+
+function openTerms() {
+    const lang = _settings.language;
+    const d = TERMS_I18N[lang] || TERMS_I18N['ja'];
+    const modal = document.getElementById('terms-modal');
+    document.getElementById('terms-title').textContent = d.title;
+    // 日付を動的に注入（_TERMS_DATE_ プレースホルダーを現在日付に置換）
+    const now = new Date();
+    const dateStr = now.getFullYear() + '/' + String(now.getMonth()+1).padStart(2,'0') + '/' + String(now.getDate()).padStart(2,'0');
+    document.getElementById('terms-body').innerHTML = d.body.replace(/_TERMS_DATE_/g, dateStr);
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    modal.onclick = e => { if (e.target === modal) closeTerms(); };
+}
+
+function closeTerms() {
+    const modal = document.getElementById('terms-modal');
+    if (modal) modal.style.display = 'none';
+    document.body.style.overflow = '';
+}
 
 const HELP_TEXT_I18N = {
     'ja': [

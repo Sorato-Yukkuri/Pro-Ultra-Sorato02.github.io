@@ -2,28 +2,9 @@
             --bg:#050505;--card:#121212;--border:#282828;--text:#ffffff;--sub-text:#888888;
             --accent:#007aff;--S-color:#ff3b30;--A-color:#ff9500;--B-color:#34c759;
             --C-color:#007aff;--D-color:#8e8e93;--st-ok:#007aff;--st-warn:#ffcc00;--st-bad:#ff3b30;
-            --base-font-size: 15px;
+            --app-font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"Hiragino Sans",sans-serif;
         }
-        /* ライトテーマ */
-        [data-theme="light"] {
-            --bg:#f2f2f7;--card:#ffffff;--border:#d0d0d5;--text:#000000;--sub-text:#5e5e63;
-            --accent:#0055cc;--st-ok:#0055cc;--st-warn:#b35900;--st-bad:#cc0000;
-            --C-color:#0055cc;
-        }
-        /* フォントサイズ：htmlに適用することでrem単位が全体に効く */
-        html { font-size: var(--base-font-size); }
-        [data-theme="light"] body { background-color:var(--bg);color:var(--text); }
-        [data-theme="light"] .spec-row { background:var(--card);border-color:var(--border); }
-        [data-theme="light"] .main-rank-card { background:var(--card);border-color:var(--border); }
-        [data-theme="light"] .info-panel { background:var(--card);border-color:var(--border); }
-        [data-theme="light"] .st-ok   { background:rgba(0,85,204,0.10); }
-        [data-theme="light"] .st-good { background:rgba(0,140,60,0.10); }
-        [data-theme="light"] .st-warn { background:rgba(179,89,0,0.10); }
-        [data-theme="light"] .st-bad  { background:rgba(204,0,0,0.10); }
-        [data-theme="light"] .extra-modal-box { background:var(--card); }
-        [data-theme="light"] #modal-overlay { background:rgba(240,240,245,0.98); }
-        [data-theme="light"] #result-img-wrap img { border:1px solid var(--border); }
-        body { background-color:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"Hiragino Sans",sans-serif;margin:0;padding:20px;line-height:1.4;-webkit-font-smoothing:antialiased; }
+        body { background-color:var(--bg);color:var(--text);font-family:var(--app-font);margin:0;padding:20px;line-height:1.4;-webkit-font-smoothing:antialiased; }
         .app { max-width:900px;margin:0 auto;background-color:var(--bg);padding-bottom:40px; }
         .main-rank-card { background:var(--card);border:1px solid var(--border);padding:35px;border-radius:24px;display:flex;align-items:center;margin-bottom:25px; }
         #rank-letter { font-size:5rem;font-weight:900;width:130px;height:130px;display:flex;align-items:center;justify-content:center;border-radius:28px;background:#000;margin-right:35px;border:4px solid var(--border);transition:all 0.6s cubic-bezier(0.19,1,0.22,1);flex-shrink:0; }
@@ -57,7 +38,17 @@
         .capture-mode .st-good { border-top-color:#34c759; border-left-color:transparent; background:rgba(52,199,89,0.08); }
         .capture-mode .st-warn { border-top-color:var(--st-warn); border-left-color:transparent; }
         .capture-mode .st-bad  { border-top-color:var(--st-bad);  border-left-color:transparent; }
-        .action-zone { max-width:900px;margin:0 auto;padding:0 0 80px; }
+        .action-zone { max-width:900px;margin:0 auto;padding:0 0 60px; }
+        .action-zone-card {
+            background:var(--card);border:1px solid var(--border);
+            border-radius:24px;padding:20px;margin-bottom:0;
+            display:flex;flex-direction:column;gap:10px;
+        }
+        .action-zone-footer {
+            display:flex;align-items:center;justify-content:center;
+            gap:16px;padding:12px 0 4px;
+            border-top:1px solid var(--border);margin-top:4px;
+        }
         #save-btn { display:none;width:100%;padding:22px;border-radius:22px;background:var(--accent);color:#fff;border:none;font-size:1.2rem;font-weight:800;cursor:pointer;box-shadow:0 12px 35px rgba(0,122,255,0.3);transition:transform 0.2s,opacity 0.2s; }
         #save-btn:active { transform:scale(0.98); }
         #save-btn:disabled { opacity:0.5;cursor:not-allowed; }
@@ -78,7 +69,7 @@
             background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;
             font-size:1.1rem;font-weight:800;cursor:pointer;
             box-shadow:0 12px 35px rgba(99,102,241,0.35);
-            transition:transform 0.2s;margin-top:12px;
+            transition:transform 0.2s;
         }
         #ai-btn:active { transform:scale(0.98); }
         #ai-modal {
@@ -128,7 +119,7 @@
             background:#ff2d78;color:#fff;border:none;
             font-size:1.1rem;font-weight:800;cursor:pointer;
             box-shadow:0 12px 35px rgba(255,45,120,0.3);
-            transition:transform 0.2s;margin-top:12px;
+            transition:transform 0.2s;
         }
         #history-btn:active { transform:scale(0.98); }
         #speed-btn {
@@ -136,7 +127,7 @@
             background:#7c3aed;color:#fff;border:none;
             font-size:1.1rem;font-weight:800;cursor:pointer;
             box-shadow:0 12px 35px rgba(124,58,237,0.3);
-            transition:transform 0.2s;margin-top:12px;
+            transition:transform 0.2s;
         }
         #speed-btn:active { transform:scale(0.98); }
 
@@ -296,11 +287,6 @@
   font-size:0.8rem;
   color:#888;
   cursor:pointer;
-  /* タップ領域を広げる（見た目は変わらない） */
-  padding: 16px;
-  margin-top: -16px;
-  margin-bottom: -16px;
-  margin-right: -16px;
 }
 
 /* スマホ向け: 小画面でボタン折り返し発生時も対応 */
