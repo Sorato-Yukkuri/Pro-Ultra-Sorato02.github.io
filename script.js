@@ -4258,6 +4258,21 @@ async function signInWithGoogle() {
     }
 }
 
+async function signInWithGitHub() {
+    if (!_fbAuth) { alert("Firebase未設定です。"); return; }
+    document.getElementById('auth-modal').style.display = 'none';
+    try {
+        const provider = new firebase.auth.GithubAuthProvider();
+        await _fbAuth.signInWithPopup(provider);
+    } catch(e) {
+        if (e.code === 'auth/account-exists-with-different-credential') {
+            alert("このメールアドレスは別の方法でログイン済みです。Googleでログインしてください。");
+        } else if (e.code !== 'auth/popup-closed-by-user') {
+            alert("GitHubログインに失敗しました: " + e.message);
+        }
+    }
+}
+
 function signOut() {
     if (_fbAuth) _fbAuth.signOut();
 }
