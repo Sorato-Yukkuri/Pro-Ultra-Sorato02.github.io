@@ -3651,6 +3651,7 @@ function loadGroupFromCookie() {
     const groupName = _getCookie('grp_gn');
     if (groupId && nickname) {
         _showGroupBadge(nickname, (groupIcon || '👥') + ' ' + (groupName || groupId));
+        showNotifBtn();
     }
 }
 
@@ -4297,6 +4298,7 @@ function updateAuthUI(user) {
             badge.innerHTML = '🔓 <strong>' + displayName + '</strong> でログイン中 — 履歴がクラウドに同期されます';
         }
         document.body.style.paddingTop = '49px';
+        showNotifBtn();
     } else {
         if (loginBtn)  loginBtn.style.display  = 'flex';
         if (githubBtn) githubBtn.style.display  = 'flex';
@@ -4306,6 +4308,122 @@ function updateAuthUI(user) {
         document.getElementById('auth-sync-status').textContent = '';
         if (badge) badge.style.display = 'none';
         document.body.style.paddingTop = '0';
+        hideNotifBtn();
+    }
+}
+
+// ══════════════════════════════════════════════════════════════
+// 🔔 通知センター
+// ══════════════════════════════════════════════════════════════
+const NOTIF_KEY = 'app_notifs_v1';
+
+function _loadNotifs() {
+    try { return JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]'); } catch(e) { return []; }
+}
+function _saveNotifs(n) {
+    try { localStorage.setItem(NOTIF_KEY, JSON.stringify(n)); } catch(e) {}
+}
+function _addNotif(notif) {
+    const notifs = _loadNotifs();
+    if (notifs.some(n => n.dedupeKey && n.dedupeKey === notif.dedupeKey)) return;
+    notifs.unshift({ ...notif, id: Date.now(), read: false, ts: Date.now() });
+    if (notifs.length > 30) notifs.splice(30);
+    _saveNotifs(notifs);
+    _updateNotifBadge();
+}
+function _updateNotifBadge() {
+    const unread = _loadNotifs().filter(n => !n.read).length;
+    const badge  = document.getElementById('notif-badge');
+    if (!badge) return;
+    if (unread > 0) {
+        badge.textContent   = unread > 9 ? '9+' : unread;
+        badge.style.display = 'flex';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+function showNotifBtn() {
+    const btn = document.getElementById('notif-btn');
+    if (btn) btn.style.display = 'flex';
+    _updateNotifBadge();
+    _checkUpdateNotif();
+    if (_currentUser) _checkDeleteRequests();
+}
+function hideNotifBtn() {
+    const btn = document.getElementById('notif-btn');
+    if (btn) btn.style.display = 'none';
+}
+function _checkUpdateNotif() {
+    _addNotif({
+        dedupeKey: 'update_Beta_1.7.5',
+        type:      'update',
+        title:     '🚀 Beta 1.7.5 がリリースされました！',
+        body:      '親友グループ機能・デバイス対戦・フィードバック・スコアグラフ等を追加。タップして詳細を確認。',
+        action:    'openUpdate',
+    });
+}
+async function _checkDeleteRequests() {
+    if (!_currentUser || !_fbDb) return;
+    try {
+        const snap = await _fbDb.collection('group_delete_requests')
+            .where('targetUid', '==', _currentUser.uid)
+            .where('status', '==', 'pending').get();
+        snap.docs.forEach(d => {
+            const req = d.data();
+            _addNotif({
+                dedupeKey: 'delete_req_' + d.id,
+                type:      'delete_req',
+                title:     '⚠️ メンバー削除申請が届きました',
+                body:      '「' + req.requestedByName + '」さんからグループ退出の申請が届いています。タップして確認。',
+                action:    'openDeleteReq',
+                reqId:     d.id,
+                groupId:   req.groupId,
+            });
+        });
+    } catch(e) {}
+}
+function openNotifCenter() {
+    const modal  = document.getElementById('notif-modal');
+    const list   = document.getElementById('notif-list');
+    const notifs = _loadNotifs();
+    notifs.forEach(n => n.read = true);
+    _saveNotifs(notifs);
+    _updateNotifBadge();
+
+    if (notifs.length === 0) {
+        list.innerHTML = '<p style="color:#555;text-align:center;padding:24px;font-size:0.85rem;">通知はありません</p>';
+    } else {
+        list.innerHTML = notifs.map((n, i) =>
+            '<div onclick="handleNotifTap(' + i + ')" style="padding:14px 18px;border-bottom:1px solid #1a1a1a;cursor:pointer;" onmouseover="this.style.background=\'#1a1a1a\'" onmouseout="this.style.background=\'\'">'
+            + '<div style="color:#fff;font-size:0.88rem;font-weight:700;margin-bottom:4px;">' + n.title + '</div>'
+            + '<div style="color:#888;font-size:0.78rem;line-height:1.5;">' + n.body + '</div>'
+            + '<div style="color:#444;font-size:0.72rem;margin-top:4px;">' + new Date(n.ts).toLocaleString('ja-JP') + '</div>'
+            + '</div>'
+        ).join('');
+    }
+    modal.style.display = 'block';
+    setTimeout(() => document.addEventListener('click', _notifOutside, { once: true }), 100);
+}
+function _notifOutside(e) {
+    const modal = document.getElementById('notif-modal');
+    const btn   = document.getElementById('notif-btn');
+    if (modal && !modal.contains(e.target) && btn && !btn.contains(e.target)) {
+        modal.style.display = 'none';
+    }
+}
+function closeNotifCenter() {
+    const m = document.getElementById('notif-modal');
+    if (m) m.style.display = 'none';
+}
+function handleNotifTap(idx) {
+    closeNotifCenter();
+    const n = _loadNotifs()[idx];
+    if (!n) return;
+    if (n.action === 'openUpdate') {
+        const overlay = document.getElementById('update-overlay');
+        if (overlay) overlay.style.display = 'flex';
+    } else if (n.action === 'openDeleteReq') {
+        openGroupDetail(n.groupId);
     }
 }
 

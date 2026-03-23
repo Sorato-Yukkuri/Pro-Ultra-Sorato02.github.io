@@ -96,6 +96,10 @@
         <span id="auth-sync-status" style="color:#34c759;font-size:0.75rem;"></span>
     </div>
     <div style="display:flex;gap:8px;">
+        <!-- 通知ベルボタン -->
+        <button id="notif-btn" onclick="openNotifCenter()" style="display:none;position:relative;background:rgba(255,255,255,0.08);border:1px solid #333;color:#fff;width:34px;height:34px;border-radius:50%;font-size:1rem;cursor:pointer;align-items:center;justify-content:center;">
+            🔔<span id="notif-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ff3b30;color:#fff;font-size:0.65rem;font-weight:900;min-width:16px;height:16px;border-radius:8px;padding:0 3px;align-items:center;justify-content:center;"></span>
+        </button>
         <button id="auth-logout-btn" onclick="signOut()" style="display:none;background:rgba(255,59,48,0.15);border:1px solid rgba(255,59,48,0.3);color:#ff6b6b;padding:6px 14px;border-radius:10px;font-size:0.82rem;font-weight:700;cursor:pointer;">ログアウト</button>
         <button id="auth-friend-btn" onclick="openFriendModal()" style="background:linear-gradient(135deg,#ff9500,#ff6b00);color:#fff;border:none;padding:6px 12px;border-radius:10px;font-size:0.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;"><svg width="18" height="18" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg"><g transform="translate(70,70)"><circle cx="-30" cy="-20" r="15" fill="#fff"/><rect x="-43" y="-3" width="24" height="28" rx="7" fill="#fff"/><circle cx="30" cy="-20" r="15" fill="#fff"/><rect x="19" y="-3" width="24" height="28" rx="7" fill="#fff"/><path d="M -18 6 C -10 -12, -4 -18, 0 -6 C 4 -18, 10 -12, 18 6" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/><path d="M 0 -5 C 0 -16, -12 -20, -12 -10 C -12 -2, 0 6, 0 6 C 0 6, 12 -2, 12 -10 C 12 -20, 0 -16, 0 -5 Z" fill="#ffe000"/><circle cx="0" cy="-7" r="46" fill="none" stroke="#fff" stroke-width="3"/><circle cx="0" cy="-53" r="4" fill="#fff"/><circle cx="37" cy="-36" r="3" fill="#fff"/><circle cx="-37" cy="-36" r="3" fill="#fff"/><circle cx="37" cy="22" r="2.5" fill="#fff" opacity="0.7"/><circle cx="-37" cy="22" r="2.5" fill="#fff" opacity="0.7"/></g></svg> <span id="auth-friend-label">親友コード</span></button>
         <button id="auth-login-btn" onclick="signInWithGoogle()" style="background:linear-gradient(135deg,#4285f4,#34a853);color:#fff;border:none;padding:6px 16px;border-radius:10px;font-size:0.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">
@@ -378,7 +382,7 @@
         
         <!-- バージョンタイトル -->
         <h2 style="margin: 0 0 20px; font-size: 1.4rem; font-weight: 900; color: var(--text); border-bottom: 2px solid var(--border); padding-bottom: 15px;">
-            🚀 Update Beta 1.7.5
+            🚀 Update Beta 1.7.5（修正版）
         </h2>
         
         <!-- 【自由記述エリア】ここを書き換えるだけでOK -->
@@ -420,6 +424,20 @@
             <strong>【Beta 1.7.0での告知】</strong><br>
             Beta 1.6で延期していた「親友コード」の自己申請機能は、<strong>Beta 1.8</strong>での実装を目標に開発中です。<br><br>
 
+            <strong>【Beta 1.7.5 親友グループ修正】</strong><br><br>
+
+            <strong>👥 親友グループ機能の改善</strong><br>
+            ・グループ参加時にニックネームを設定できるようになりました<br>
+            ・参加後、次回起動時も「〇〇が🏆グループ名でログイン中」が表示されるよう改善（Cookie保存）<br>
+            ・GitHub・Googleどちらでもログイン・グループ参加が可能に<br>
+            ・Firestoreルールを調整し、未ログインでもグループ参加できるように修正<br>
+            ・「メールアドレスごとに1つのアカウント」設定変更により、Google・GitHub同一メールでの利用が可能に<br><br>
+
+            <strong>🔔 通知センター（NEW！）</strong><br>
+            ログイン者・親友コード参加者に🔔ベルアイコンが表示されます。<br>
+            ・アップデート情報の再確認<br>
+            ・メンバー削除申請の通知<br><br>
+
             <!-- 次のアプデ文はこの下に追加していくだけでOK -->
 
         </div>
@@ -434,7 +452,7 @@
 
 <script>
     // バージョン識別キー（アプデのたびに末尾の数字などを変えてください）
-    const CURRENT_UPDATE_ID = "Beta_1.7.5";
+    const CURRENT_UPDATE_ID = "Beta_1.7.5r2";
 
     // 読み込み時に表示を判定
     window.addEventListener('DOMContentLoaded', () => {
@@ -536,6 +554,15 @@
         </div>
         <div id="battle-result-content" style="padding:20px 24px 28px;"></div>
     </div>
+</div>
+
+<!-- 通知センター -->
+<div id="notif-modal" style="display:none;position:fixed;top:54px;right:12px;width:300px;max-height:440px;background:#111;border:1px solid #2a2a2a;border-radius:20px;z-index:999998;overflow-y:auto;box-shadow:0 12px 40px rgba(0,0,0,0.8);">
+    <div style="padding:14px 18px 10px;border-bottom:1px solid #2a2a2a;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#111;">
+        <span style="color:#fff;font-size:0.95rem;font-weight:900;">🔔 通知</span>
+        <button onclick="closeNotifCenter()" style="background:none;border:none;color:#555;font-size:0.8rem;cursor:pointer;">閉じる</button>
+    </div>
+    <div id="notif-list"></div>
 </div>
 
 <!-- ── フィードバックモーダル ── -->
