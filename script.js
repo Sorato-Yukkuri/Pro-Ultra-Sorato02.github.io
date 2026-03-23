@@ -2920,11 +2920,11 @@ async function sendAIMessage() {
     try {
         _resetTimer(18, '回答を生成しています...');
         const _ctrl = new AbortController();
-        const _tout = setTimeout(() => _ctrl.abort(), 8000);
-        const resp = await fetch('https://text.pollinations.ai/openai', {
+        const _tout = setTimeout(() => _ctrl.abort(), 12000);
+        const resp = await fetch('https://text.pollinations.ai/v1/chat/completions', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ model: 'openai', messages }),
+            body:    JSON.stringify({ model: 'openai', messages, private: true }),
             signal:  _ctrl.signal
         });
         clearTimeout(_tout);
@@ -3628,33 +3628,6 @@ async function _hashPass(pass) {
 }
 
 // ── 親友コードモーダルのメイン画面 ──
-function _showGroupBadge(name, groupLabel) {
-    const badge = document.getElementById('auth-status-badge');
-    if (!badge) return;
-    badge.style.display = 'block';
-    badge.innerHTML = '👥 <strong>' + name + '</strong> が <strong>' + groupLabel + '</strong> でログイン中';
-}
-
-function _getCookie(key) {
-    const c = document.cookie.split(';').find(c => c.trim().startsWith(key + '='));
-    return c ? decodeURIComponent(c.trim().split('=').slice(1).join('=')) : null;
-}
-
-function checkGroupCookie() {
-    return !!_getCookie('grp_id');
-}
-
-function loadGroupFromCookie() {
-    const groupId   = _getCookie('grp_id');
-    const nickname  = _getCookie('grp_nm');
-    const groupIcon = _getCookie('grp_ic');
-    const groupName = _getCookie('grp_gn');
-    if (groupId && nickname) {
-        _showGroupBadge(nickname, (groupIcon || '👥') + ' ' + (groupName || groupId));
-        showNotifBtn();
-    }
-}
-
 function openFriendModal() {
     const modal = document.getElementById('friend-modal');
     modal.style.display = 'flex';
@@ -3711,17 +3684,12 @@ function renderJoinGroup() {
         <button onclick="renderFriendModalTop()" style="background:none;border:none;color:#888;font-size:0.85rem;cursor:pointer;margin-bottom:16px;padding:0;">← 戻る</button>
         <p style="color:#ccc;font-size:0.85rem;margin:0 0 16px;">グループのオーナーから教えてもらったグループIDとパスワードを入力してください。</p>
         <div style="margin-bottom:12px;">
-            <label style="display:block;color:#ccc;font-size:0.82rem;font-weight:700;margin-bottom:6px;">ニックネーム <span style="color:#ff3b30;">*</span></label>
-            <input id="join-group-name" type="text" maxlength="20" placeholder="グループ内での名前（20文字以内）"
-                style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:10px 14px;color:#fff;font-size:0.95rem;outline:none;box-sizing:border-box;">
-        </div>
-        <div style="margin-bottom:12px;">
-            <label style="display:block;color:#ccc;font-size:0.82rem;font-weight:700;margin-bottom:6px;">グループID <span style="color:#ff3b30;">*</span></label>
+            <label style="display:block;color:#ccc;font-size:0.82rem;font-weight:700;margin-bottom:6px;">グループID</label>
             <input id="join-group-id" type="text" placeholder="グループID"
                 style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:10px 14px;color:#fff;font-size:0.95rem;outline:none;box-sizing:border-box;">
         </div>
         <div style="margin-bottom:16px;">
-            <label style="display:block;color:#ccc;font-size:0.82rem;font-weight:700;margin-bottom:6px;">パスワード <span style="color:#ff3b30;">*</span></label>
+            <label style="display:block;color:#ccc;font-size:0.82rem;font-weight:700;margin-bottom:6px;">パスワード</label>
             <input id="join-group-pass" type="password" placeholder="パスワード"
                 style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:10px 14px;color:#fff;font-size:0.95rem;outline:none;box-sizing:border-box;">
         </div>
@@ -3731,12 +3699,10 @@ function renderJoinGroup() {
 
 async function submitJoinGroup() {
     if (!_fbDb) { alert('Firestoreが利用できません'); return; }
-    const nickname = document.getElementById('join-group-name')?.value.trim();
-    const groupId  = document.getElementById('join-group-id')?.value.trim();
-    const pass     = document.getElementById('join-group-pass')?.value.trim();
-    const errEl    = document.getElementById('join-group-error');
+    const groupId = document.getElementById('join-group-id')?.value.trim();
+    const pass    = document.getElementById('join-group-pass')?.value.trim();
+    const errEl   = document.getElementById('join-group-error');
 
-    if (!nickname) { errEl.style.display='block'; errEl.textContent='ニックネームを入力してください'; return; }
     if (!groupId || !pass) { errEl.style.display='block'; errEl.textContent='グループIDとパスワードを入力してください'; return; }
 
     try {
@@ -3746,29 +3712,17 @@ async function submitJoinGroup() {
         const hash  = await _hashPass(pass);
         if (hash !== group.passwordHash) { errEl.style.display='block'; errEl.textContent='パスワードが違います'; return; }
         if (group.members && group.members.length >= 5) { errEl.style.display='block'; errEl.textContent='このグループは満員です（5人上限）'; return; }
+        if (group.members && group.members.some(m => m.uid === _currentUser?.uid)) {
+            errEl.style.display='block'; errEl.textContent='すでに参加しています'; return;
+        }
 
-        const uid = _currentUser?.uid || ('guest_' + Date.now());
-        const me  = { uid, name: nickname, role: 'member', joinedAt: Date.now() };
-
+        const me = { uid: _currentUser?.uid || 'guest', name: _currentUser?.displayName || _currentUser?.email?.split('@')[0] || 'ゲスト', role: 'member', joinedAt: Date.now() };
         await _fbDb.collection('groups').doc(groupId).update({
             members:    firebase.firestore.FieldValue.arrayUnion(me),
-            memberUids: firebase.firestore.FieldValue.arrayUnion(uid),
+            memberUids: firebase.firestore.FieldValue.arrayUnion(_currentUser?.uid || 'guest'),
         });
-
-        // Cookie保存（30日）
-        const exp = new Date(Date.now() + 30*24*60*60*1000).toUTCString();
-        document.cookie = 'grp_id=' + encodeURIComponent(groupId)  + '; expires=' + exp + '; path=/; SameSite=Lax';
-        document.cookie = 'grp_nm=' + encodeURIComponent(nickname) + '; expires=' + exp + '; path=/; SameSite=Lax';
-        document.cookie = 'grp_ic=' + encodeURIComponent(group.icon || '👥') + '; expires=' + exp + '; path=/; SameSite=Lax';
-        document.cookie = 'grp_gn=' + encodeURIComponent(group.name) + '; expires=' + exp + '; path=/; SameSite=Lax';
-
-        // バッジ・通知ボタン表示
-        _showGroupBadge(nickname, group.icon + ' ' + group.name);
-        showNotifBtn();
-
-        document.getElementById('friend-modal').style.display = 'none';
-        document.body.style.overflow = '';
-        alert('✅ 「' + group.icon + ' ' + group.name + '」に参加しました！');
+        alert(`✅ 「${group.icon} ${group.name}」に参加しました！`);
+        renderFriendModalTop();
     } catch(e) {
         errEl.style.display='block'; errEl.textContent='エラー: ' + e.message;
     }
@@ -4123,8 +4077,8 @@ async function checkFriendCode() {
         _fc.group = group;
         // Cookieに保存（30日）
         const exp = new Date(Date.now() + 30*24*60*60*1000).toUTCString();
-        document.cookie = 'fc_auth=1; expires=' + exp + '; path=/; SameSite=Lax';
-        document.cookie = 'fc_gb64=' + encodeURIComponent(_CODE_MAP[hash]) + '; expires=' + exp + '; path=/; SameSite=Lax';
+        document.cookie = 'fc_auth=1; expires=' + exp + '; path=/; SameSite=Strict';
+        document.cookie = 'fc_gb64=' + encodeURIComponent(_CODE_MAP[hash]) + '; expires=' + exp + '; path=/; SameSite=Strict';
         document.getElementById('friend-modal').style.display = 'none';
         showFriendNameModal(group);
     } else {
@@ -4189,7 +4143,7 @@ function saveFriendName(skip) {
         _fc.name = val;
         if (val) {
             const exp = new Date(Date.now() + 30*24*60*60*1000).toUTCString();
-            document.cookie = 'fc_nm=' + encodeURIComponent(val) + '; expires=' + exp + '; path=/; SameSite=Lax';
+            document.cookie = 'fc_nm=' + encodeURIComponent(val) + '; expires=' + exp + '; path=/; SameSite=Strict';
         }
     }
     if (modal) modal.remove();
@@ -4299,7 +4253,6 @@ function updateAuthUI(user) {
             badge.innerHTML = '🔓 <strong>' + displayName + '</strong> でログイン中 — 履歴がクラウドに同期されます';
         }
         document.body.style.paddingTop = '49px';
-        showNotifBtn();
     } else {
         if (loginBtn)  loginBtn.style.display  = 'flex';
         if (githubBtn) githubBtn.style.display  = 'flex';
@@ -4309,133 +4262,6 @@ function updateAuthUI(user) {
         document.getElementById('auth-sync-status').textContent = '';
         if (badge) badge.style.display = 'none';
         document.body.style.paddingTop = '0';
-        hideNotifBtn();
-    }
-}
-
-// ══════════════════════════════════════════════════════════════
-// 🔔 通知センター
-// ══════════════════════════════════════════════════════════════
-const NOTIF_KEY = 'app_notifs_v1';
-
-function _loadNotifs() {
-    try { return JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]'); } catch(e) { return []; }
-}
-function _saveNotifs(n) {
-    try { localStorage.setItem(NOTIF_KEY, JSON.stringify(n)); } catch(e) {}
-}
-function _addNotif(notif) {
-    const notifs = _loadNotifs();
-    if (notifs.some(n => n.dedupeKey && n.dedupeKey === notif.dedupeKey)) return;
-    notifs.unshift({ ...notif, id: Date.now(), read: false, ts: Date.now() });
-    if (notifs.length > 30) notifs.splice(30);
-    _saveNotifs(notifs);
-    _updateNotifBadge();
-}
-function _updateNotifBadge() {
-    const unread = _loadNotifs().filter(n => !n.read).length;
-    const badge  = document.getElementById('notif-badge');
-    if (!badge) return;
-    if (unread > 0) {
-        badge.textContent   = unread > 9 ? '9+' : unread;
-        badge.style.display = 'flex';
-    } else {
-        badge.style.display = 'none';
-    }
-}
-function showNotifBtn() {
-    const btn = document.getElementById('notif-btn');
-    if (btn) btn.style.display = 'flex';
-    _updateNotifBadge();
-    _checkUpdateNotif();
-    if (_currentUser) _checkDeleteRequests();
-}
-function hideNotifBtn() {
-    const btn = document.getElementById('notif-btn');
-    if (btn) btn.style.display = 'none';
-}
-function _checkUpdateNotif() {
-    _addNotif({
-        dedupeKey: 'update_Beta_1.7.5',
-        type:      'update',
-        title:     '🚀 Beta 1.7.5 がリリースされました！',
-        body:      '親友グループ機能・デバイス対戦・フィードバック・スコアグラフ等を追加。タップして詳細を確認。',
-        action:    'openUpdate',
-    });
-}
-async function _checkDeleteRequests() {
-    if (!_currentUser || !_fbDb) return;
-    try {
-        const snap = await _fbDb.collection('group_delete_requests')
-            .where('targetUid', '==', _currentUser.uid)
-            .where('status', '==', 'pending').get();
-        snap.docs.forEach(d => {
-            const req = d.data();
-            _addNotif({
-                dedupeKey: 'delete_req_' + d.id,
-                type:      'delete_req',
-                title:     '⚠️ メンバー削除申請が届きました',
-                body:      '「' + req.requestedByName + '」さんからグループ退出の申請が届いています。タップして確認。',
-                action:    'openDeleteReq',
-                reqId:     d.id,
-                groupId:   req.groupId,
-            });
-        });
-    } catch(e) {}
-}
-function openNotifCenter() {
-    const modal  = document.getElementById('notif-modal');
-    const list   = document.getElementById('notif-list');
-    const notifs = _loadNotifs();
-    notifs.forEach(n => n.read = true);
-    _saveNotifs(notifs);
-    _updateNotifBadge();
-
-    if (notifs.length === 0) {
-        list.innerHTML = '<p style="color:#555;text-align:center;padding:24px;font-size:0.85rem;">通知はありません</p>';
-    } else {
-        list.innerHTML = notifs.map((n, i) =>
-            '<div style="padding:14px 18px;border-bottom:1px solid #1a1a1a;display:flex;align-items:flex-start;gap:10px;" onmouseover="this.style.background=\'#1a1a1a\'" onmouseout="this.style.background=\'\'">'
-            + '<div onclick="handleNotifTap(' + i + ')" style="flex:1;cursor:pointer;">'
-            + '<div style="color:#fff;font-size:0.88rem;font-weight:700;margin-bottom:4px;">' + n.title + '</div>'
-            + '<div style="color:#888;font-size:0.78rem;line-height:1.5;">' + n.body + '</div>'
-            + '<div style="color:#444;font-size:0.72rem;margin-top:4px;">' + new Date(n.ts).toLocaleString('ja-JP') + '</div>'
-            + '</div>'
-            + '<button onclick="deleteNotif(' + i + ')" style="flex-shrink:0;background:none;border:none;color:#444;font-size:1rem;cursor:pointer;padding:2px 4px;border-radius:6px;line-height:1;" onmouseover="this.style.color=\'#ff6b6b\'" onmouseout="this.style.color=\'#444\'">✕</button>'
-            + '</div>'
-        ).join('');
-    }
-    modal.style.display = 'block';
-    setTimeout(() => document.addEventListener('click', _notifOutside, { once: true }), 100);
-}
-function _notifOutside(e) {
-    const modal = document.getElementById('notif-modal');
-    const btn   = document.getElementById('notif-btn');
-    if (modal && !modal.contains(e.target) && btn && !btn.contains(e.target)) {
-        modal.style.display = 'none';
-    }
-}
-function closeNotifCenter() {
-    const m = document.getElementById('notif-modal');
-    if (m) m.style.display = 'none';
-}
-function deleteNotif(idx) {
-    const notifs = _loadNotifs();
-    notifs.splice(idx, 1);
-    _saveNotifs(notifs);
-    _updateNotifBadge();
-    openNotifCenter(); // リスト再描画
-}
-
-function handleNotifTap(idx) {
-    closeNotifCenter();
-    const n = _loadNotifs()[idx];
-    if (!n) return;
-    if (n.action === 'openUpdate') {
-        const overlay = document.getElementById('update-overlay');
-        if (overlay) overlay.style.display = 'flex';
-    } else if (n.action === 'openDeleteReq') {
-        openGroupDetail(n.groupId);
     }
 }
 
@@ -4543,9 +4369,6 @@ document.addEventListener('keydown', e => {
     }
 });
 window.addEventListener('load',()=>{
-    // 初期状態で通知ボタンを非表示
-    const _nb = document.getElementById('notif-btn');
-    if (_nb) _nb.style.display = 'none';
     // 設定読み込み・適用（エラーが起きても診断は必ず実行）
     try { loadSettings(); } catch(e) { console.warn('loadSettings error:', e); }
     try { applySettings(); } catch(e) { console.warn('applySettings error:', e); }
@@ -4558,8 +4381,6 @@ window.addEventListener('load',()=>{
     initFirebase();
     // 友達コードのCookieチェック
     if (checkFriendCookie()) { loadFriendFromCookie(); updateFriendAuthUI(true); }
-    // グループCookieチェック
-    if (checkGroupCookie()) { loadGroupFromCookie(); }
     // Enterキーで友達コード送信
     document.getElementById('friend-code-input')?.addEventListener('keydown', e => {
         if (e.key === 'Enter') checkFriendCode();
