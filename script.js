@@ -3628,6 +3628,32 @@ async function _hashPass(pass) {
 }
 
 // ── 親友コードモーダルのメイン画面 ──
+function _showGroupBadge(name, groupLabel) {
+    const badge = document.getElementById('auth-status-badge');
+    if (!badge) return;
+    badge.style.display = 'block';
+    badge.innerHTML = '👥 <strong>' + name + '</strong> が <strong>' + groupLabel + '</strong> でログイン中';
+}
+
+function _getCookie(key) {
+    const c = document.cookie.split(';').find(c => c.trim().startsWith(key + '='));
+    return c ? decodeURIComponent(c.trim().split('=').slice(1).join('=')) : null;
+}
+
+function checkGroupCookie() {
+    return !!_getCookie('grp_id');
+}
+
+function loadGroupFromCookie() {
+    const groupId   = _getCookie('grp_id');
+    const nickname  = _getCookie('grp_nm');
+    const groupIcon = _getCookie('grp_ic');
+    const groupName = _getCookie('grp_gn');
+    if (groupId && nickname) {
+        _showGroupBadge(nickname, (groupIcon || '👥') + ' ' + (groupName || groupId));
+    }
+}
+
 function openFriendModal() {
     const modal = document.getElementById('friend-modal');
     modal.style.display = 'flex';
@@ -3684,12 +3710,17 @@ function renderJoinGroup() {
         <button onclick="renderFriendModalTop()" style="background:none;border:none;color:#888;font-size:0.85rem;cursor:pointer;margin-bottom:16px;padding:0;">← 戻る</button>
         <p style="color:#ccc;font-size:0.85rem;margin:0 0 16px;">グループのオーナーから教えてもらったグループIDとパスワードを入力してください。</p>
         <div style="margin-bottom:12px;">
-            <label style="display:block;color:#ccc;font-size:0.82rem;font-weight:700;margin-bottom:6px;">グループID</label>
+            <label style="display:block;color:#ccc;font-size:0.82rem;font-weight:700;margin-bottom:6px;">ニックネーム <span style="color:#ff3b30;">*</span></label>
+            <input id="join-group-name" type="text" maxlength="20" placeholder="グループ内での名前（20文字以内）"
+                style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:10px 14px;color:#fff;font-size:0.95rem;outline:none;box-sizing:border-box;">
+        </div>
+        <div style="margin-bottom:12px;">
+            <label style="display:block;color:#ccc;font-size:0.82rem;font-weight:700;margin-bottom:6px;">グループID <span style="color:#ff3b30;">*</span></label>
             <input id="join-group-id" type="text" placeholder="グループID"
                 style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:10px 14px;color:#fff;font-size:0.95rem;outline:none;box-sizing:border-box;">
         </div>
         <div style="margin-bottom:16px;">
-            <label style="display:block;color:#ccc;font-size:0.82rem;font-weight:700;margin-bottom:6px;">パスワード</label>
+            <label style="display:block;color:#ccc;font-size:0.82rem;font-weight:700;margin-bottom:6px;">パスワード <span style="color:#ff3b30;">*</span></label>
             <input id="join-group-pass" type="password" placeholder="パスワード"
                 style="width:100%;background:#1a1a1a;border:1px solid #333;border-radius:12px;padding:10px 14px;color:#fff;font-size:0.95rem;outline:none;box-sizing:border-box;">
         </div>
@@ -3699,10 +3730,12 @@ function renderJoinGroup() {
 
 async function submitJoinGroup() {
     if (!_fbDb) { alert('Firestoreが利用できません'); return; }
-    const groupId = document.getElementById('join-group-id')?.value.trim();
-    const pass    = document.getElementById('join-group-pass')?.value.trim();
-    const errEl   = document.getElementById('join-group-error');
+    const nickname = document.getElementById('join-group-name')?.value.trim();
+    const groupId  = document.getElementById('join-group-id')?.value.trim();
+    const pass     = document.getElementById('join-group-pass')?.value.trim();
+    const errEl    = document.getElementById('join-group-error');
 
+    if (!nickname) { errEl.style.display='block'; errEl.textContent='ニックネームを入力してください'; return; }
     if (!groupId || !pass) { errEl.style.display='block'; errEl.textContent='グループIDとパスワードを入力してください'; return; }
 
     try {
@@ -3712,17 +3745,28 @@ async function submitJoinGroup() {
         const hash  = await _hashPass(pass);
         if (hash !== group.passwordHash) { errEl.style.display='block'; errEl.textContent='パスワードが違います'; return; }
         if (group.members && group.members.length >= 5) { errEl.style.display='block'; errEl.textContent='このグループは満員です（5人上限）'; return; }
-        if (group.members && group.members.some(m => m.uid === _currentUser?.uid)) {
-            errEl.style.display='block'; errEl.textContent='すでに参加しています'; return;
-        }
 
-        const me = { uid: _currentUser?.uid || 'guest', name: _currentUser?.displayName || _currentUser?.email?.split('@')[0] || 'ゲスト', role: 'member', joinedAt: Date.now() };
+        const uid = _currentUser?.uid || ('guest_' + Date.now());
+        const me  = { uid, name: nickname, role: 'member', joinedAt: Date.now() };
+
         await _fbDb.collection('groups').doc(groupId).update({
             members:    firebase.firestore.FieldValue.arrayUnion(me),
-            memberUids: firebase.firestore.FieldValue.arrayUnion(_currentUser?.uid || 'guest'),
+            memberUids: firebase.firestore.FieldValue.arrayUnion(uid),
         });
-        alert(`✅ 「${group.icon} ${group.name}」に参加しました！`);
-        renderFriendModalTop();
+
+        // Cookie保存（30日）
+        const exp = new Date(Date.now() + 30*24*60*60*1000).toUTCString();
+        document.cookie = 'grp_id=' + encodeURIComponent(groupId)  + '; expires=' + exp + '; path=/; SameSite=Strict';
+        document.cookie = 'grp_nm=' + encodeURIComponent(nickname) + '; expires=' + exp + '; path=/; SameSite=Strict';
+        document.cookie = 'grp_ic=' + encodeURIComponent(group.icon || '👥') + '; expires=' + exp + '; path=/; SameSite=Strict';
+        document.cookie = 'grp_gn=' + encodeURIComponent(group.name) + '; expires=' + exp + '; path=/; SameSite=Strict';
+
+        // バッジ表示
+        _showGroupBadge(nickname, group.icon + ' ' + group.name);
+
+        document.getElementById('friend-modal').style.display = 'none';
+        document.body.style.overflow = '';
+        alert('✅ 「' + group.icon + ' ' + group.name + '」に参加しました！');
     } catch(e) {
         errEl.style.display='block'; errEl.textContent='エラー: ' + e.message;
     }
@@ -4207,7 +4251,11 @@ function initFirebase() {
         _fbAuth.onAuthStateChanged(user => {
             _currentUser = user;
             updateAuthUI(user);
-            if (user) syncHistoryFromCloud();
+            if (user) {
+                syncHistoryFromCloud();
+                // Redirectログイン後にtui()が準備できてるか保証するため再適用
+                try { applyLanguage(); } catch(e) {}
+            }
         });
 
         // Redirectログイン後の結果を受け取る
@@ -4239,13 +4287,8 @@ function updateAuthUI(user) {
         if (loginBtn)  loginBtn.style.display  = 'none';
         if (githubBtn) githubBtn.style.display  = 'none';
         if (logoutBtn) logoutBtn.style.display = 'block';
-        // GitHubはdisplayNameがnull・emailも非公開の場合があるのでproviderDataから取得
-        const githubData = user.providerData?.find(p => p.providerId === 'github.com');
-        const displayName = user.displayName
-            || githubData?.displayName
-            || githubData?.email?.split('@')[0]
-            || user.email?.split('@')[0]
-            || 'ユーザー';
+        // GitHubはdisplayNameがnullの場合があるのでemail/uidでフォールバック
+        const displayName = user.displayName || user.email?.split('@')[0] || 'ユーザー';
         if (user.photoURL) { avatar.src = user.photoURL; avatar.style.display = 'block'; }
         username.textContent = displayName;
         document.getElementById('auth-sync-status').textContent = tui().synced;
@@ -4382,6 +4425,8 @@ window.addEventListener('load',()=>{
     initFirebase();
     // 友達コードのCookieチェック
     if (checkFriendCookie()) { loadFriendFromCookie(); updateFriendAuthUI(true); }
+    // グループCookieチェック
+    if (checkGroupCookie()) { loadGroupFromCookie(); }
     // Enterキーで友達コード送信
     document.getElementById('friend-code-input')?.addEventListener('keydown', e => {
         if (e.key === 'Enter') checkFriendCode();
