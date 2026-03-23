@@ -3756,10 +3756,10 @@ async function submitJoinGroup() {
 
         // Cookie保存（30日）
         const exp = new Date(Date.now() + 30*24*60*60*1000).toUTCString();
-        document.cookie = 'grp_id=' + encodeURIComponent(groupId)  + '; expires=' + exp + '; path=/; SameSite=Strict';
-        document.cookie = 'grp_nm=' + encodeURIComponent(nickname) + '; expires=' + exp + '; path=/; SameSite=Strict';
-        document.cookie = 'grp_ic=' + encodeURIComponent(group.icon || '👥') + '; expires=' + exp + '; path=/; SameSite=Strict';
-        document.cookie = 'grp_gn=' + encodeURIComponent(group.name) + '; expires=' + exp + '; path=/; SameSite=Strict';
+        document.cookie = 'grp_id=' + encodeURIComponent(groupId)  + '; expires=' + exp + '; path=/; SameSite=Lax';
+        document.cookie = 'grp_nm=' + encodeURIComponent(nickname) + '; expires=' + exp + '; path=/; SameSite=Lax';
+        document.cookie = 'grp_ic=' + encodeURIComponent(group.icon || '👥') + '; expires=' + exp + '; path=/; SameSite=Lax';
+        document.cookie = 'grp_gn=' + encodeURIComponent(group.name) + '; expires=' + exp + '; path=/; SameSite=Lax';
 
         // バッジ表示
         _showGroupBadge(nickname, group.icon + ' ' + group.name);
@@ -4121,8 +4121,8 @@ async function checkFriendCode() {
         _fc.group = group;
         // Cookieに保存（30日）
         const exp = new Date(Date.now() + 30*24*60*60*1000).toUTCString();
-        document.cookie = 'fc_auth=1; expires=' + exp + '; path=/; SameSite=Strict';
-        document.cookie = 'fc_gb64=' + encodeURIComponent(_CODE_MAP[hash]) + '; expires=' + exp + '; path=/; SameSite=Strict';
+        document.cookie = 'fc_auth=1; expires=' + exp + '; path=/; SameSite=Lax';
+        document.cookie = 'fc_gb64=' + encodeURIComponent(_CODE_MAP[hash]) + '; expires=' + exp + '; path=/; SameSite=Lax';
         document.getElementById('friend-modal').style.display = 'none';
         showFriendNameModal(group);
     } else {
@@ -4187,7 +4187,7 @@ function saveFriendName(skip) {
         _fc.name = val;
         if (val) {
             const exp = new Date(Date.now() + 30*24*60*60*1000).toUTCString();
-            document.cookie = 'fc_nm=' + encodeURIComponent(val) + '; expires=' + exp + '; path=/; SameSite=Strict';
+            document.cookie = 'fc_nm=' + encodeURIComponent(val) + '; expires=' + exp + '; path=/; SameSite=Lax';
         }
     }
     if (modal) modal.remove();
