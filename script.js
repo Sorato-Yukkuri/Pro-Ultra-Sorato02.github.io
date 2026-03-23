@@ -4531,6 +4531,9 @@ document.addEventListener('keydown', e => {
     }
 });
 window.addEventListener('load',()=>{
+    // 初期状態で通知ボタンを非表示
+    const _nb = document.getElementById('notif-btn');
+    if (_nb) _nb.style.display = 'none';
     // 設定読み込み・適用（エラーが起きても診断は必ず実行）
     try { loadSettings(); } catch(e) { console.warn('loadSettings error:', e); }
     try { applySettings(); } catch(e) { console.warn('applySettings error:', e); }
