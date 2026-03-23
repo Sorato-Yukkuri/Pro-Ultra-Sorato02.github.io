@@ -3762,8 +3762,9 @@ async function submitJoinGroup() {
         document.cookie = 'grp_ic=' + encodeURIComponent(group.icon || '👥') + '; expires=' + exp + '; path=/; SameSite=Lax';
         document.cookie = 'grp_gn=' + encodeURIComponent(group.name) + '; expires=' + exp + '; path=/; SameSite=Lax';
 
-        // バッジ表示
+        // バッジ・通知ボタン表示
         _showGroupBadge(nickname, group.icon + ' ' + group.name);
+        showNotifBtn();
 
         document.getElementById('friend-modal').style.display = 'none';
         document.body.style.overflow = '';
@@ -4394,10 +4395,13 @@ function openNotifCenter() {
         list.innerHTML = '<p style="color:#555;text-align:center;padding:24px;font-size:0.85rem;">通知はありません</p>';
     } else {
         list.innerHTML = notifs.map((n, i) =>
-            '<div onclick="handleNotifTap(' + i + ')" style="padding:14px 18px;border-bottom:1px solid #1a1a1a;cursor:pointer;" onmouseover="this.style.background=\'#1a1a1a\'" onmouseout="this.style.background=\'\'">'
+            '<div style="padding:14px 18px;border-bottom:1px solid #1a1a1a;display:flex;align-items:flex-start;gap:10px;" onmouseover="this.style.background=\'#1a1a1a\'" onmouseout="this.style.background=\'\'">'
+            + '<div onclick="handleNotifTap(' + i + ')" style="flex:1;cursor:pointer;">'
             + '<div style="color:#fff;font-size:0.88rem;font-weight:700;margin-bottom:4px;">' + n.title + '</div>'
             + '<div style="color:#888;font-size:0.78rem;line-height:1.5;">' + n.body + '</div>'
             + '<div style="color:#444;font-size:0.72rem;margin-top:4px;">' + new Date(n.ts).toLocaleString('ja-JP') + '</div>'
+            + '</div>'
+            + '<button onclick="deleteNotif(' + i + ')" style="flex-shrink:0;background:none;border:none;color:#444;font-size:1rem;cursor:pointer;padding:2px 4px;border-radius:6px;line-height:1;" onmouseover="this.style.color=\'#ff6b6b\'" onmouseout="this.style.color=\'#444\'">✕</button>'
             + '</div>'
         ).join('');
     }
@@ -4415,6 +4419,14 @@ function closeNotifCenter() {
     const m = document.getElementById('notif-modal');
     if (m) m.style.display = 'none';
 }
+function deleteNotif(idx) {
+    const notifs = _loadNotifs();
+    notifs.splice(idx, 1);
+    _saveNotifs(notifs);
+    _updateNotifBadge();
+    openNotifCenter(); // リスト再描画
+}
+
 function handleNotifTap(idx) {
     closeNotifCenter();
     const n = _loadNotifs()[idx];
