@@ -2368,6 +2368,8 @@ function processFinalReport() {
     document.getElementById('history-btn').style.display='block';
     document.getElementById('speed-btn').style.display='block';
     document.getElementById('battle-btn').style.display='block';
+    const trendBtnEl = document.getElementById('trend-btn');
+    if (trendBtnEl) trendBtnEl.style.display='block';
     document.getElementById('retry-btn').style.display='block';
 
     // 診断完了トースト
@@ -3557,6 +3559,8 @@ function retryDiagnostic() {
     document.getElementById('history-btn').style.display = 'none';
     document.getElementById('speed-btn').style.display   = 'none';
     document.getElementById('battle-btn').style.display  = 'none';
+    const _trendHide = document.getElementById('trend-btn');
+    if (_trendHide) _trendHide.style.display = 'none';
     document.getElementById('retry-btn').style.display   = 'none';
     const trEl = document.getElementById('time-remaining');
     if (trEl) trEl.textContent = '';
@@ -4987,6 +4991,144 @@ function _genCode() {
     return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+// ══════════════════════════════════════════════════════════════
+// 📈 スコア推移モーダル
+// ══════════════════════════════════════════════════════════════
+function openTrendModal() {
+    const modal = document.getElementById('trend-modal');
+    const cont  = document.getElementById('trend-content');
+    if (!modal || !cont) return;
+
+    let history = [];
+    try { history = JSON.parse(localStorage.getItem('diag_history') || '[]'); } catch(e) {}
+
+    if (history.length === 0) {
+        cont.innerHTML = '<p style="color:#555;text-align:center;padding:24px 0;">診断履歴がありません。<br>診断を実行すると推移が表示されます。</p>';
+        modal.style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+        return;
+    }
+
+    // diag_history は新しい順なので古い順にreverseしてグラフ表示
+    const sorted = [...history].reverse();
+    const labels = sorted.map((h, i) => {
+        if (h.date) {
+            const m = h.date.match(/(\d+)\/(\d+)\/(\d+)/);
+            return m ? m[2] + '/' + m[3] : '第' + (i+1) + '回';
+        }
+        return '第' + (i+1) + '回';
+    });
+    const scoreKeys = [
+        { key: 'cpu', label: 'CPU',    color: '#ff9500' },
+        { key: 'gpu', label: 'GPU',    color: '#6366f1' },
+        { key: 'mem', label: 'MEM',    color: '#34c759' },
+        { key: 'fps', label: 'FPS安定', color: '#00d4ff' },
+    ];
+
+    // 総合スコア（フラット構造: h.totalScore）
+    const totalScores = sorted.map(h => h.totalScore || 0);
+
+    // SVGグラフ生成
+    const W = 520, H = 200, PL = 40, PR = 16, PT = 16, PB = 32;
+    const GW = W - PL - PR, GH = H - PT - PB;
+    const maxVal = 100;
+    const n = sorted.length;
+    const xStep = n > 1 ? GW / (n - 1) : GW / 2;
+
+    function toX(i) { return PL + (n > 1 ? i * xStep : GW / 2); }
+    function toY(v) { return PT + GH - (v / maxVal) * GH; }
+
+    function makePath(values, color) {
+        if (values.length === 0) return '';
+        if (values.length === 1) {
+            const cx = toX(0), cy = toY(values[0]);
+            return `<circle cx="${cx}" cy="${cy}" r="5" fill="${color}" opacity="0.9"/>`;
+        }
+        const d = values.map((v, i) => (i === 0 ? 'M' : 'L') + toX(i).toFixed(1) + ',' + toY(v).toFixed(1)).join(' ');
+        const dots = values.map((v, i) => `<circle cx="${toX(i).toFixed(1)}" cy="${toY(v).toFixed(1)}" r="4" fill="${color}" stroke="#111" stroke-width="2"/>`).join('');
+        return `<path d="${d}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.85"/>${dots}`;
+    }
+
+    // グリッド線
+    const gridLines = [0, 25, 50, 75, 100].map(v => {
+        const y = toY(v).toFixed(1);
+        return `<line x1="${PL}" y1="${y}" x2="${W - PR}" y2="${y}" stroke="#222" stroke-width="1"/>
+                <text x="${PL - 6}" y="${parseFloat(y) + 4}" fill="#444" font-size="10" text-anchor="end">${v}</text>`;
+    }).join('');
+
+    // X軸ラベル
+    const xLabels = labels.map((l, i) =>
+        `<text x="${toX(i).toFixed(1)}" y="${H - 6}" fill="#555" font-size="10" text-anchor="middle">${l}</text>`
+    ).join('');
+
+    const paths = scoreKeys.map(s => {
+        const values = sorted.map(h => h[s.key] || 0);
+        return makePath(values, s.color);
+    }).join('');
+
+    const totalPath = makePath(totalScores, '#ffffff');
+
+    const svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;border-radius:12px;background:#0a0a0a;">
+        ${gridLines}
+        ${xLabels}
+        ${paths}
+        ${totalPath}
+    </svg>`;
+
+    // 凡例
+    const legend = [`<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px;justify-content:center;">`];
+    legend.push(`<span style="color:#fff;font-size:0.78rem;display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:20px;height:3px;background:#fff;border-radius:2px;"></span>総合</span>`);
+    scoreKeys.forEach(s => {
+        legend.push(`<span style="color:${s.color};font-size:0.78rem;display:flex;align-items:center;gap:5px;"><span style="display:inline-block;width:20px;height:3px;background:${s.color};border-radius:2px;"></span>${s.label}</span>`);
+    });
+    legend.push('</div>');
+
+    // 変化サマリー
+    let summary = '';
+    if (sorted.length >= 2) {
+        const last   = sorted[sorted.length - 1];
+        const prev   = sorted[sorted.length - 2];
+        const diff   = (last.totalScore || 0) - (prev.totalScore || 0);
+        const arrow  = diff > 0 ? '▲' : diff < 0 ? '▼' : '━';
+        const col    = diff > 0 ? '#34c759' : diff < 0 ? '#ff6b6b' : '#888';
+        summary = `<div style="background:#1a1a1a;border-radius:14px;padding:14px 18px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;">
+            <span style="color:#888;font-size:0.85rem;">前回との総合スコア差</span>
+            <span style="color:${col};font-size:1.2rem;font-weight:900;">${arrow} ${Math.abs(diff)}pt</span>
+        </div>`;
+    }
+
+    // ランク推移バッジ
+    const rankColors = {S:'#ff3b30',A:'#ff9500',B:'#34c759',C:'#007aff',D:'#8e8e93'};
+    const rankBadges = sorted.map((h, i) => {
+        const rank = h.rank || '?';
+        const col  = rankColors[rank] || '#888';
+        return `<div style="text-align:center;">
+            <div style="width:36px;height:36px;border-radius:10px;background:#000;border:2px solid ${col};display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:900;color:${col};margin:0 auto 4px;">${rank}</div>
+            <div style="color:#555;font-size:0.7rem;">${labels[i]}</div>
+        </div>`;
+    }).join('');
+
+    cont.innerHTML = `
+        ${summary}
+        ${legend.join('')}
+        <div style="margin-bottom:20px;">${svg}</div>
+        <div style="margin-bottom:20px;">
+            <p style="color:#888;font-size:0.8rem;margin:0 0 10px;font-weight:700;">ランク推移</p>
+            <div style="display:flex;gap:12px;flex-wrap:wrap;">${rankBadges}</div>
+        </div>
+        <button onclick="closeTrendModal()" style="width:100%;padding:13px;border-radius:14px;background:#1a1a1a;border:1px solid #333;color:#888;font-size:0.9rem;font-weight:700;cursor:pointer;">閉じる</button>
+    `;
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+    modal.onclick = e => { if (e.target === modal) closeTrendModal(); };
+}
+
+function closeTrendModal() {
+    const modal = document.getElementById('trend-modal');
+    if (modal) { modal.style.display = 'none'; document.body.style.overflow = ''; }
+}
+
 function openBattle() {
     const modal = document.getElementById('battle-modal');
     const cont  = document.getElementById('battle-content');
@@ -5099,8 +5241,8 @@ function battleURL() {
             <div id="battle-url-text" style="flex:1;color:#6bb5ff;font-size:0.72rem;word-break:break-all;line-height:1.4;">${url}</div>
             <button onclick="navigator.clipboard.writeText('${url.replace(/'/g,"\\'")}').then(()=>alert('コピーしました！'))" style="flex-shrink:0;padding:8px 14px;border-radius:10px;background:#007aff;color:#fff;border:none;font-weight:700;cursor:pointer;font-size:0.82rem;">コピー</button>
         </div>
-        <div style="text-align:center;background:#fff;border-radius:12px;padding:12px;margin-bottom:12px;">
-            <canvas id="battle-qr" width="180" height="180"></canvas>
+        <div style="text-align:center;background:#fff;border-radius:12px;padding:12px;margin-bottom:12px;min-height:204px;display:flex;align-items:center;justify-content:center;">
+            <div id="battle-qr" style="display:inline-block;"></div>
         </div>
         <p style="color:#555;font-size:0.75rem;text-align:center;">QRコードをスキャン→診断→対戦結果が表示されます</p>`;
 
@@ -5109,17 +5251,41 @@ function battleURL() {
 }
 
 function _generateQR(url) {
-    const script = document.getElementById('qrcode-script');
     const draw = () => {
-        const canvas = document.getElementById('battle-qr');
-        if (!canvas || !window.QRCode) return;
-        QRCode.toCanvas(canvas, url, { width: 180, margin: 1, color: { dark:'#000', light:'#fff' } });
+        const el = document.getElementById('battle-qr');
+        if (!el) return;
+        el.innerHTML = ''; // 既存内容をクリア
+        try {
+            new QRCode(el, {
+                text: url,
+                width: 180,
+                height: 180,
+                colorDark: '#000000',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.M,
+            });
+        } catch(err) {
+            el.innerHTML = '<p style="color:#ff6b6b;font-size:0.8rem;text-align:center;padding:8px;">QR生成に失敗しました</p>';
+        }
     };
     if (window.QRCode) { draw(); return; }
-    const s  = document.createElement('script');
-    s.id     = 'qrcode-script';
-    s.src    = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
-    s.onload = draw;
+    let s = document.getElementById('qrcode-script');
+    if (s) { s.addEventListener('load', draw); return; }
+    s = document.createElement('script');
+    s.id  = 'qrcode-script';
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+    s.onload  = draw;
+    s.onerror = () => {
+        // フォールバック：Google Charts QR API（画像で表示）
+        const el = document.getElementById('battle-qr');
+        if (!el) return;
+        const img = document.createElement('img');
+        img.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(url);
+        img.width = 180; img.height = 180;
+        img.style.borderRadius = '4px';
+        el.innerHTML = '';
+        el.appendChild(img);
+    };
     document.head.appendChild(s);
 }
 
@@ -5672,6 +5838,147 @@ const HELP_TEXT_I18N = {
 };
 
 const helpText = HELP_TEXT_I18N['ja']; // 後方互換用（initHelpIconsで使用）
+
+// ══════════════════════════════════════════════════════════════
+// 🔔 通知センター
+// ══════════════════════════════════════════════════════════════
+const NOTIF_KEY = 'app_notifications_v1';
+const NOTIF_MAX = 30;
+
+function _loadNotifs() {
+    try { return JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]'); } catch(e) { return []; }
+}
+function _saveNotifs(list) {
+    try { localStorage.setItem(NOTIF_KEY, JSON.stringify(list.slice(0, NOTIF_MAX))); } catch(e) {}
+}
+
+function pushNotif(title, body, type) {
+    const list = _loadNotifs();
+    list.unshift({ id: Date.now(), title: title || '', body: body || '', type: type || 'info', time: new Date().toISOString(), read: false });
+    _saveNotifs(list);
+    _updateNotifBadge();
+}
+
+function _updateNotifBadge() {
+    const list  = _loadNotifs();
+    const unread = list.filter(n => !n.read).length;
+    const badge  = document.getElementById('notif-badge');
+    if (!badge) return;
+    if (unread > 0) {
+        badge.textContent = unread > 99 ? '99+' : String(unread);
+        badge.style.display = 'flex';
+    } else {
+        badge.textContent = '';
+        badge.style.display = 'none';
+    }
+}
+
+function _notifIcon(type) {
+    return { info:'ℹ️', done:'✅', warn:'⚠️', battle:'🆚', tip:'💡' }[type] || '🔔';
+}
+
+function _timeAgo(isoStr) {
+    const diff = (Date.now() - new Date(isoStr).getTime()) / 1000;
+    if (diff < 60)    return 'たった今';
+    if (diff < 3600)  return Math.floor(diff / 60) + '分前';
+    if (diff < 86400) return Math.floor(diff / 3600) + '時間前';
+    return Math.floor(diff / 86400) + '日前';
+}
+
+function _escHtml(str) {
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function _renderNotifList() {
+    const listEl = document.getElementById('notif-list');
+    if (!listEl) return;
+    const list = _loadNotifs();
+    if (list.length === 0) {
+        listEl.innerHTML = '<p style="color:#555;font-size:0.85rem;text-align:center;padding:28px 0;">通知はありません</p>';
+        return;
+    }
+    listEl.innerHTML = list.map(n => `
+        <div style="
+            padding:11px 14px 11px 16px;border-bottom:1px solid #1e1e1e;
+            background:${n.read ? 'transparent' : 'rgba(0,122,255,0.06)'};
+            display:flex;align-items:flex-start;gap:8px;
+        ">
+            <span style="font-size:1.1rem;flex-shrink:0;margin-top:1px;">${_notifIcon(n.type)}</span>
+            <div style="flex:1;min-width:0;" onclick="_markNotifRead(${n.id})" style="cursor:pointer;">
+                <div style="color:${n.read?'#aaa':'#fff'};font-size:0.86rem;font-weight:${n.read?'600':'800'};line-height:1.4;word-break:break-word;">${_escHtml(n.title)}</div>
+                ${n.body ? `<div style="color:#666;font-size:0.78rem;margin-top:2px;line-height:1.4;">${_escHtml(n.body)}</div>` : ''}
+                <div style="color:#3a3a3a;font-size:0.72rem;margin-top:4px;">${_timeAgo(n.time)}</div>
+            </div>
+            <button onclick="_deleteNotif(${n.id})" title="削除" style="
+                flex-shrink:0;background:none;border:none;color:#3a3a3a;
+                font-size:1rem;cursor:pointer;padding:2px 4px;border-radius:6px;
+                transition:color 0.15s;line-height:1;
+            " onmouseover="this.style.color='#ff3b30'" onmouseout="this.style.color='#3a3a3a'">✕</button>
+        </div>
+    `).join('') + `
+        <div style="padding:10px 16px;text-align:center;border-top:1px solid #1a1a1a;">
+            <button onclick="_clearAllNotifs()" style="background:none;border:none;color:#3a3a3a;font-size:0.78rem;cursor:pointer;text-decoration:underline;transition:color 0.15s;" onmouseover="this.style.color='#ff6b6b'" onmouseout="this.style.color='#3a3a3a'">
+                すべて削除
+            </button>
+        </div>
+    `;
+}
+
+function _markNotifRead(id) {
+    const list = _loadNotifs().map(n => n.id === id ? { ...n, read: true } : n);
+    _saveNotifs(list);
+    _renderNotifList();
+    _updateNotifBadge();
+}
+
+function _deleteNotif(id) {
+    const list = _loadNotifs().filter(n => n.id !== id);
+    _saveNotifs(list);
+    _renderNotifList();
+    _updateNotifBadge();
+}
+
+function _clearAllNotifs() {
+    _saveNotifs([]);
+    _renderNotifList();
+    _updateNotifBadge();
+}
+
+function openNotifCenter() {
+    const list = _loadNotifs().map(n => ({ ...n, read: true }));
+    _saveNotifs(list);
+    _updateNotifBadge();
+    _renderNotifList();
+    const modal = document.getElementById('notif-modal');
+    if (!modal) return;
+    modal.style.display = (modal.style.display === 'block') ? 'none' : 'block';
+}
+
+function closeNotifCenter() {
+    const modal = document.getElementById('notif-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+document.addEventListener('click', e => {
+    const modal = document.getElementById('notif-modal');
+    const btn   = document.getElementById('notif-btn');
+    if (!modal || modal.style.display !== 'block') return;
+    if (!modal.contains(e.target) && btn && !btn.contains(e.target)) closeNotifCenter();
+});
+
+// 診断完了時に通知センターへも追加
+const _origNotifyOnDone = notifyOnDone;
+notifyOnDone = async function(rank, score) {
+    pushNotif('診断完了！ ランク ' + rank, '総合スコア ' + score + ' 点', 'done');
+    return _origNotifyOnDone(rank, score);
+};
+
+// 初期化
+document.addEventListener('DOMContentLoaded', () => {
+    _updateNotifBadge();
+    pushNotif('アプリ起動', '精密デバイス診断 Pro Ultra へようこそ', 'info');
+    _updateNotifBadge();
+});
 
 document.addEventListener('click', e => {
     if (!e.target.classList.contains('help')) return;
