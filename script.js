@@ -4466,12 +4466,28 @@ async function signInWithTwitter() {
 
 async function signInWithTwitch() {
     if (!_fbAuth || _isAuthProcessing) return; 
-    _isAuthProcessing = true; 
+    _isAuthProcessing = true;
     _closeAuthModal();
+    
     try {
         const provider = new firebase.auth.OAuthProvider('oidc.oidc.twitch');
+
+        // 【対策1】TwitchのOIDCにはこれらが「必須」です！
+        provider.addScope('openid');
+        provider.addScope('user:read:email');
+
+        // 【対策2】強制的に「どのアカウント使う？」画面を出す（これでキャッシュエラーを防ぐ）
+        provider.setCustomParameters({
+            prompt: 'login'
+        });
+
+        // ポップアップで勝負！
         await _fbAuth.signInWithPopup(provider);
+
     } catch(e) {
+        // エラー詳細をコンソールに出して原因を特定しやすくする
+        console.error("Twitch詳細エラー:", e);
+        
         if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
             alert("Twitchログイン失敗: " + e.message);
         }
