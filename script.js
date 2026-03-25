@@ -4404,7 +4404,9 @@ async function signInWithEmail() {
     }
 }
 
-// ⚠️ この一行がファイルのどこか（関数の外）にあることを確認してください！
+// ══════════════════════════════════════════════════════════════
+// 👤 Firebase Authentication (ログイン処理)
+// ══════════════════════════════════════════════════════════════
 let _isAuthProcessing = false;
 
 async function signInWithGoogle() {
@@ -4418,9 +4420,7 @@ async function signInWithGoogle() {
         if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
             alert("Googleログイン失敗: " + e.message);
         }
-    } finally {
-        _isAuthProcessing = false;
-    }
+    } finally { _isAuthProcessing = false; }
 }
 
 async function signInWithGitHub() {
@@ -4443,9 +4443,7 @@ async function signInWithGitHub() {
         if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
             alert("GitHubログイン失敗: " + e.message);
         }
-    } finally {
-        _isAuthProcessing = false;
-    }
+    } finally { _isAuthProcessing = false; }
 }
 
 async function signInWithTwitter() {
@@ -4459,45 +4457,27 @@ async function signInWithTwitter() {
         if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
             alert("Twitterログイン失敗: " + e.message);
         }
-    } finally {
-        _isAuthProcessing = false;
-    }
+    } finally { _isAuthProcessing = false; }
 }
 
 async function signInWithTwitch() {
-    if (!_fbAuth || _isAuthProcessing) return; 
+    if (!_fbAuth || _isAuthProcessing) return;
     _isAuthProcessing = true;
     _closeAuthModal();
-    
     try {
         const provider = new firebase.auth.OAuthProvider('oidc.oidc.twitch');
-
-        // 【対策1】TwitchのOIDCにはこれらが「必須」です！
         provider.addScope('openid');
         provider.addScope('user:read:email');
-
-        // 【対策2】強制的に「どのアカウント使う？」画面を出す（これでキャッシュエラーを防ぐ）
-        provider.setCustomParameters({
-            prompt: 'login'
-        });
-
-        // ポップアップで勝負！
         await _fbAuth.signInWithPopup(provider);
-
     } catch(e) {
-        // エラー詳細をコンソールに出して原因を特定しやすくする
-        console.error("Twitch詳細エラー:", e);
-        
         if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
             alert("Twitchログイン失敗: " + e.message);
         }
-    } finally {
-        _isAuthProcessing = false;
-    }
+    } finally { _isAuthProcessing = false; }
 }
 
 async function signInWithDiscord() {
-    if (!_fbAuth || _isAuthProcessing) return; 
+    if (!_fbAuth || _isAuthProcessing) return;
     _isAuthProcessing = true;
     _closeAuthModal();
     try {
@@ -4507,22 +4487,18 @@ async function signInWithDiscord() {
         if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
             alert("Discordログイン失敗: " + e.message);
         }
-    } finally {
-        _isAuthProcessing = false;
-    }
+    } finally { _isAuthProcessing = false; }
 }
 
 async function signInAnonymously_app() {
-    if (!_fbAuth || _isAuthProcessing) return; 
+    if (!_fbAuth || _isAuthProcessing) return;
     _isAuthProcessing = true;
     _closeAuthModal();
     try {
         await _fbAuth.signInAnonymously();
     } catch(e) {
         alert("匿名ログイン失敗: " + e.message);
-    } finally {
-        _isAuthProcessing = false;
-    }
+    } finally { _isAuthProcessing = false; }
 }
 
 function signOut() {
