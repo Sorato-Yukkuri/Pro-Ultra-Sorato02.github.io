@@ -4450,7 +4450,7 @@ async function signInWithTwitch() {
     if (!_fbAuth) { alert("Firebase未設定です。"); return; }
     _closeAuthModal();
     try {
-        const provider = new firebase.auth.OAuthProvider('oidc.twitch');
+        const provider = new firebase.auth.OAuthProvider('oidc.oidc.twitch');
         await _fbAuth.signInWithPopup(provider);
     } catch(e) {
         if (e.code !== 'auth/popup-closed-by-user') alert("Twitchログインに失敗しました: " + e.message);
@@ -4461,7 +4461,7 @@ async function signInWithDiscord() {
     if (!_fbAuth) { alert("Firebase未設定です。"); return; }
     _closeAuthModal();
     try {
-        const provider = new firebase.auth.OAuthProvider('oidc.discord');
+        const provider = new firebase.auth.OAuthProvider('oidc.podcast.discord');
         await _fbAuth.signInWithPopup(provider);
     } catch(e) {
         if (e.code !== 'auth/popup-closed-by-user') alert("Discordログインに失敗しました: " + e.message);
