@@ -95,39 +95,131 @@
         <span id="auth-username" style="color:#fff;font-size:0.88rem;font-weight:700;"></span>
         <span id="auth-sync-status" style="color:#34c759;font-size:0.75rem;"></span>
     </div>
-    <div style="display:flex;gap:8px;">
-        <!-- 通知ベルボタン -->
-        <button id="notif-btn" onclick="openNotifCenter()" style="position:relative;background:rgba(255,255,255,0.08);border:1px solid #333;color:#fff;width:34px;height:34px;border-radius:50%;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">
-            🔔<span id="notif-badge" style="position:absolute;top:-4px;right:-4px;background:#ff3b30;color:#fff;font-size:0.65rem;font-weight:900;min-width:16px;height:16px;border-radius:8px;padding:0 3px;display:none;align-items:center;justify-content:center;"></span>
-        </button>
+    <div style="display:flex;gap:8px;align-items:center;">
         <button id="auth-logout-btn" onclick="signOut()" style="display:none;background:rgba(255,59,48,0.15);border:1px solid rgba(255,59,48,0.3);color:#ff6b6b;padding:6px 14px;border-radius:10px;font-size:0.82rem;font-weight:700;cursor:pointer;">ログアウト</button>
         <button id="auth-friend-btn" onclick="openFriendModal()" style="background:linear-gradient(135deg,#ff9500,#ff6b00);color:#fff;border:none;padding:6px 12px;border-radius:10px;font-size:0.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;"><svg width="18" height="18" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg"><g transform="translate(70,70)"><circle cx="-30" cy="-20" r="15" fill="#fff"/><rect x="-43" y="-3" width="24" height="28" rx="7" fill="#fff"/><circle cx="30" cy="-20" r="15" fill="#fff"/><rect x="19" y="-3" width="24" height="28" rx="7" fill="#fff"/><path d="M -18 6 C -10 -12, -4 -18, 0 -6 C 4 -18, 10 -12, 18 6" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/><path d="M 0 -5 C 0 -16, -12 -20, -12 -10 C -12 -2, 0 6, 0 6 C 0 6, 12 -2, 12 -10 C 12 -20, 0 -16, 0 -5 Z" fill="#ffe000"/><circle cx="0" cy="-7" r="46" fill="none" stroke="#fff" stroke-width="3"/><circle cx="0" cy="-53" r="4" fill="#fff"/><circle cx="37" cy="-36" r="3" fill="#fff"/><circle cx="-37" cy="-36" r="3" fill="#fff"/><circle cx="37" cy="22" r="2.5" fill="#fff" opacity="0.7"/><circle cx="-37" cy="22" r="2.5" fill="#fff" opacity="0.7"/></g></svg> <span id="auth-friend-label">親友コード</span></button>
-        <button id="auth-login-btn" onclick="signInWithGoogle()" style="background:linear-gradient(135deg,#4285f4,#34a853);color:#fff;border:none;padding:6px 16px;border-radius:10px;font-size:0.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">
-            <svg width="14" height="14" viewBox="0 0 48 48"><path fill="#fff" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/></svg>
-            <span id="auth-login-label">Googleでログイン</span>
-        </button>
-        <button id="auth-github-btn" onclick="signInWithGitHub()" style="background:#24292e;color:#fff;border:1px solid #444;padding:6px 16px;border-radius:10px;font-size:0.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-            GitHub
+        <button id="auth-login-btn" onclick="openLoginModal()" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:6px 18px;border-radius:10px;font-size:0.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">
+            🔑 <span id="auth-login-label">ログイン</span>
         </button>
     </div>
 </div>
 
 <!-- ログインモーダル -->
 <div id="auth-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.92);z-index:99999;justify-content:center;align-items:center;padding:20px;box-sizing:border-box;">
-    <div style="background:#1a1a2e;border:1px solid #6366f1;border-radius:24px;padding:32px;width:100%;max-width:400px;text-align:center;">
-        <div style="font-size:2.5rem;margin-bottom:12px;">🔐</div>
-        <h2 id="auth-modal-title" style="margin:0 0 8px;font-size:1.2rem;font-weight:800;color:#fff;">ログインが必要です</h2>
-        <p id="auth-modal-msg" style="color:#888;font-size:0.88rem;margin:0 0 24px;line-height:1.6;"></p>
-        <button onclick="signInWithGoogle()" style="width:100%;padding:14px;border-radius:14px;background:linear-gradient(135deg,#4285f4,#34a853);color:#fff;border:none;font-size:1rem;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;">
-            <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#fff" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/></svg>
-            <span id="auth-modal-login-label">Googleでログイン</span>
+    <div style="background:#111;border:1px solid #2a2a2a;border-radius:24px;padding:28px 24px;width:100%;max-width:400px;text-align:center;">
+        <div style="font-size:2.2rem;margin-bottom:10px;">🔑</div>
+        <h2 id="auth-modal-title" style="margin:0 0 6px;font-size:1.15rem;font-weight:800;color:#fff;">ログイン</h2>
+        <p id="auth-modal-msg" style="color:#666;font-size:0.83rem;margin:0 0 20px;line-height:1.6;"></p>
+        <!-- ソーシャル -->
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+            <button onclick="signInWithGoogle()" style="width:100%;padding:13px;border-radius:13px;background:linear-gradient(135deg,#4285f4,#34a853);color:#fff;border:none;font-size:0.95rem;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+                <svg width="17" height="17" viewBox="0 0 48 48"><path fill="#fff" d="M44.5 20H24v8.5h11.8C34.7 33.9 30.1 37 24 37c-7.2 0-13-5.8-13-13s5.8-13 13-13c3.1 0 5.9 1.1 8.1 2.9l6.4-6.4C34.6 4.1 29.6 2 24 2 11.8 2 2 11.8 2 24s9.8 22 22 22c11 0 21-8 21-22 0-1.3-.2-2.7-.5-4z"/></svg>
+                Googleでログイン
+            </button>
+            <button onclick="signInWithGitHub()" style="width:100%;padding:13px;border-radius:13px;background:#24292e;color:#fff;border:1px solid #444;font-size:0.95rem;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+                GitHubでログイン
+            </button>
+            <button onclick="signInWithTwitter()" style="width:100%;padding:13px;border-radius:13px;background:#000;color:#fff;border:1px solid #333;font-size:0.95rem;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="white"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.742l7.737-8.835L1.254 2.25H8.08l4.253 5.622 5.911-5.622Zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                X (Twitter) でログイン
+            </button>
+        </div>
+        <!-- 区切り -->
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+            <div style="flex:1;height:1px;background:#2a2a2a;"></div>
+            <span style="color:#444;font-size:0.75rem;">または</span>
+            <div style="flex:1;height:1px;background:#2a2a2a;"></div>
+        </div>
+        <!-- ProUltraアカウント / メールログイン -->
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;">
+            <button onclick="openSignUpModal()" style="width:100%;padding:13px;border-radius:13px;background:linear-gradient(135deg,#ff6b35,#ff2d55);color:#fff;border:none;font-size:0.95rem;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;">
+                ✨ ProUltraアカウントを作成
+            </button>
+            <button onclick="openEmailLoginModal()" style="width:100%;padding:11px;border-radius:13px;background:rgba(255,255,255,0.05);color:#aaa;border:1px solid #2a2a2a;font-size:0.85rem;font-weight:700;cursor:pointer;">
+                ⭐️ ProUltraアカウントでログイン
+            </button>
+        </div>
+        <!-- 匿名（同期しない旨明記） -->
+        <button onclick="signInAnonymously_app()" style="width:100%;padding:10px;border-radius:11px;background:transparent;color:#444;border:1px solid #222;font-size:0.8rem;cursor:pointer;margin-bottom:12px;line-height:1.5;" onmouseover="this.style.borderColor='#444';this.style.color='#666'" onmouseout="this.style.borderColor='#222';this.style.color='#444'">
+            👤 匿名でログイン<br><span style="font-size:0.72rem;opacity:0.7;">※ クラウド同期なし・端末のみにデータ保存</span>
         </button>
-        <button onclick="signInWithGitHub()" style="width:100%;padding:14px;border-radius:14px;background:#24292e;color:#fff;border:1px solid #444;font-size:1rem;font-weight:800;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
-            GitHubでログイン
-        </button>
-        <button id="auth-modal-cancel" onclick="document.getElementById('auth-modal').style.display='none'" style="width:100%;padding:12px;border-radius:14px;background:#222;color:#888;border:1px solid #333;font-size:0.9rem;cursor:pointer;">キャンセル</button>
+        <button id="auth-modal-cancel" onclick="_closeAuthModal()" style="width:100%;padding:11px;border-radius:11px;background:#1a1a1a;color:#555;border:1px solid #2a2a2a;font-size:0.85rem;cursor:pointer;">キャンセル</button>
+    </div>
+</div>
+
+<!-- ProUltraアカウント新規作成モーダル -->
+<div id="signup-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:999999;justify-content:center;align-items:center;padding:20px;box-sizing:border-box;overflow-y:auto;">
+    <div style="background:#111;border:1px solid #2a2a2a;border-radius:24px;width:100%;max-width:420px;">
+        <div style="padding:24px 24px 20px;border-bottom:1px solid #1e1e1e;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+                <div style="font-size:1.4rem;font-weight:900;color:#fff;">✨ アカウント作成</div>
+                <div style="color:#666;font-size:0.8rem;margin-top:2px;">Pro Ultra アカウントを作成する</div>
+            </div>
+            <button onclick="closeSignUpModal()" style="background:#1e1e1e;border:none;color:#666;width:32px;height:32px;border-radius:50%;font-size:1rem;cursor:pointer;">✕</button>
+        </div>
+        <div style="padding:24px;">
+            <div style="margin-bottom:16px;">
+                <label style="display:block;color:#888;font-size:0.78rem;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.08em;">ニックネーム（任意）</label>
+                <input id="signup-name" type="text" placeholder="表示名（後で変更可）" maxlength="30"
+                    style="width:100%;padding:12px 14px;border-radius:12px;background:#1a1a1a;border:1px solid #2a2a2a;color:#fff;font-size:0.93rem;outline:none;box-sizing:border-box;transition:border-color 0.2s;"
+                    onfocus="this.style.borderColor='#ff6b35'" onblur="this.style.borderColor='#2a2a2a'">
+            </div>
+            <div style="margin-bottom:16px;">
+                <label style="display:block;color:#888;font-size:0.78rem;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.08em;">メールアドレス <span style="color:#ff2d55;">*</span></label>
+                <input id="signup-email" type="email" placeholder="example@email.com"
+                    style="width:100%;padding:12px 14px;border-radius:12px;background:#1a1a1a;border:1px solid #2a2a2a;color:#fff;font-size:0.93rem;outline:none;box-sizing:border-box;transition:border-color 0.2s;"
+                    onfocus="this.style.borderColor='#ff6b35'" onblur="this.style.borderColor='#2a2a2a'">
+            </div>
+            <div style="margin-bottom:8px;">
+                <label style="display:block;color:#888;font-size:0.78rem;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.08em;">パスワード <span style="color:#ff2d55;">*</span></label>
+                <div style="position:relative;">
+                    <input id="signup-password" type="password" placeholder="6文字以上"
+                        style="width:100%;padding:12px 44px 12px 14px;border-radius:12px;background:#1a1a1a;border:1px solid #2a2a2a;color:#fff;font-size:0.93rem;outline:none;box-sizing:border-box;transition:border-color 0.2s;"
+                        onfocus="this.style.borderColor='#ff6b35'" onblur="this.style.borderColor='#2a2a2a'"
+                        oninput="_checkPwStrength(this.value)">
+                    <button onclick="_togglePw('signup-password',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:#555;cursor:pointer;font-size:1rem;padding:0;">👁</button>
+                </div>
+            </div>
+            <div id="signup-pw-strength" style="margin-bottom:16px;min-height:22px;"></div>
+            <div style="margin-bottom:20px;">
+                <label style="display:block;color:#888;font-size:0.78rem;font-weight:700;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.08em;">パスワード確認 <span style="color:#ff2d55;">*</span></label>
+                <input id="signup-password2" type="password" placeholder="もう一度入力"
+                    style="width:100%;padding:12px 14px;border-radius:12px;background:#1a1a1a;border:1px solid #2a2a2a;color:#fff;font-size:0.93rem;outline:none;box-sizing:border-box;transition:border-color 0.2s;"
+                    onfocus="this.style.borderColor='#ff6b35'" onblur="this.style.borderColor='#2a2a2a'"
+                    onkeydown="if(event.key==='Enter')submitSignUp()">
+            </div>
+            <p id="signup-error" style="color:#ff6b6b;font-size:0.82rem;margin:0 0 14px;min-height:18px;text-align:center;"></p>
+            <button id="signup-submit" onclick="submitSignUp()" style="width:100%;padding:14px;border-radius:13px;background:linear-gradient(135deg,#ff6b35,#ff2d55);color:#fff;border:none;font-size:1rem;font-weight:900;cursor:pointer;">
+                🚀 アカウントを作成する
+            </button>
+            <p style="color:#444;font-size:0.75rem;margin:12px 0 0;text-align:center;line-height:1.5;">アカウント作成により、診断履歴のクラウド同期などの機能が利用できます。</p>
+        </div>
+    </div>
+</div>
+
+<!-- メールログインモーダル -->
+<div id="email-login-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:999999;justify-content:center;align-items:center;padding:20px;box-sizing:border-box;">
+    <div style="background:#111;border:1px solid #2a2a2a;border-radius:24px;width:100%;max-width:400px;padding:28px 24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <div style="font-size:1.1rem;font-weight:800;color:#fff;">⭐️ ProUltraアカウントでログイン</div>
+            <button onclick="closeEmailLoginModal()" style="background:#1e1e1e;border:none;color:#666;width:30px;height:30px;border-radius:50%;font-size:0.95rem;cursor:pointer;">✕</button>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:10px;">
+            <input id="email-login-email" type="email" placeholder="メールアドレス"
+                style="width:100%;padding:12px 14px;border-radius:12px;background:#1a1a1a;border:1px solid #2a2a2a;color:#fff;font-size:0.93rem;outline:none;box-sizing:border-box;"
+                onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#2a2a2a'">
+            <div style="position:relative;">
+                <input id="email-login-password" type="password" placeholder="パスワード"
+                    style="width:100%;padding:12px 44px 12px 14px;border-radius:12px;background:#1a1a1a;border:1px solid #2a2a2a;color:#fff;font-size:0.93rem;outline:none;box-sizing:border-box;"
+                    onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#2a2a2a'"
+                    onkeydown="if(event.key==='Enter')signInWithEmail()">
+                <button onclick="_togglePw('email-login-password',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:#555;cursor:pointer;font-size:1rem;padding:0;">👁</button>
+            </div>
+        </div>
+        <p id="email-login-error" style="color:#ff6b6b;font-size:0.8rem;margin:0 0 12px;min-height:16px;"></p>
+        <button onclick="signInWithEmail()" style="width:100%;padding:13px;border-radius:12px;background:#6366f1;color:#fff;border:none;font-size:0.95rem;font-weight:800;cursor:pointer;margin-bottom:8px;">ログイン</button>
+        <button onclick="closeEmailLoginModal();openSignUpModal();" style="width:100%;padding:10px;border-radius:12px;background:transparent;color:#666;border:1px solid #2a2a2a;font-size:0.82rem;cursor:pointer;">アカウントをお持ちでない方はこちら →</button>
     </div>
 </div>
 
@@ -485,7 +577,6 @@
         <button id="history-btn" onclick="showHistoryModal()">📊 過去の診断結果を見る</button>
         <button id="speed-btn"   onclick="showSpeedModal()">⚡ ページ読み込み速度テスト</button>
         <button id="battle-btn"  onclick="openBattle()" style="display:none;">🆚 デバイス対戦</button>
-        <button id="trend-btn"   onclick="openTrendModal()" style="display:none;">📈 スコア推移を見る</button>
         <button id="retry-btn"   onclick="guardedRetry()">🔄 再診断する</button>
 
         <div class="action-zone-footer">
@@ -535,17 +626,6 @@
         </div>
     </div>
 </div>
-<!-- ── スコア推移モーダル ── -->
-<div id="trend-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:999995;justify-content:center;align-items:flex-start;padding:20px;box-sizing:border-box;overflow-y:auto;">
-    <div style="background:#111;border:1px solid #2a2a2a;border-radius:24px;width:100%;max-width:600px;margin:0 auto;">
-        <div style="position:sticky;top:0;background:#111;border-radius:24px 24px 0 0;padding:20px 24px 16px;border-bottom:1px solid #2a2a2a;display:flex;justify-content:space-between;align-items:center;">
-            <h2 style="margin:0;font-size:1.1rem;font-weight:900;color:#fff;">📈 スコア推移</h2>
-            <button onclick="closeTrendModal()" style="background:#222;border:none;color:#888;width:32px;height:32px;border-radius:50%;font-size:1.1rem;cursor:pointer;">✕</button>
-        </div>
-        <div id="trend-content" style="padding:20px 24px 28px;"></div>
-    </div>
-</div>
-
 <!-- ── デバイス対戦モーダル ── -->
 <div id="battle-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:999995;justify-content:center;align-items:flex-start;padding:20px;box-sizing:border-box;overflow-y:auto;">
     <div style="background:#111;border:1px solid #2a2a2a;border-radius:24px;width:100%;max-width:600px;margin:0 auto;">

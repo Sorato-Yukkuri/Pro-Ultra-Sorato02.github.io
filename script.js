@@ -111,7 +111,7 @@ const I18N = {
             devNote:'※ デバイス名はUA文字列から取得しており、サーバーには送信されません。',
             devBack:'← 戻る（IPアドレスの選択に戻る）',
             loginRequired:'ログインが必要です', loginMsg:'はログインが必要です。Googleアカウントで無料登録できます。',
-            loginBtn:'Googleでログイン', cancelBtn:'キャンセル', logoutBtn:'ログアウト',
+            loginBtn:'ログイン', cancelBtn:'キャンセル', logoutBtn:'ログアウト',
             syncOk:'✓ 同期済み', syncing:'同期中...', syncFail:'⚠ 同期失敗', synced:'✓ 同期中',
             friendCodeTitle:'親友コードでログイン', friendCodePlaceholder:'コードを入力...', friendCodeError:'コードが違います', friendLoginBtn:'ログイン',
             diagComplete:'✅ 処理が完了しました', imgGenComplete:'✅ 画像の生成が完了しました',
@@ -4234,60 +4234,187 @@ function initFirebase() {
 function updateAuthUI(user) {
     const loginBtn  = document.getElementById('auth-login-btn');
     const logoutBtn = document.getElementById('auth-logout-btn');
-    const githubBtn = document.getElementById('auth-github-btn');
     const avatar    = document.getElementById('auth-avatar');
     const username  = document.getElementById('auth-username');
     const badge     = document.getElementById('auth-status-badge');
 
     if (user) {
         if (loginBtn)  loginBtn.style.display  = 'none';
-        if (githubBtn) githubBtn.style.display  = 'none';
         if (logoutBtn) logoutBtn.style.display = 'block';
-        // GitHubはdisplayNameがnullの場合があるのでproviderData→email→uidの順でフォールバック
-        const providerData  = (user.providerData && user.providerData[0]) || {};
-        const displayName   = user.displayName
-            || providerData.displayName
-            || (user.email && user.email.split('@')[0])
-            || (providerData.email && providerData.email.split('@')[0])
-            || user.uid.slice(0, 8);
-        const photoURL = user.photoURL || providerData.photoURL || null;
-        if (photoURL) { avatar.src = photoURL; avatar.style.display = 'block'; }
-        else { avatar.style.display = 'none'; }
-        username.textContent = displayName;
-        document.getElementById('auth-sync-status').textContent = tui().synced;
-        if (badge) {
-            badge.style.display = 'block';
-            badge.innerHTML = '🔓 <strong>' + displayName + '</strong> でログイン中 — 履歴がクラウドに同期されます';
+        if (user.isAnonymous) {
+            avatar.style.display = 'none';
+            username.textContent = '👤 匿名';
+            document.getElementById('auth-sync-status').textContent = '';
+            if (badge) { badge.style.display = 'block'; badge.innerHTML = '👤 匿名ログイン中 — データは端末のみ保存（クラウド同期なし）'; }
+        } else {
+            const providerData = (user.providerData && user.providerData[0]) || {};
+            const displayName  = user.displayName
+                || providerData.displayName
+                || (user.email && user.email.split('@')[0])
+                || (providerData.email && providerData.email.split('@')[0])
+                || user.uid.slice(0, 8);
+            const photoURL = user.photoURL || providerData.photoURL || null;
+            if (photoURL) { avatar.src = photoURL; avatar.style.display = 'block'; }
+            else { avatar.style.display = 'none'; }
+            username.textContent = displayName;
+            document.getElementById('auth-sync-status').textContent = tui().synced;
+            if (badge) { badge.style.display = 'block'; badge.innerHTML = '🔓 <strong>' + displayName + '</strong> でログイン中 — 履歴がクラウドに同期されます'; }
         }
         document.body.style.paddingTop = '49px';
     } else {
         if (loginBtn)  loginBtn.style.display  = 'flex';
-        if (githubBtn) githubBtn.style.display  = 'flex';
         if (logoutBtn) logoutBtn.style.display = 'none';
-        avatar.style.display    = 'none';
-        username.textContent    = '';
+        avatar.style.display = 'none';
+        username.textContent = '';
         document.getElementById('auth-sync-status').textContent = '';
         if (badge) badge.style.display = 'none';
         document.body.style.paddingTop = '0';
     }
 }
 
+function _closeAuthModal() {
+    const m = document.getElementById('auth-modal');
+    if (m) { m.style.display = 'none'; document.body.style.overflow = ''; }
+}
+
+function openLoginModal() {
+    const m = document.getElementById('auth-modal');
+    if (m) { m.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+}
+
+function openSignUpModal() {
+    _closeAuthModal();
+    closeEmailLoginModal();
+    const m = document.getElementById('signup-modal');
+    if (m) { m.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+    const e = document.getElementById('signup-error');
+    if (e) e.textContent = '';
+    const s = document.getElementById('signup-pw-strength');
+    if (s) s.innerHTML = '';
+}
+
+function closeSignUpModal() {
+    const m = document.getElementById('signup-modal');
+    if (m) { m.style.display = 'none'; document.body.style.overflow = ''; }
+}
+
+function openEmailLoginModal() {
+    _closeAuthModal();
+    const m = document.getElementById('email-login-modal');
+    if (m) { m.style.display = 'flex'; document.body.style.overflow = 'hidden'; }
+    const e = document.getElementById('email-login-error');
+    if (e) e.textContent = '';
+}
+
+function closeEmailLoginModal() {
+    const m = document.getElementById('email-login-modal');
+    if (m) { m.style.display = 'none'; document.body.style.overflow = ''; }
+}
+
+function _togglePw(inputId, btn) {
+    const inp = document.getElementById(inputId);
+    if (!inp) return;
+    if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+    else { inp.type = 'password'; btn.textContent = '👁'; }
+}
+
+function _checkPwStrength(pw) {
+    const el = document.getElementById('signup-pw-strength');
+    if (!el) return;
+    if (!pw) { el.innerHTML = ''; return; }
+    let score = 0;
+    if (pw.length >= 8)  score++;
+    if (pw.length >= 12) score++;
+    if (/[A-Z]/.test(pw)) score++;
+    if (/[0-9]/.test(pw)) score++;
+    if (/[^A-Za-z0-9]/.test(pw)) score++;
+    const levels = [
+        { label: '弱い',    color: '#ff3b30', w: '30%' },
+        { label: 'やや弱い', color: '#ff9500', w: '50%' },
+        { label: '普通',    color: '#ffcc00', w: '65%' },
+        { label: '強い',    color: '#34c759', w: '85%' },
+        { label: 'とても強い', color: '#30d158', w: '100%' },
+    ];
+    const lv = levels[Math.min(score, 4)];
+    el.innerHTML = `<div style="display:flex;align-items:center;gap:8px;">
+        <div style="flex:1;height:4px;background:#2a2a2a;border-radius:2px;overflow:hidden;">
+            <div style="height:100%;width:${lv.w};background:${lv.color};border-radius:2px;transition:width 0.3s,background 0.3s;"></div>
+        </div>
+        <span style="color:${lv.color};font-size:0.75rem;font-weight:700;white-space:nowrap;">${lv.label}</span>
+    </div>`;
+}
+
+async function submitSignUp() {
+    const name  = (document.getElementById('signup-name')?.value    || '').trim();
+    const email = (document.getElementById('signup-email')?.value   || '').trim();
+    const pw    =  document.getElementById('signup-password')?.value || '';
+    const pw2   =  document.getElementById('signup-password2')?.value|| '';
+    const errEl =  document.getElementById('signup-error');
+    const btn   =  document.getElementById('signup-submit');
+
+    if (errEl) errEl.textContent = '';
+    if (!email)       { if (errEl) errEl.textContent = 'メールアドレスを入力してください'; return; }
+    if (!pw)          { if (errEl) errEl.textContent = 'パスワードを入力してください'; return; }
+    if (pw.length < 6){ if (errEl) errEl.textContent = 'パスワードは6文字以上にしてください'; return; }
+    if (pw !== pw2)   { if (errEl) errEl.textContent = 'パスワードが一致しません'; return; }
+    if (!_fbAuth)     { if (errEl) errEl.textContent = 'Firebase未設定です'; return; }
+
+    if (btn) { btn.disabled = true; btn.textContent = '作成中...'; }
+    try {
+        const result = await _fbAuth.createUserWithEmailAndPassword(email, pw);
+        if (name) {
+            try { await result.user.updateProfile({ displayName: name }); } catch(e2) {}
+        }
+        closeSignUpModal();
+        updateAuthUI(_fbAuth.currentUser);
+    } catch(e) {
+        const msgs = {
+            'auth/email-already-in-use': 'このメールアドレスは既に使われています',
+            'auth/invalid-email':        'メールアドレスの形式が正しくありません',
+            'auth/weak-password':        'パスワードが短すぎます（6文字以上）',
+            'auth/operation-not-allowed':'メール登録が無効です（Firebase設定を確認）',
+        };
+        if (errEl) errEl.textContent = msgs[e.code] || e.message;
+    } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '🚀 アカウントを作成する'; }
+    }
+}
+
+async function signInWithEmail() {
+    const email  = (document.getElementById('email-login-email')?.value    || '').trim();
+    const pw     =  document.getElementById('email-login-password')?.value || '';
+    const errEl  =  document.getElementById('email-login-error');
+    if (!email || !pw) { if (errEl) errEl.textContent = 'メールとパスワードを入力してください'; return; }
+    if (!_fbAuth)      { if (errEl) errEl.textContent = 'Firebase未設定です'; return; }
+    try {
+        await _fbAuth.signInWithEmailAndPassword(email, pw);
+        closeEmailLoginModal();
+    } catch(e) {
+        const msgs = {
+            'auth/user-not-found':   'このメールアドレスは登録されていません',
+            'auth/wrong-password':   'パスワードが違います',
+            'auth/invalid-email':    'メールアドレスの形式が正しくありません',
+            'auth/too-many-requests':'しばらく待ってから再試行してください',
+            'auth/invalid-credential': 'メールアドレスまたはパスワードが違います',
+        };
+        if (errEl) errEl.textContent = msgs[e.code] || e.message;
+    }
+}
+
 async function signInWithGoogle() {
-    if (!_fbAuth) { alert("Firebase未設定です。FIREBASE_CONFIGを書き換えてください。"); return; }
-    document.getElementById('auth-modal').style.display = 'none';
+    if (!_fbAuth) { alert("Firebase未設定です。"); return; }
+    _closeAuthModal();
     try {
         const provider = new firebase.auth.GoogleAuthProvider();
         await _fbAuth.signInWithPopup(provider);
     } catch(e) {
-        if (e.code !== 'auth/popup-closed-by-user') {
-            alert("ログインに失敗しました: " + e.message);
-        }
+        if (e.code !== 'auth/popup-closed-by-user') alert("ログインに失敗しました: " + e.message);
     }
 }
 
 async function signInWithGitHub() {
-    if (!_fbAuth) { alert("Firebase未設定です。FIREBASE_CONFIGを書き換えてください。"); return; }
-    document.getElementById('auth-modal').style.display = 'none';
+    if (!_fbAuth) { alert("Firebase未設定です。"); return; }
+    _closeAuthModal();
     try {
         const provider = new firebase.auth.GithubAuthProvider();
         provider.addScope('read:user');
@@ -4297,18 +4424,32 @@ async function signInWithGitHub() {
         const ghName   = profile && (profile.name || profile.login);
         const ghAvatar = profile && profile.avatar_url;
         if ((ghName && !user.displayName) || (ghAvatar && !user.photoURL)) {
-            try {
-                await user.updateProfile({
-                    displayName: user.displayName || ghName  || null,
-                    photoURL:    user.photoURL    || ghAvatar || null,
-                });
-            } catch(e2) {}
+            try { await user.updateProfile({ displayName: user.displayName || ghName || null, photoURL: user.photoURL || ghAvatar || null }); } catch(e2) {}
             updateAuthUI(_fbAuth.currentUser);
         }
     } catch(e) {
-        if (e.code !== 'auth/popup-closed-by-user') {
-            alert("ログインに失敗しました: " + e.message);
-        }
+        if (e.code !== 'auth/popup-closed-by-user') alert("ログインに失敗しました: " + e.message);
+    }
+}
+
+async function signInWithTwitter() {
+    if (!_fbAuth) { alert("Firebase未設定です。"); return; }
+    _closeAuthModal();
+    try {
+        const provider = new firebase.auth.TwitterAuthProvider();
+        await _fbAuth.signInWithPopup(provider);
+    } catch(e) {
+        if (e.code !== 'auth/popup-closed-by-user') alert("ログインに失敗しました: " + e.message);
+    }
+}
+
+async function signInAnonymously_app() {
+    if (!_fbAuth) { alert("Firebase未設定です。"); return; }
+    _closeAuthModal();
+    try {
+        await _fbAuth.signInAnonymously();
+    } catch(e) {
+        alert("匿名ログインに失敗しました: " + e.message);
     }
 }
 
@@ -4318,7 +4459,7 @@ function signOut() {
 
 // ── Firestore 履歴同期 ──────────────────────────────────────
 async function syncHistoryToCloud(history) {
-    if (!_currentUser || !_fbDb) return;
+    if (!_currentUser || !_fbDb || _currentUser.isAnonymous) return;
     try {
         await _fbDb.collection('users').doc(_currentUser.uid)
             .collection('diagnosis_history').doc('data')
@@ -4330,7 +4471,7 @@ async function syncHistoryToCloud(history) {
 }
 
 async function syncHistoryFromCloud() {
-    if (!_currentUser || !_fbDb) return;
+    if (!_currentUser || !_fbDb || _currentUser.isAnonymous) return;
     try {
         document.getElementById('auth-sync-status').textContent = tui().syncing;
         const doc = await _fbDb.collection('users').doc(_currentUser.uid)
@@ -4352,10 +4493,6 @@ async function syncHistoryFromCloud() {
     }
 }
 
-function openLoginModal() {
-    document.getElementById('auth-modal').style.display = 'flex';
-}
-
 function requireLogin(featureName, callback) {
     if (_currentUser) { callback(); return; }
     const msg = document.getElementById('auth-modal-msg');
@@ -4365,7 +4502,7 @@ function requireLogin(featureName, callback) {
 
 // ── AI会話のクラウド保存 ──────────────────────────────────────
 async function syncAIConvsToCloud(convs) {
-    if (!_currentUser || !_fbDb) return;
+    if (!_currentUser || !_fbDb || _currentUser.isAnonymous) return;
     try {
         await _fbDb.collection('users').doc(_currentUser.uid)
             .collection('ai_conversations').doc('data')
@@ -4374,7 +4511,7 @@ async function syncAIConvsToCloud(convs) {
 }
 
 async function syncAIConvsFromCloud() {
-    if (!_currentUser || !_fbDb) return;
+    if (!_currentUser || !_fbDb || _currentUser.isAnonymous) return;
     try {
         const doc = await _fbDb.collection('users').doc(_currentUser.uid)
             .collection('ai_conversations').doc('data').get();
