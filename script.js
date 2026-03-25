@@ -1003,6 +1003,19 @@ function clearSoundFile() {
     openSettings();
 }
 
+let _localFontsCache = null; // 一度取得したらキャッシュして許可ダイアログを1回だけにする
+
+async function _getLocalFonts() {
+    if (_localFontsCache !== null) return _localFontsCache;
+    if (!('queryLocalFonts' in window)) { _localFontsCache = []; return []; }
+    try {
+        const fonts = await window.queryLocalFonts();
+        const families = [...new Set(fonts.map(f => f.family))].sort();
+        _localFontsCache = families.slice(0, 80);
+    } catch(e) { _localFontsCache = []; }
+    return _localFontsCache;
+}
+
 async function settingFontFamily(ui) {
     const label = ui.labelFont || 'フォント';
     const cur   = _settings.fontFamily || 'system';
@@ -1014,14 +1027,7 @@ async function settingFontFamily(ui) {
         ['mono',    ui.fontMono    || '等幅フォント'],
     ];
 
-    let localFonts = [];
-    if ('queryLocalFonts' in window) {
-        try {
-            const fonts = await window.queryLocalFonts();
-            const families = [...new Set(fonts.map(f => f.family))].sort();
-            localFonts = families.slice(0, 80);
-        } catch(e) {}
-    }
+    const localFonts = await _getLocalFonts();
 
     const presetOpts = presets.map(([v, t]) =>
         '<option value="' + v + '" ' + (v === cur ? 'selected' : '') + '>' + t + '</option>'
@@ -1039,7 +1045,7 @@ async function settingFontFamily(ui) {
     return settingRow(label, ctrl, 'fontFamily');
 }
 
-async function settingFontFamily(ui) {
+async function settingFontFamily_unused(ui) {
     const label = ui.labelFont || 'フォント';
     const cur   = _settings.fontFamily || 'system';
     const presets = [
@@ -1050,14 +1056,7 @@ async function settingFontFamily(ui) {
         ['mono',    ui.fontMono    || '等幅フォント'],
     ];
 
-    let localFonts = [];
-    if ('queryLocalFonts' in window) {
-        try {
-            const fonts = await window.queryLocalFonts();
-            const families = [...new Set(fonts.map(f => f.family))].sort();
-            localFonts = families.slice(0, 80);
-        } catch(e) {}
-    }
+    const localFonts = await _getLocalFonts();
 
     const presetOpts = presets.map(([v, t]) =>
         '<option value="' + v + '" ' + (v === cur ? 'selected' : '') + '>' + t + '</option>'
