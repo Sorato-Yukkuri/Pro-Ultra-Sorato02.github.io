@@ -1,8 +1,17 @@
-:root {
+:root, [data-theme="dark"] {
             --bg:#050505;--card:#121212;--border:#282828;--text:#ffffff;--sub-text:#888888;
             --accent:#007aff;--S-color:#ff3b30;--A-color:#ff9500;--B-color:#34c759;
             --C-color:#007aff;--D-color:#8e8e93;--st-ok:#007aff;--st-warn:#ffcc00;--st-bad:#ff3b30;
             --app-font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,"Hiragino Sans",sans-serif;
+            --modal-bg:#111;--modal-border:#2a2a2a;--input-bg:#1a1a1a;--input-border:#2a2a2a;
+            --btn-secondary-bg:#1e1e1e;--btn-secondary-color:#666;
+        }
+        [data-theme="light"] {
+            --bg:#f2f2f7;--card:#ffffff;--border:#d1d1d6;--text:#000000;--sub-text:#6c6c70;
+            --accent:#007aff;--S-color:#ff3b30;--A-color:#ff9500;--B-color:#34c759;
+            --C-color:#007aff;--D-color:#8e8e93;--st-ok:#007aff;--st-warn:#ff9500;--st-bad:#ff3b30;
+            --modal-bg:#ffffff;--modal-border:#d1d1d6;--input-bg:#f2f2f7;--input-border:#d1d1d6;
+            --btn-secondary-bg:#e5e5ea;--btn-secondary-color:#3c3c43;
         }
         body { background-color:var(--bg);color:var(--text);font-family:var(--app-font);margin:0;padding:20px;line-height:1.4;-webkit-font-smoothing:antialiased; }
         .app { max-width:900px;margin:0 auto;background-color:var(--bg);padding-bottom:40px; }
@@ -314,4 +323,34 @@
     /* auth-barの高さ + ノッチ分を余白に加算 */
     margin-top: max(90px, calc(env(safe-area-inset-top) + 55px));
   }
+}
+/* ── ライトテーマ モーダル対応 ── */
+[data-theme="light"] #auth-modal > div,
+[data-theme="light"] #email-login-modal > div,
+[data-theme="light"] #signup-modal > div,
+[data-theme="light"] #settings-modal > div,
+[data-theme="light"] #ai-modal > div,
+[data-theme="light"] #history-modal > div,
+[data-theme="light"] #speed-modal > div,
+[data-theme="light"] #battle-modal > div {
+    background: var(--modal-bg) !important;
+    border-color: var(--modal-border) !important;
+    color: var(--text) !important;
+}
+[data-theme="light"] input[type="email"],
+[data-theme="light"] input[type="password"],
+[data-theme="light"] input[type="text"] {
+    background: var(--input-bg) !important;
+    border-color: var(--input-border) !important;
+    color: var(--text) !important;
+}
+[data-theme="light"] #auth-modal,
+[data-theme="light"] #email-login-modal,
+[data-theme="light"] #signup-modal,
+[data-theme="light"] #settings-modal,
+[data-theme="light"] #ai-modal,
+[data-theme="light"] #history-modal,
+[data-theme="light"] #speed-modal,
+[data-theme="light"] #battle-modal {
+    background: rgba(0,0,0,0.5) !important;
 }
