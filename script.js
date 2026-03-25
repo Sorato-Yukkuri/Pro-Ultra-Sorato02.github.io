@@ -4404,77 +4404,108 @@ async function signInWithEmail() {
     }
 }
 
+// ⚠️ この一行がファイルのどこか（関数の外）にあることを確認してください！
+let _isAuthProcessing = false;
+
 async function signInWithGoogle() {
-    if (!_fbAuth) { alert("Firebase未設定です。"); return; }
+    if (!_fbAuth || _isAuthProcessing) return;
+    _isAuthProcessing = true;
     _closeAuthModal();
     try {
         const provider = new firebase.auth.GoogleAuthProvider();
         await _fbAuth.signInWithPopup(provider);
     } catch(e) {
-        if (e.code !== 'auth/popup-closed-by-user') alert("ログインに失敗しました: " + e.message);
+        if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
+            alert("Googleログイン失敗: " + e.message);
+        }
+    } finally {
+        _isAuthProcessing = false;
     }
 }
 
 async function signInWithGitHub() {
-    if (!_fbAuth) { alert("Firebase未設定です。"); return; }
+    if (!_fbAuth || _isAuthProcessing) return;
+    _isAuthProcessing = true;
     _closeAuthModal();
     try {
         const provider = new firebase.auth.GithubAuthProvider();
         provider.addScope('read:user');
-        const result  = await _fbAuth.signInWithPopup(provider);
-        const user    = result.user;
+        const result = await _fbAuth.signInWithPopup(provider);
+        const user = result.user;
         const profile = result.additionalUserInfo && result.additionalUserInfo.profile;
-        const ghName   = profile && (profile.name || profile.login);
+        const ghName = profile && (profile.name || profile.login);
         const ghAvatar = profile && profile.avatar_url;
         if ((ghName && !user.displayName) || (ghAvatar && !user.photoURL)) {
             try { await user.updateProfile({ displayName: user.displayName || ghName || null, photoURL: user.photoURL || ghAvatar || null }); } catch(e2) {}
             updateAuthUI(_fbAuth.currentUser);
         }
     } catch(e) {
-        if (e.code !== 'auth/popup-closed-by-user') alert("ログインに失敗しました: " + e.message);
+        if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
+            alert("GitHubログイン失敗: " + e.message);
+        }
+    } finally {
+        _isAuthProcessing = false;
     }
 }
 
 async function signInWithTwitter() {
-    if (!_fbAuth) { alert("Firebase未設定です。"); return; }
+    if (!_fbAuth || _isAuthProcessing) return;
+    _isAuthProcessing = true;
     _closeAuthModal();
     try {
         const provider = new firebase.auth.TwitterAuthProvider();
         await _fbAuth.signInWithPopup(provider);
     } catch(e) {
-        if (e.code !== 'auth/popup-closed-by-user') alert("ログインに失敗しました: " + e.message);
+        if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
+            alert("Twitterログイン失敗: " + e.message);
+        }
+    } finally {
+        _isAuthProcessing = false;
     }
 }
 
 async function signInWithTwitch() {
-    if (!_fbAuth) { alert("Firebase未設定です。"); return; }
+    if (!_fbAuth || _isAuthProcessing) return; 
+    _isAuthProcessing = true; 
     _closeAuthModal();
     try {
         const provider = new firebase.auth.OAuthProvider('oidc.oidc.twitch');
         await _fbAuth.signInWithPopup(provider);
     } catch(e) {
-        if (e.code !== 'auth/popup-closed-by-user') alert("Twitchログインに失敗しました: " + e.message);
+        if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
+            alert("Twitchログイン失敗: " + e.message);
+        }
+    } finally {
+        _isAuthProcessing = false;
     }
 }
 
 async function signInWithDiscord() {
-    if (!_fbAuth) { alert("Firebase未設定です。"); return; }
+    if (!_fbAuth || _isAuthProcessing) return; 
+    _isAuthProcessing = true;
     _closeAuthModal();
     try {
         const provider = new firebase.auth.OAuthProvider('oidc.podcast.discord');
         await _fbAuth.signInWithPopup(provider);
     } catch(e) {
-        if (e.code !== 'auth/popup-closed-by-user') alert("Discordログインに失敗しました: " + e.message);
+        if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
+            alert("Discordログイン失敗: " + e.message);
+        }
+    } finally {
+        _isAuthProcessing = false;
     }
 }
 
 async function signInAnonymously_app() {
-    if (!_fbAuth) { alert("Firebase未設定です。"); return; }
+    if (!_fbAuth || _isAuthProcessing) return; 
+    _isAuthProcessing = true;
     _closeAuthModal();
     try {
         await _fbAuth.signInAnonymously();
     } catch(e) {
-        alert("匿名ログインに失敗しました: " + e.message);
+        alert("匿名ログイン失敗: " + e.message);
+    } finally {
+        _isAuthProcessing = false;
     }
 }
 
