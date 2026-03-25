@@ -3547,6 +3547,7 @@ function retryDiagnostic() {
     window.scrollTo({ top: 0, behavior: 'instant' });
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
+    setTimeout(() => { window.scrollTo({ top: 0, behavior: 'instant' }); document.documentElement.scrollTop = 0; document.body.scrollTop = 0; }, 50);
     const _t2 = _getLang();
     document.getElementById('rank-letter').textContent = '?';
     document.getElementById('rank-letter').className   = 'rank-D';
@@ -4380,6 +4381,24 @@ async function submitSignUp() {
         if (errEl) errEl.textContent = msgs[e.code] || e.message;
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = '🚀 アカウントを作成する'; }
+    }
+}
+
+async function sendPasswordReset() {
+    const email = document.getElementById('email-login-email').value.trim();
+    const errEl = document.getElementById('email-login-error');
+    if (!email) { if (errEl) errEl.textContent = 'メールアドレスを入力してください'; return; }
+    if (!_fbAuth) { if (errEl) errEl.textContent = 'Firebase未設定です'; return; }
+    try {
+        await _fbAuth.sendPasswordResetEmail(email);
+        alert('パスワードリセットメールを送信しました！\nメールをご確認ください。');
+        if (errEl) errEl.textContent = '';
+    } catch(e) {
+        const msgs = {
+            'auth/user-not-found': 'このメールアドレスは登録されていません',
+            'auth/invalid-email':  'メールアドレスの形式が正しくありません',
+        };
+        if (errEl) errEl.textContent = msgs[e.code] || ('エラー: ' + e.message);
     }
 }
 
