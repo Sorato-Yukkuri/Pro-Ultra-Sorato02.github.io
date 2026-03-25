@@ -4214,13 +4214,21 @@ function initFirebase() {
             }
         });
 
-        // Redirectログイン後の結果を受け取る
-        _fbAuth.getRedirectResult().then(result => {
-            if (result && result.user) {
-                // ログイン成功（onAuthStateChangedでも処理されるので特に何もしない）
+        // Redirectログイン後の結果を受け取る（GitHub等のプロフィール補完含む）
+        _fbAuth.getRedirectResult().then(async result => {
+            if (!result || !result.user) return;
+            const profile = result.additionalUserInfo && result.additionalUserInfo.profile;
+            if (profile && result.additionalUserInfo.providerId === 'github.com') {
+                const user    = result.user;
+                const ghName   = profile.name || profile.login;
+                const ghAvatar = profile.avatar_url;
+                if ((ghName && !user.displayName) || (ghAvatar && !user.photoURL)) {
+                    try { await user.updateProfile({ displayName: user.displayName || ghName || null, photoURL: user.photoURL || ghAvatar || null }); } catch(e2) {}
+                    updateAuthUI(_fbAuth.currentUser);
+                }
             }
         }).catch(e => {
-            if (e.code) {
+            if (e.code && e.code !== 'auth/no-auth-event') {
                 alert('ログインに失敗しました: ' + e.message);
             }
         });
@@ -4401,24 +4409,70 @@ async function signInWithEmail() {
     }
 }
 
-async function signInWithGoogle() {
+// ── モバイル判定（ポップアップブロック対策） ──
+function _isMobile() {
+    return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
+        || (navigator.maxTouchPoints > 1 && !/Win/i.test(navigator.userAgent));
+}
+
+// ── popup / redirect 自動切り替えでサインイン ──
+async function _signInWith(provider, onResult) {
     if (!_fbAuth) { alert("Firebase未設定です。"); return; }
     _closeAuthModal();
-    try {
-        const provider = new firebase.auth.GoogleAuthProvider();
-        await _fbAuth.signInWithPopup(provider);
-    } catch(e) {
-        if (e.code !== 'auth/popup-closed-by-user') alert("ログインに失敗しました: " + e.message);
+    if (_isMobile()) {
+        // モバイルはリダイレクト方式（ページ遷移して戻ってくる）
+        try {
+            await _fbAuth.signInWithRedirect(provider);
+        } catch(e) {
+            alert("ログインに失敗しました: " + e.message);
+        }
+    } else {
+        // PCはポップアップ方式
+        try {
+            const result = await _fbAuth.signInWithPopup(provider);
+            if (onResult) onResult(result);
+        } catch(e) {
+            if (e.code === 'auth/popup-blocked') {
+                // ポップアップがブロックされたらリダイレクトにフォールバック
+                try { await _fbAuth.signInWithRedirect(provider); } catch(e2) {}
+            } else if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
+                alert("ログインに失敗しました: " + e.message);
+            }
+        }
     }
 }
 
-async function signInWithGitHub() {
-    if (!_fbAuth) { alert("Firebase未設定です。"); return; }
-    _closeAuthModal();
+// ── リダイレクト結果の処理（ページ読み込み時に呼ぶ） ──
+async function _handleRedirectResult() {
+    if (!_fbAuth) return;
     try {
-        const provider = new firebase.auth.GithubAuthProvider();
-        provider.addScope('read:user');
-        const result  = await _fbAuth.signInWithPopup(provider);
+        const result = await _fbAuth.getRedirectResult();
+        if (!result || !result.user) return;
+        // GitHub の場合はプロフィール補完
+        const profile = result.additionalUserInfo && result.additionalUserInfo.profile;
+        if (profile && result.additionalUserInfo.providerId === 'github.com') {
+            const user = result.user;
+            const ghName   = profile.name || profile.login;
+            const ghAvatar = profile.avatar_url;
+            if ((ghName && !user.displayName) || (ghAvatar && !user.photoURL)) {
+                try { await user.updateProfile({ displayName: user.displayName || ghName || null, photoURL: user.photoURL || ghAvatar || null }); } catch(e2) {}
+                updateAuthUI(_fbAuth.currentUser);
+            }
+        }
+    } catch(e) {
+        if (e.code !== 'auth/no-auth-event') console.warn('redirect result:', e.message);
+    }
+}
+
+async function signInWithGoogle() {
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await _signInWith(provider);
+}
+
+async function signInWithGitHub() {
+    const provider = new firebase.auth.GithubAuthProvider();
+    provider.addScope('read:user');
+    await _signInWith(provider, async (result) => {
         const user    = result.user;
         const profile = result.additionalUserInfo && result.additionalUserInfo.profile;
         const ghName   = profile && (profile.name || profile.login);
@@ -4427,19 +4481,44 @@ async function signInWithGitHub() {
             try { await user.updateProfile({ displayName: user.displayName || ghName || null, photoURL: user.photoURL || ghAvatar || null }); } catch(e2) {}
             updateAuthUI(_fbAuth.currentUser);
         }
-    } catch(e) {
-        if (e.code !== 'auth/popup-closed-by-user') alert("ログインに失敗しました: " + e.message);
-    }
+    });
 }
 
 async function signInWithTwitter() {
-    if (!_fbAuth) { alert("Firebase未設定です。"); return; }
-    _closeAuthModal();
+    const provider = new firebase.auth.TwitterAuthProvider();
+    await _signInWith(provider);
+}
+
+async function signInWithTwitch() {
+    // Firebase は Twitch を OAuthProvider('oidc.twitch') または OAuthProvider で扱う
+    // Firebaseコンソールで「追加プロバイダ」→Twitchを追加した場合のプロバイダID
     try {
-        const provider = new firebase.auth.TwitterAuthProvider();
-        await _fbAuth.signInWithPopup(provider);
+        const provider = new firebase.auth.OAuthProvider('oidc.twitch');
+        provider.addScope('user:read:email');
+        await _signInWith(provider);
     } catch(e) {
-        if (e.code !== 'auth/popup-closed-by-user') alert("ログインに失敗しました: " + e.message);
+        // OIDCが使えない場合は汎用OAuthProviderで試みる
+        try {
+            const provider2 = new firebase.auth.OAuthProvider('twitch.tv');
+            await _signInWith(provider2);
+        } catch(e2) {
+            alert("Twitchログインに失敗しました。Firebase ConsoleでTwitchプロバイダが設定されているか確認してください。");
+        }
+    }
+}
+
+async function signInWithDiscord() {
+    try {
+        const provider = new firebase.auth.OAuthProvider('oidc.discord');
+        provider.addScope('identify email');
+        await _signInWith(provider);
+    } catch(e) {
+        try {
+            const provider2 = new firebase.auth.OAuthProvider('discord');
+            await _signInWith(provider2);
+        } catch(e2) {
+            alert("Discordログインに失敗しました。Firebase ConsoleでDiscordプロバイダが設定されているか確認してください。");
+        }
     }
 }
 
