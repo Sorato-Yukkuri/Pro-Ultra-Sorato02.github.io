@@ -4460,21 +4460,7 @@ async function signInWithTwitter() {
     } finally { _isAuthProcessing = false; }
 }
 
-async function signInWithTwitch() {
-    if (!_fbAuth || _isAuthProcessing) return;
-    _isAuthProcessing = true;
-    _closeAuthModal();
-    try {
-        const provider = new firebase.auth.OAuthProvider('oidc.oidc.twitch');
-        provider.addScope('openid');
-        provider.addScope('user:read:email');
-        await _fbAuth.signInWithPopup(provider);
-    } catch(e) {
-        if (e.code !== 'auth/popup-closed-by-user' && e.code !== 'auth/cancelled-popup-request') {
-            alert("Twitchログイン失敗: " + e.message);
-        }
-    } finally { _isAuthProcessing = false; }
-}
+
 
 async function signInWithDiscord() {
     if (!_fbAuth || _isAuthProcessing) return;
