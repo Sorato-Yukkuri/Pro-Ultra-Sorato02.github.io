@@ -110,7 +110,7 @@ const I18N = {
             devShow:'そのまま含めて保存', devHide:'🔒 デバイス名を * に変更して保存',
             devNote:'※ デバイス名はUA文字列から取得しており、サーバーには送信されません。',
             devBack:'← 戻る（IPアドレスの選択に戻る）',
-            loginRequired:'ProUltraにログイン', loginMsg:'はログインが必要です。',
+            loginRequired:'ProUltraにログイン', loginMsg:'はログインが必要です。Googleアカウントで無料登録できます。',
             loginBtn:'ログイン', cancelBtn:'キャンセル', logoutBtn:'ログアウト',
             syncOk:'✓ 同期済み', syncing:'同期中...', syncFail:'⚠ 同期失敗', synced:'✓ 同期中',
             friendCodeTitle:'親友コードでログイン', friendCodePlaceholder:'コードを入力...', friendCodeError:'コードが違います', friendLoginBtn:'ログイン',
@@ -150,7 +150,7 @@ const I18N = {
             ipNote:'※ IPあどれすはぶらうざないだけでつかいます。', ipBack:'← もどる',
             devWarnTitle:'📱 きしゅめいをふくめますか？', devShow:'そのままふくめる', devHide:'🔒 きしゅめいをかくす',
             devNote:'※ きしゅめいはさーばーにそうしんしません。', devBack:'← もどる',
-            loginRequired:'ProUltraにろぐいん', loginMsg:'はろぐいんがひつようです。', loginBtn:'ろぐいん', cancelBtn:'きゃんせる', logoutBtn:'ろぐあうと',
+            loginRequired:'ProUltraにろぐいん', loginMsg:'はろぐいんがひつようです。', loginBtn:'Googleでろぐいん', cancelBtn:'きゃんせる', logoutBtn:'ろぐあうと',
             syncOk:'✓ どうきずみ', syncing:'どうきちゅう...', syncFail:'⚠ どうきしっぱい', synced:'✓ どうきちゅう',
             friendCodeTitle:'しんゆうこーどでろぐいん', friendCodePlaceholder:'こーどをにゅうりょく...', friendCodeError:'こーどがちがいます', friendLoginBtn:'ろぐいん',
             diagComplete:'✅ しょりがかんりょうしました', imgGenComplete:'✅ がぞうがかんりょうしました',
@@ -190,7 +190,7 @@ const I18N = {
             ipBack:'← Back (cancel save)',
             devWarnTitle:'📱 Include device model in screenshot?', devShow:'Include as-is', devHide:'🔒 Replace with *',
             devNote:'※ Device name is from UA string and is not sent to servers.', devBack:'← Back (return to IP selection)',
-            loginRequired:'Login Required', loginMsg:' requires login.', loginBtn:'Login', cancelBtn:'Cancel', logoutBtn:'Logout',
+            loginRequired:'Login Required', loginMsg:' requires login. Register free with Google.', loginBtn:'Sign in with Google', cancelBtn:'Cancel', logoutBtn:'Logout',
             syncOk:'✓ Synced', syncing:'Syncing...', syncFail:'⚠ Sync failed', synced:'✓ Syncing',
             friendCodeTitle:'Login with Friend Code', friendCodePlaceholder:'Enter code...', friendCodeError:'Invalid code', friendLoginBtn:'Login',
             diagComplete:'✅ Diagnosis complete', imgGenComplete:'✅ Image generated',
@@ -228,7 +228,7 @@ const I18N = {
             ipNote:'※ IP地址仅在浏览器内使用，不会发送到本工具服务器。', ipBack:'← 返回（取消保存）',
             devWarnTitle:'📱 截图是否包含设备型号？', devShow:'直接包含', devHide:'🔒 替换为*',
             devNote:'※ 设备名称从UA字符串获取，不会发送到服务器。', devBack:'← 返回',
-            loginRequired:'需要登录', loginMsg:'需要登录。', loginBtn:'登录', cancelBtn:'取消', logoutBtn:'退出登录',
+            loginRequired:'需要登录', loginMsg:'需要登录。可使用Google账号免费注册。', loginBtn:'使用Google登录', cancelBtn:'取消', logoutBtn:'退出登录',
             syncOk:'✓ 已同步', syncing:'同步中...', syncFail:'⚠ 同步失败', synced:'✓ 同步中',
             friendCodeTitle:'使用亲友码登录', friendCodePlaceholder:'请输入代码...', friendCodeError:'代码错误', friendLoginBtn:'登录',
             diagComplete:'✅ 诊断完成', imgGenComplete:'✅ 图片已生成',
@@ -265,7 +265,7 @@ const I18N = {
             ipNote:'※ IP位址僅在瀏覽器內使用，不會傳送至本工具伺服器。', ipBack:'← 返回（取消儲存）',
             devWarnTitle:'📱 截圖是否包含裝置型號？', devShow:'直接包含', devHide:'🔒 替換為*',
             devNote:'※ 裝置名稱從UA字串取得，不會傳送至伺服器。', devBack:'← 返回',
-            loginRequired:'需要登入', loginMsg:'需要登入。', loginBtn:'登入', cancelBtn:'取消', logoutBtn:'登出',
+            loginRequired:'需要登入', loginMsg:'需要登入。可使用Google帳號免費註冊。', loginBtn:'使用Google登入', cancelBtn:'取消', logoutBtn:'登出',
             syncOk:'✓ 已同步', syncing:'同步中...', syncFail:'⚠ 同步失敗', synced:'✓ 同步中',
             friendCodeTitle:'使用親友碼登入', friendCodePlaceholder:'請輸入代碼...', friendCodeError:'代碼錯誤', friendLoginBtn:'登入',
             diagComplete:'✅ 診斷完成', imgGenComplete:'✅ 圖片已生成',
@@ -302,7 +302,7 @@ const I18N = {
             ipNote:'※ IP 주소는 브라우저 내에서만 사용되며 서버로 전송되지 않습니다.', ipBack:'← 뒤로 (저장 취소)',
             devWarnTitle:'📱 스크린샷에 기기 모델을 포함하시겠습니까?', devShow:'그대로 포함', devHide:'🔒 *로 대체',
             devNote:'※ 기기 이름은 UA 문자열에서 가져오며 서버로 전송되지 않습니다.', devBack:'← 뒤로',
-            loginRequired:'로그인 필요', loginMsg:'에는 로그인이 필요합니다.', loginBtn:'로그인', cancelBtn:'취소', logoutBtn:'로그아웃',
+            loginRequired:'로그인 필요', loginMsg:'에는 로그인이 필요합니다.', loginBtn:'Google로 로그인', cancelBtn:'취소', logoutBtn:'로그아웃',
             syncOk:'✓ 동기화됨', syncing:'동기화 중...', syncFail:'⚠ 동기화 실패', synced:'✓ 동기화 중',
             friendCodeTitle:'친구 코드로 로그인', friendCodePlaceholder:'코드 입력...', friendCodeError:'코드가 틀립니다', friendLoginBtn:'로그인',
             diagComplete:'✅ 진단 완료', imgGenComplete:'✅ 이미지 생성 완료',
@@ -339,7 +339,7 @@ const I18N = {
             ipNote:'※ IP chỉ được dùng trong trình duyệt, không gửi đến máy chủ.', ipBack:'← Quay lại',
             devWarnTitle:'📱 Bao gồm model thiết bị?', devShow:'Giữ nguyên', devHide:'🔒 Thay bằng *',
             devNote:'※ Tên thiết bị lấy từ UA, không gửi đến máy chủ.', devBack:'← Quay lại',
-            loginRequired:'Cần đăng nhập', loginMsg:'yêu cầu đăng nhập.', loginBtn:'Đăng nhập', cancelBtn:'Hủy', logoutBtn:'Đăng xuất',
+            loginRequired:'Cần đăng nhập', loginMsg:'yêu cầu đăng nhập.', loginBtn:'Đăng nhập Google', cancelBtn:'Hủy', logoutBtn:'Đăng xuất',
             syncOk:'✓ Đã đồng bộ', syncing:'Đang đồng bộ...', syncFail:'⚠ Đồng bộ thất bại', synced:'✓ Đang đồng bộ',
             friendCodeTitle:'Đăng nhập bằng mã bạn bè', friendCodePlaceholder:'Nhập mã...', friendCodeError:'Mã không đúng', friendLoginBtn:'Đăng nhập',
             diagComplete:'✅ Chẩn đoán hoàn tất', imgGenComplete:'✅ Ảnh đã tạo',
@@ -376,7 +376,7 @@ const I18N = {
             ipNote:'※ IP se usa solo en el navegador.', ipBack:'← Volver (cancelar)',
             devWarnTitle:'📱 ¿Incluir modelo de dispositivo?', devShow:'Incluir tal cual', devHide:'🔒 Reemplazar con *',
             devNote:'※ El nombre del dispositivo proviene del UA.', devBack:'← Volver',
-            loginRequired:'Se requiere inicio de sesión', loginMsg:' requiere login.', loginBtn:'Iniciar sesión', cancelBtn:'Cancelar', logoutBtn:'Cerrar sesión',
+            loginRequired:'Se requiere inicio de sesión', loginMsg:' requiere login.', loginBtn:'Iniciar sesión con Google', cancelBtn:'Cancelar', logoutBtn:'Cerrar sesión',
             syncOk:'✓ Sincronizado', syncing:'Sincronizando...', syncFail:'⚠ Error de sync', synced:'✓ Sincronizando',
             friendCodeTitle:'Iniciar sesión con código', friendCodePlaceholder:'Introduce código...', friendCodeError:'Código incorrecto', friendLoginBtn:'Iniciar sesión',
             diagComplete:'✅ Diagnóstico completo', imgGenComplete:'✅ Imagen generada',
@@ -413,7 +413,7 @@ const I18N = {
             ipNote:'※ IP é usado apenas no navegador.', ipBack:'← Voltar (cancelar)',
             devWarnTitle:'📱 Incluir modelo do dispositivo?', devShow:'Incluir como está', devHide:'🔒 Substituir por *',
             devNote:'※ Nome do dispositivo vem do UA.', devBack:'← Voltar',
-            loginRequired:'Login necessário', loginMsg:' requer login.', loginBtn:'Entrar', cancelBtn:'Cancelar', logoutBtn:'Sair',
+            loginRequired:'Login necessário', loginMsg:' requer login.', loginBtn:'Entrar com Google', cancelBtn:'Cancelar', logoutBtn:'Sair',
             syncOk:'✓ Sincronizado', syncing:'Sincronizando...', syncFail:'⚠ Falha de sync', synced:'✓ Sincronizando',
             friendCodeTitle:'Entrar com código amigo', friendCodePlaceholder:'Digite o código...', friendCodeError:'Código incorreto', friendLoginBtn:'Entrar',
             diagComplete:'✅ Diagnóstico concluído', imgGenComplete:'✅ Imagem gerada',
@@ -450,7 +450,7 @@ const I18N = {
             ipNote:"※ L'IP est utilisée uniquement dans le navigateur.", ipBack:'← Retour (annuler)',
             devWarnTitle:'📱 Inclure le modèle ?', devShow:'Inclure tel quel', devHide:'🔒 Remplacer par *',
             devNote:"※ Le nom de l'appareil provient de l'UA.", devBack:'← Retour',
-            loginRequired:'Connexion requise', loginMsg:' nécessite une connexion.', loginBtn:'Se connecter', cancelBtn:'Annuler', logoutBtn:'Déconnexion',
+            loginRequired:'Connexion requise', loginMsg:' nécessite une connexion.', loginBtn:'Se connecter avec Google', cancelBtn:'Annuler', logoutBtn:'Déconnexion',
             syncOk:'✓ Synchronisé', syncing:'Synchronisation...', syncFail:'⚠ Échec sync', synced:'✓ Synchronisation',
             friendCodeTitle:'Connexion avec code ami', friendCodePlaceholder:'Entrez le code...', friendCodeError:'Code incorrect', friendLoginBtn:'Connexion',
             diagComplete:'✅ Diagnostic terminé', imgGenComplete:'✅ Image générée',
@@ -487,7 +487,7 @@ const I18N = {
             ipNote:'※ IP wird nur im Browser verwendet.', ipBack:'← Zurück (Abbrechen)',
             devWarnTitle:'📱 Gerätemodell einschließen?', devShow:'So einbeziehen', devHide:'🔒 Durch * ersetzen',
             devNote:'※ Gerätename stammt aus UA.', devBack:'← Zurück',
-            loginRequired:'Anmeldung erforderlich', loginMsg:' erfordert Anmeldung.', loginBtn:'Anmelden', cancelBtn:'Abbrechen', logoutBtn:'Abmelden',
+            loginRequired:'Anmeldung erforderlich', loginMsg:' erfordert Anmeldung.', loginBtn:'Mit Google anmelden', cancelBtn:'Abbrechen', logoutBtn:'Abmelden',
             syncOk:'✓ Synchronisiert', syncing:'Synchronisierung...', syncFail:'⚠ Sync fehlgeschlagen', synced:'✓ Synchronisierung',
             friendCodeTitle:'Mit Code anmelden', friendCodePlaceholder:'Code eingeben...', friendCodeError:'Falscher Code', friendLoginBtn:'Anmelden',
             diagComplete:'✅ Diagnose abgeschlossen', imgGenComplete:'✅ Bild erstellt',
@@ -524,7 +524,7 @@ const I18N = {
             ipNote:'※ IP используется только в браузере.', ipBack:'← Назад (отмена)',
             devWarnTitle:'📱 Включить модель устройства?', devShow:'Оставить как есть', devHide:'🔒 Заменить на *',
             devNote:'※ Имя устройства из UA.', devBack:'← Назад',
-            loginRequired:'Требуется вход', loginMsg:' требует входа.', loginBtn:'Войти', cancelBtn:'Отмена', logoutBtn:'Выйти',
+            loginRequired:'Требуется вход', loginMsg:' требует входа.', loginBtn:'Войти через Google', cancelBtn:'Отмена', logoutBtn:'Выйти',
             syncOk:'✓ Синхронизировано', syncing:'Синхронизация...', syncFail:'⚠ Ошибка sync', synced:'✓ Синхронизация',
             friendCodeTitle:'Войти с кодом друга', friendCodePlaceholder:'Введите код...', friendCodeError:'Неверный код', friendLoginBtn:'Войти',
             diagComplete:'✅ Диагностика завершена', imgGenComplete:'✅ Изображение создано',
@@ -3544,6 +3544,9 @@ async function runSpeedTest() {
 }
 
 function retryDiagnostic() {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
     const _t2 = _getLang();
     document.getElementById('rank-letter').textContent = '?';
     document.getElementById('rank-letter').className   = 'rank-D';
@@ -3655,7 +3658,7 @@ function renderFriendModalTop() {
             ` : `
                 <div style="background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.3);border-radius:14px;padding:14px;margin-bottom:4px;">
                     <p style="color:#a78bfa;font-size:0.85rem;margin:0 0 10px;">グループを作成・管理するにはログインが必要です。</p>
-                    <button onclick="openLoginModal()" style="width:100%;padding:10px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;font-weight:700;cursor:pointer;font-size:0.88rem;">🔐 ログインする</button>
+                    <button onclick="openLoginModal()" style="width:100%;padding:10px;border-radius:10px;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;font-weight:700;cursor:pointer;font-size:0.88rem;">🔐 ログインする（Google / GitHub）</button>
                 </div>
                 <button onclick="renderJoinGroup()" style="padding:14px;border-radius:14px;background:rgba(255,149,0,0.15);border:1px solid rgba(255,149,0,0.4);color:#ff9500;font-size:0.95rem;font-weight:800;cursor:pointer;text-align:left;">
                     🔑 グループに参加する（コード入力）
@@ -4443,14 +4446,6 @@ async function signInWithTwitter() {
     }
 }
 
-function _oidcErrorMsg(service, e) {
-    if (e.code === 'auth/operation-not-allowed') {
-        return service + 'ログインがFirebaseで有効になっていません。\nFirebaseコンソール → Authentication → Sign-in method から有効化してください。';
-    }
-    if (e.code === 'auth/popup-closed-by-user') return null;
-    return service + 'ログインに失敗しました: ' + e.message;
-}
-
 async function signInWithTwitch() {
     if (!_fbAuth) { alert("Firebase未設定です。"); return; }
     _closeAuthModal();
@@ -4458,8 +4453,7 @@ async function signInWithTwitch() {
         const provider = new firebase.auth.OAuthProvider('oidc.twitch');
         await _fbAuth.signInWithPopup(provider);
     } catch(e) {
-        const msg = _oidcErrorMsg('Twitch', e);
-        if (msg) alert(msg);
+        if (e.code !== 'auth/popup-closed-by-user') alert("Twitchログインに失敗しました: " + e.message);
     }
 }
 
@@ -4470,8 +4464,7 @@ async function signInWithDiscord() {
         const provider = new firebase.auth.OAuthProvider('oidc.discord');
         await _fbAuth.signInWithPopup(provider);
     } catch(e) {
-        const msg = _oidcErrorMsg('Discord', e);
-        if (msg) alert(msg);
+        if (e.code !== 'auth/popup-closed-by-user') alert("Discordログインに失敗しました: " + e.message);
     }
 }
 
@@ -4559,6 +4552,9 @@ document.addEventListener('keydown', e => {
     }
 });
 window.addEventListener('load',()=>{
+    // ページ読み込み時は必ず最上部へ（ブラウザのスクロール位置保持を無効化）
+    history.scrollRestoration = 'manual';
+    window.scrollTo({ top: 0, behavior: 'instant' });
     // 設定読み込み・適用（エラーが起きても診断は必ず実行）
     try { loadSettings(); } catch(e) { console.warn('loadSettings error:', e); }
     try { applySettings(); } catch(e) { console.warn('applySettings error:', e); }
