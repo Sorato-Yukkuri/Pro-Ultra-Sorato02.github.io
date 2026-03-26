@@ -24,6 +24,69 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- ============================================
+     【メンテナンス・切り替え管理コード】
+    こっから
+     ============================================ -->
+<script>
+  /* 
+     【1. オン・オフの切り替え設定】
+     true  => 閉鎖モード（メッセージを表示して他を止める）
+     false => 通常モード（サイトを普通に表示する）
+  */
+  const isMaintenance = false; 
+
+  /* 
+     【2. 見た目のカスタマイズ設定】
+     ここを書き換えるだけで、サイズや色を調整できます
+  */
+  const config = {
+    fontSize:   "32px",          // 文字の大きさ（例: 24px, 48px, 3rem）
+    fontColor:  "red",           // 文字の色（例: red, #ff0000, black）
+    bgColor:    "white",         // 背景の色（例: white, #eeeeee, black）
+    fontWeight: "bold",          // 文字の太さ（例: bold, normal）
+    message:    "申し訳ございません。 <br> 現在サーバー負荷軽減などのため <br> 一時的に閉鎖しています。 <br> 本日21:40頃に再開します。 <br>  ご協力お願いします。" // 表示する文章
+  };
+
+
+  // 【3. 実際の処理】（ここから下は、基本的に触らなくてOKです）
+  if (isMaintenance) {
+    // 画面全体を覆い隠すスタイルとメッセージを書き込みます
+    document.write(`
+      <div style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        background: ${config.bgColor}; 
+        z-index: 9999999;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 0;
+        padding: 0;
+        text-align: center;
+      ">
+        <h1 style="
+          color: ${config.fontColor}; 
+          font-size: ${config.fontSize}; 
+          font-weight: ${config.fontWeight};
+          font-family: sans-serif;
+          padding: 20px;
+        ">
+          ${config.message}
+        </h1>
+      </div>
+    `);
+
+    // 4. 他のコード（JavaScriptや画像読み込み）を強制停止します
+    window.stop();
+  }
+</script>
+<!-- ============================================
+     【切り替え管理コードここまで】
+     ============================================ -->
 
 <!-- ログインバー（capture-area外） -->
 <div id="auth-bar" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9000;background:rgba(5,5,5,0.95);backdrop-filter:blur(10px);border-bottom:1px solid #282828;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;box-sizing:border-box;">
@@ -45,6 +108,24 @@
             🔑 <span id="auth-login-label">ログイン</span>
         </button>
     </div>
+</div>
+
+<!-- メール未確認バナー（JS で show/hide） -->
+<div id="email-verify-banner" style="display:none;position:fixed;top:49px;left:0;right:0;z-index:8999;background:rgba(245,158,11,0.13);border-bottom:1px solid rgba(245,158,11,0.35);padding:9px 16px;align-items:center;justify-content:space-between;gap:12px;box-sizing:border-box;flex-wrap:wrap;">
+    <span style="color:#f59e0b;font-size:0.82rem;font-weight:700;line-height:1.5;">
+        📧 メールアドレスの確認が完了していません。確認メールのリンクをクリックするとProUltraが有効になります。<br>
+        <span style="font-size:0.75rem;font-weight:400;color:#c8a060;">※ 迷惑メールフォルダもご確認ください</span>
+    </span>
+    <div style="display:flex;gap:8px;flex-shrink:0;">
+        <button onclick="resendVerificationEmail()" style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);color:#f59e0b;padding:5px 12px;border-radius:8px;font-size:0.78rem;font-weight:700;cursor:pointer;">再送する</button>
+        <button onclick="recheckEmailVerified()" style="background:rgba(52,199,89,0.15);border:1px solid rgba(52,199,89,0.3);color:#34c759;padding:5px 12px;border-radius:8px;font-size:0.78rem;font-weight:700;cursor:pointer;">確認済み ✓</button>
+    </div>
+</div>
+
+<!-- アップデート通知バナー（メール認証必須化） -->
+<div id="auth-update-banner" style="display:none;position:fixed;top:49px;left:0;right:0;z-index:8998;background:rgba(99,102,241,0.13);border-bottom:1px solid rgba(99,102,241,0.35);padding:9px 16px;align-items:center;justify-content:space-between;gap:12px;box-sizing:border-box;">
+    <span style="color:#a5b4fc;font-size:0.82rem;font-weight:700;"><br><br><br><br>🆕 アップデートによりメール認証が必須になりました。上のバナーから認証を完了してください。</span>
+    <button onclick="document.getElementById('auth-update-banner').style.display='none';localStorage.setItem('pu_upd_banner_v1','1');" style="background:none;border:none;color:#6366f1;font-size:0.82rem;font-weight:700;cursor:pointer;flex-shrink:0;">閉じる ✕</button>
 </div>
 
 <!-- ログインモーダル -->

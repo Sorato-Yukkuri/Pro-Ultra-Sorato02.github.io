@@ -934,15 +934,12 @@ async function openSettings() {
                     <div style="margin-bottom:8px;color:#ccc;font-size:0.82rem;font-weight:700;">🎨 テーマスキン</div>
                     <div id="pu-skin-selector" style="display:flex;gap:8px;margin-bottom:4px;"></div>
                     <p style="color:#555;font-size:0.72rem;margin:8px 0 0;">スキンはこの端末に保存されます</p>
-                    <div style="margin:18px 0 8px;color:#ccc;font-size:0.82rem;font-weight:700;">📅 再診断リマインド</div>
-                    <div id="pu-reminder-selector" style="display:flex;gap:6px;"></div>
-                    <p style="color:#555;font-size:0.72rem;margin:6px 0 0;">診断完了から指定日数後、次回起動時に通知します</p>
                 </div>`
                 : `<div style="padding:14px 0;">
                     <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:14px;padding:12px 16px;">
                         <div style="color:#f59e0b;font-size:0.88rem;font-weight:700;margin-bottom:8px;">👑 ProUltraアカウント特典</div>
                         <div style="color:#888;font-size:0.8rem;line-height:1.9;">🔔 アプリ内通知が解放<br>📊 診断履歴を最大10件保存<br>🎨 限定テーマスキン（ゴールド・オーロラ・ダイヤ）</div>
-                        <div style="color:#555;font-size:0.75rem;margin-top:8px;">※ 管理者によりプランが付与されます</div>
+                        <div style="color:#555;font-size:0.75rem;margin-top:8px;">※ 管理者によりプランが付与されます<br>メールアドレス認証をしないと特典は付与されません</div>
                     </div>
                 </div>`
         ]) : ''}
@@ -956,8 +953,8 @@ async function openSettings() {
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
     modal.onclick = e => { if (e.target === modal) closeSettings(); };
-    // ProUltraスキン・リマインドUIを描画
-    if (_isProUltra) { _renderPuSkinUI(); _renderPuReminderUI(); }
+    // ProUltraスキンUIを描画
+    if (_isProUltra) _renderPuSkinUI();
     // ＊ボタンのイベント委譲（初回のみ登録）
     if (!modal._helpListenerAdded) {
         modal._helpListenerAdded = true;
@@ -2421,8 +2418,6 @@ function processFinalReport() {
 
     // ローカルストレージに結果を保存
     saveResultToHistory(totalScore, rank, scores, ramGB, diag.avgFps, diag.lowFps, diag.networkMbps);
-    // ProUltraリマインド用：最終診断日時を記録
-    updatePuLastDiag();
 
     // 設定に応じたフィードバック
     // 完了音を先に鳴らす→通知はわずかに遅らせて干渉を防ぐ
@@ -3691,16 +3686,24 @@ function _renderPuSkinUI() {
 async function fetchUserPlan() {
     _isProUltra = false;
     if (!_currentUser || !_fbDb || _currentUser.isAnonymous) return;
-    try {
-        // メール/パスワード登録ユーザーは自動でProUltra付与（既存ユーザーも含む）
-        const isEmailUser = _currentUser.providerData &&
-            _currentUser.providerData.some(p => p.providerId === 'password');
 
+    const isEmailUser = _currentUser.providerData &&
+        _currentUser.providerData.some(p => p.providerId === 'password');
+
+    // メール認証ユーザーで未確認 → バナー表示してProUltra付与しない
+    if (isEmailUser && !_currentUser.emailVerified) {
+        _showVerifyBanner(true);
+        _onPlanReady();
+        return;
+    }
+    _showVerifyBanner(false);
+
+    try {
         const doc = await _fbDb.collection('users').doc(_currentUser.uid).get();
         const currentPlan = doc.exists ? doc.data().plan : null;
 
         if (isEmailUser && currentPlan !== 'pro_ultra') {
-            // ログインのたびに自動付与（iPhoneなど既存アカウントも対応）
+            // メール確認済みのメールユーザーは自動でProUltra付与
             await _fbDb.collection('users').doc(_currentUser.uid).set(
                 { plan: 'pro_ultra' },
                 { merge: true }
@@ -3711,6 +3714,50 @@ async function fetchUserPlan() {
         }
     } catch(e) {}
     _onPlanReady();
+}
+
+function _showVerifyBanner(show) {
+    const banner = document.getElementById('email-verify-banner');
+    const updBanner = document.getElementById('auth-update-banner');
+    if (!banner) return;
+    banner.style.display = show ? 'flex' : 'none';
+    // 既存ユーザー向けアップデートバナー（一度閉じたら二度と出さない）
+    if (show && updBanner && !localStorage.getItem('pu_upd_banner_v1')) {
+        updBanner.style.display = 'flex';
+    } else if (!show && updBanner) {
+        updBanner.style.display = 'none';
+    }
+    // padding-top調整
+    if (show) {
+        const bothVisible = updBanner && updBanner.style.display === 'flex';
+        document.body.style.paddingTop = (bothVisible ? 110 : 70) + 'px';
+    }
+    // show=false 時はupdateAuthUIに任せる
+}
+
+async function resendVerificationEmail() {
+    if (!_fbAuth || !_fbAuth.currentUser) return;
+    try {
+        await _fbAuth.currentUser.sendEmailVerification();
+        alert('確認メールを再送しました！\n受信ボックス・迷惑メールフォルダをご確認ください。');
+    } catch(e) {
+        const msgs = { 'auth/too-many-requests': 'しばらく時間をおいてから再試行してください' };
+        alert(msgs[e.code] || '送信に失敗しました: ' + e.message);
+    }
+}
+
+async function recheckEmailVerified() {
+    if (!_fbAuth || !_fbAuth.currentUser) return;
+    try {
+        await _fbAuth.currentUser.reload();
+        _currentUser = _fbAuth.currentUser;
+        if (_currentUser.emailVerified) {
+            _showVerifyBanner(false);
+            await fetchUserPlan();
+        } else {
+            alert('まだ確認が完了していません。\nメール内のリンクをクリックしてから再度お試しください。\n\n※ 迷惑メールフォルダもご確認ください。');
+        }
+    } catch(e) {}
 }
 
 function _onPlanReady() {
@@ -3726,62 +3773,9 @@ function _onPlanReady() {
     // ヘッダーのProUltraバッジ
     const puBadge = document.getElementById('pu-header-badge');
     if (puBadge) puBadge.style.display = _isProUltra ? 'inline-block' : 'none';
-    // ProUltra UI描画（設定画面が開いていれば）
-    if (_isProUltra) { _renderPuSkinUI(); _renderPuReminderUI(); }
     // 設定画面が開いてたら再描画（バッジ反映）
     const settingsModal = document.getElementById('settings-modal');
     if (settingsModal && settingsModal.style.display !== 'none') openSettings();
-}
-
-// ══════════════════════════════════════════════════════════════
-// 📅 定期リマインド（ProUltra特典）
-// ══════════════════════════════════════════════════════════════
-const PU_REMINDER_KEY  = 'pu_reminder_v1';
-const PU_LAST_DIAG_KEY = 'pu_last_diag_v1';
-const PU_REMINDER_OPTS = [1, 3, 7, 30];
-const PU_REMINDER_DEFAULT = 3;
-
-function getPuReminderDays() {
-    const v = parseInt(localStorage.getItem(PU_REMINDER_KEY));
-    return PU_REMINDER_OPTS.includes(v) ? v : PU_REMINDER_DEFAULT;
-}
-function setPuReminderDays(days) {
-    localStorage.setItem(PU_REMINDER_KEY, String(days));
-    _renderPuReminderUI();
-}
-function updatePuLastDiag() {
-    localStorage.setItem(PU_LAST_DIAG_KEY, String(Date.now()));
-}
-
-async function checkPuReminder() {
-    if (!_isProUltra) return;
-    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-    if (isQuietTime()) return;
-    const last = parseInt(localStorage.getItem(PU_LAST_DIAG_KEY));
-    if (!last || isNaN(last)) return;
-    const elapsedDays = (Date.now() - last) / (1000 * 60 * 60 * 24);
-    if (elapsedDays >= getPuReminderDays()) {
-        new Notification('👑 デバイス再診断のお知らせ', {
-            body: `前回の診断から${Math.floor(elapsedDays)}日が経過しています。デバイスの状態を確認しましょう！`,
-            icon: './android-chrome-192x192.png',
-            silent: false
-        });
-    }
-}
-
-function _renderPuReminderUI() {
-    const el = document.getElementById('pu-reminder-selector');
-    if (!el) return;
-    const current = getPuReminderDays();
-    const labels = { 1:'毎日', 3:'3日ごと', 7:'週1', 30:'月1' };
-    el.innerHTML = PU_REMINDER_OPTS.map(function(d) {
-        const active = d === current;
-        return '<button onclick="setPuReminderDays(' + d + ')" style="flex:1;padding:7px 4px;border-radius:10px;font-size:0.78rem;font-weight:700;cursor:pointer;' +
-            'border:2px solid ' + (active ? '#f59e0b' : '#333') + ';' +
-            'background:' + (active ? 'rgba(245,158,11,0.15)' : '#1a1a1a') + ';' +
-            'color:' + (active ? '#f59e0b' : '#888') + ';transition:all 0.2s;">' +
-            labels[d] + '</button>';
-    }).join('');
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -4522,6 +4516,7 @@ function initFirebase() {
                 if (puBadge) puBadge.style.display = 'none';
                 const notifBtn = document.getElementById('notif-btn');
                 if (notifBtn) notifBtn.style.display = 'none';
+                _showVerifyBanner(false);
             }
         });
 
@@ -4537,9 +4532,6 @@ function initFirebase() {
         });
 
         document.getElementById('auth-bar').style.display = 'flex';
-
-        // 次回起動時リマインドチェック（plan確定後に実行）
-        setTimeout(() => { checkPuReminder(); }, 4000);
     } catch(e) {
         console.error("Firebase初期化エラー:", e);
     }
@@ -4679,17 +4671,12 @@ async function submitSignUp() {
         if (name) {
             try { await result.user.updateProfile({ displayName: name }); } catch(e2) {}
         }
-        // 👑 アカウント作成と同時にProUltraプランを自動付与
-        if (_fbDb) {
-            try {
-                await _fbDb.collection('users').doc(result.user.uid).set(
-                    { plan: 'pro_ultra' },
-                    { merge: true }
-                );
-            } catch(e3) {}
-        }
+        // 確認メールを送信
+        try { await result.user.sendEmailVerification(); } catch(e2) {}
+        // 一旦サインアウトして「確認メールを確認してから再ログイン」へ誘導
+        await _fbAuth.signOut();
         closeSignUpModal();
-        updateAuthUI(_fbAuth.currentUser);
+        alert('📧 確認メールを送信しました！\n\nメール内のリンクをクリックして認証を完了してください。\n認証後にログインするとProUltra特典が有効になります。\n\n※ 迷惑メールフォルダもご確認ください。');
     } catch(e) {
         const msgs = {
             'auth/email-already-in-use': 'このメールアドレスは既に使われています',
