@@ -798,6 +798,66 @@ async function notifyOnDone(rank, score) {
     }
 }
 
+// ══════════════════════════════════════════════════════════════
+// 📅 定期リマインド（ProUltra特典）
+// ══════════════════════════════════════════════════════════════
+const PU_REMINDER_KEY  = 'pu_reminder_v1';   // 間隔（日数）
+const PU_LAST_DIAG_KEY = 'pu_last_diag_v1';  // 最終診断日時(ms)
+const PU_REMINDER_OPTS = [1, 3, 7, 30];      // 選択肢（日）
+const PU_REMINDER_DEFAULT = 3;
+
+function getPuReminderDays() {
+    const v = parseInt(localStorage.getItem(PU_REMINDER_KEY));
+    return PU_REMINDER_OPTS.includes(v) ? v : PU_REMINDER_DEFAULT;
+}
+function setPuReminderDays(days) {
+    localStorage.setItem(PU_REMINDER_KEY, String(days));
+    _renderPuReminderUI();
+}
+function updatePuLastDiag() {
+    localStorage.setItem(PU_LAST_DIAG_KEY, String(Date.now()));
+}
+function getPuLastDiag() {
+    const v = parseInt(localStorage.getItem(PU_LAST_DIAG_KEY));
+    return isNaN(v) ? null : v;
+}
+
+async function checkPuReminder() {
+    if (!_isProUltra) return;
+    if (typeof Notification === 'undefined') return;
+    if (Notification.permission !== 'granted') return;
+    if (isQuietTime()) return;
+
+    const last = getPuLastDiag();
+    if (!last) return;
+
+    const days   = getPuReminderDays();
+    const elapsedMs = Date.now() - last;
+    const elapsedDays = elapsedMs / (1000 * 60 * 60 * 24);
+
+    if (elapsedDays >= days) {
+        new Notification('👑 デバイス再診断のお知らせ', {
+            body: `前回の診断から${Math.floor(elapsedDays)}日が経過しています。デバイスの状態を確認しましょう！`,
+            icon: './android-chrome-192x192.png',
+            silent: false
+        });
+    }
+}
+
+function _renderPuReminderUI() {
+    const el = document.getElementById('pu-reminder-selector');
+    if (!el) return;
+    const current = getPuReminderDays();
+    const labels = { 1:'毎日', 3:'3日ごと', 7:'週1', 30:'月1' };
+    el.innerHTML = PU_REMINDER_OPTS.map(d =>
+        `<button onclick="setPuReminderDays(${d})" style="
+            flex:1;padding:7px 4px;border-radius:10px;font-size:0.78rem;font-weight:700;cursor:pointer;border:2px solid ${d===current?'#f59e0b':'#333'};
+            background:${d===current?'rgba(245,158,11,0.15)':'#1a1a1a'};color:${d===current?'#f59e0b':'#888'};transition:all 0.2s;">
+            ${labels[d]}
+        </button>`
+    ).join('');
+}
+
 // ── バッジ ──
 async function setBadge() {
     if (!_settings.badge) return;
@@ -921,6 +981,32 @@ async function openSettings() {
             </div>`
         ]) : ''}
 
+        ${_currentUser && !_currentUser.isAnonymous ? settingSection('👑 ProUltra', [
+            _isProUltra
+                ? `<div style="padding:14px 0;">
+                    <div style="background:linear-gradient(135deg,#f59e0b,#f97316);border-radius:14px;padding:12px 16px;display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+                        <span style="font-size:1.6rem;">👑</span>
+                        <div>
+                            <div style="color:#fff;font-size:0.9rem;font-weight:800;">ProUltraアカウント</div>
+                            <div style="color:rgba(255,255,255,0.85);font-size:0.77rem;margin-top:2px;">🔔 通知 ／ 📊 履歴10件 ／ 🎨 スキン ／ 📅 リマインド</div>
+                        </div>
+                    </div>
+                    <div style="margin-bottom:8px;color:#ccc;font-size:0.82rem;font-weight:700;">🎨 テーマスキン</div>
+                    <div id="pu-skin-selector" style="display:flex;gap:8px;margin-bottom:4px;"></div>
+                    <p style="color:#555;font-size:0.72rem;margin:8px 0 0;">スキンはこの端末に保存されます</p>
+                    <div style="margin:18px 0 8px;color:#ccc;font-size:0.82rem;font-weight:700;">📅 再診断リマインド</div>
+                    <div id="pu-reminder-selector" style="display:flex;gap:6px;margin-bottom:4px;"></div>
+                    <p style="color:#555;font-size:0.72rem;margin:6px 0 0;">アプリ起動時に通知 ／ 通知許可が必要です</p>
+                </div>`
+                : `<div style="padding:14px 0;">
+                    <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:14px;padding:12px 16px;">
+                        <div style="color:#f59e0b;font-size:0.88rem;font-weight:700;margin-bottom:8px;">👑 ProUltraアカウント特典</div>
+                        <div style="color:#888;font-size:0.8rem;line-height:1.9;">🔔 アプリ内通知が解放<br>📊 診断履歴を最大10件保存<br>🎨 限定テーマスキン（ゴールド・オーロラ・ダイヤ）</div>
+                        <div style="color:#555;font-size:0.75rem;margin-top:8px;">※ 管理者によりプランが付与されます</div>
+                    </div>
+                </div>`
+        ]) : ''}
+
         </div>
         <div style="padding:0 20px;">
         <button onclick="resetSettings()" style="width:100%;margin-top:16px;padding:12px;border-radius:14px;background:rgba(255,59,48,0.12);border:1px solid rgba(255,59,48,0.3);color:#ff6b6b;font-size:0.9rem;font-weight:700;cursor:pointer;">${ui.settingsReset}</button>
@@ -930,6 +1016,8 @@ async function openSettings() {
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
     modal.onclick = e => { if (e.target === modal) closeSettings(); };
+    // ProUltraスキンUI・リマインドUIを描画
+    if (_isProUltra) { _renderPuSkinUI(); _renderPuReminderUI(); }
     // ＊ボタンのイベント委譲（初回のみ登録）
     if (!modal._helpListenerAdded) {
         modal._helpListenerAdded = true;
@@ -2394,6 +2482,9 @@ function processFinalReport() {
     // ローカルストレージに結果を保存
     saveResultToHistory(totalScore, rank, scores, ramGB, diag.avgFps, diag.lowFps, diag.networkMbps);
 
+    // 最終診断日時を記録（ProUltraリマインド用）
+    updatePuLastDiag();
+
     // 設定に応じたフィードバック
     // 完了音を先に鳴らす→通知はわずかに遅らせて干渉を防ぐ
     playDoneSound();
@@ -3277,7 +3368,7 @@ function saveResultToHistory(totalScore, rank, scores, ramGB, avgFps, lowFps, ne
         };
         const history = JSON.parse(localStorage.getItem('diag_history') || '[]');
         history.unshift(entry);
-        const maxHistory = _currentUser ? 5 : 3;
+        const maxHistory = _isProUltra ? 10 : (_currentUser ? 5 : 3);
         if (history.length > maxHistory) history.splice(maxHistory);
         localStorage.setItem('diag_history', JSON.stringify(history));
         // クラウド同期
@@ -3292,8 +3383,10 @@ function showHistoryModal() {
     try { history = JSON.parse(localStorage.getItem('diag_history') || '[]'); } catch(e) {}
 
     // ログイン特典バッジ
-    const maxHistory = _currentUser ? 5 : 3;
-    const benefitBadge = _currentUser
+    const maxHistory = _isProUltra ? 10 : (_currentUser ? 5 : 3);
+    const benefitBadge = _isProUltra
+        ? '<div style="background:linear-gradient(135deg,#f59e0b,#f97316);color:#fff;font-size:0.75rem;font-weight:700;padding:4px 12px;border-radius:20px;display:inline-block;margin-bottom:12px;">👑 ProUltra特典：最大10件保存 / 固定機能解放</div>'
+        : _currentUser
         ? '<div style="background:linear-gradient(135deg,#6366f1,#a78bfa);color:#fff;font-size:0.75rem;font-weight:700;padding:4px 12px;border-radius:20px;display:inline-block;margin-bottom:12px;">⭐ ログイン特典：最大5件保存 / 固定機能解放</div>'
         : '<div style="background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a78bfa;font-size:0.75rem;font-weight:700;padding:4px 12px;border-radius:20px;display:inline-block;margin-bottom:12px;cursor:pointer;" onclick="openLoginModal()">🔒 ログインで最大5件保存・固定機能が解放</div>';
 
@@ -3610,6 +3703,196 @@ const FIREBASE_CONFIG = {
 // Firebase初期化
 let _fbApp = null, _fbAuth = null, _fbDb = null;
 let _currentUser = null;
+
+// ══════════════════════════════════════════════════════════════
+// 👑 ProUltra プラン管理
+// ══════════════════════════════════════════════════════════════
+let _isProUltra = false;
+
+// ── ProUltra スキン定義 ──────────────────────────────────────
+const PU_SKINS = [
+    { id: 'default', label: 'デフォルト', emoji: '⬛', preview: 'linear-gradient(135deg,#121212,#282828)' },
+    { id: 'gold',    label: 'ゴールド',   emoji: '🥇', preview: 'linear-gradient(135deg,#f59e0b,#f97316,#fbbf24)' },
+    { id: 'aurora',  label: 'オーロラ',   emoji: '🌈', preview: 'linear-gradient(135deg,#7c3aed,#db2777,#0ea5e9)' },
+    { id: 'diamond', label: 'ダイヤ',     emoji: '💎', preview: 'linear-gradient(135deg,#0ea5e9,#67e8f9,#a5f3fc)' },
+];
+const PU_SKIN_KEY = 'pu_skin_v1';
+
+function loadPuSkin() {
+    if (!_isProUltra) return;
+    const saved = localStorage.getItem(PU_SKIN_KEY) || 'default';
+    applyPuSkin(saved, false);
+}
+
+function applyPuSkin(skinId, save) {
+    if (save === undefined) save = true;
+    const body = document.body;
+    if (skinId && skinId !== 'default') {
+        body.setAttribute('data-pu-skin', skinId);
+    } else {
+        body.removeAttribute('data-pu-skin');
+    }
+    if (save) localStorage.setItem(PU_SKIN_KEY, skinId);
+    _renderPuSkinUI();
+}
+
+function _renderPuSkinUI() {
+    const container = document.getElementById('pu-skin-selector');
+    if (!container) return;
+    const current = localStorage.getItem(PU_SKIN_KEY) || 'default';
+    container.innerHTML = PU_SKINS.map(function(s) {
+        return '<div class="pu-skin-card ' + (s.id === current ? 'active' : '') + '" onclick="applyPuSkin(\'' + s.id + '\');" style="position:relative;">' +
+            '<div class="pu-skin-preview" style="background:' + s.preview + ';"></div>' +
+            '<div class="pu-skin-name">' + s.emoji + ' ' + s.label + '</div>' +
+            (s.id === current ? '<div style="position:absolute;top:4px;right:6px;color:#f59e0b;font-size:0.75rem;font-weight:900;">✓</div>' : '') +
+        '</div>';
+    }).join('');
+}
+
+async function fetchUserPlan() {
+    _isProUltra = false;
+    if (!_currentUser || !_fbDb || _currentUser.isAnonymous) return;
+    try {
+        const doc = await _fbDb.collection('users').doc(_currentUser.uid).get();
+        if (doc.exists && doc.data().plan === 'pro_ultra') {
+            _isProUltra = true;
+        }
+    } catch(e) {}
+    _onPlanReady();
+}
+
+function _onPlanReady() {
+    const notifBtn = document.getElementById('notif-btn');
+    if (notifBtn) notifBtn.style.display = _isProUltra ? 'flex' : 'none';
+    if (_isProUltra) {
+        loadNotifications();
+        loadPuSkin();
+    } else {
+        // ProUltraでない場合はスキン解除・バッジ非表示
+        document.body.removeAttribute('data-pu-skin');
+    }
+    // ヘッダーのProUltraバッジ
+    const puBadge = document.getElementById('pu-header-badge');
+    if (puBadge) puBadge.style.display = _isProUltra ? 'inline-block' : 'none';
+    // 設定画面が開いてたら再描画（バッジ反映）
+    const settingsModal = document.getElementById('settings-modal');
+    if (settingsModal && settingsModal.style.display !== 'none') openSettings();
+}
+
+// ══════════════════════════════════════════════════════════════
+// 🔔 通知センター（ProUltra特典）
+// ══════════════════════════════════════════════════════════════
+let _notifications = [];
+const NOTIF_KEY = 'pu_notifs_read_v1';
+
+async function loadNotifications() {
+    if (!_isProUltra || !_fbDb) return;
+    try {
+        const snap = await _fbDb.collection('notifications')
+            .orderBy('createdAt', 'desc').limit(30).get();
+        const readIds = JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]');
+        _notifications = snap.docs.map(d => {
+            const data = d.data();
+            return {
+                id:    d.id,
+                type:  data.type  || 'info',
+                title: data.title || '',
+                body:  data.body  || '',
+                date:  data.createdAt ? new Date(data.createdAt.toDate()).toLocaleDateString('ja-JP') : '',
+                read:  readIds.includes(d.id),
+            };
+        });
+    } catch(e) {
+        // Firestoreにコレクションがない場合はデモデータ
+        const readIds = JSON.parse(localStorage.getItem(NOTIF_KEY) || '[]');
+        _notifications = [
+            { id:'demo_update',   type:'update',   title:'🚀 Beta 1.7.5 アップデートしました！', body:'デバイス対戦・友達コード機能などが追加されました。', date:'2026/3/26', read: readIds.includes('demo_update') },
+            { id:'demo_security', type:'security', title:'🔐 メールアドレス変更機能が追加されました', body:'設定 → セキュリティ → メールアドレスの変更から変更できます。', date:'2026/3/26', read: readIds.includes('demo_security') },
+        ];
+    }
+    _updateNotifBadge();
+}
+
+function _updateNotifBadge() {
+    const badge = document.getElementById('notif-badge');
+    if (!badge) return;
+    const unread = _notifications.filter(n => !n.read).length;
+    if (unread > 0) {
+        badge.textContent = unread > 9 ? '9+' : String(unread);
+        badge.style.display = 'block';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+function toggleNotifCenter() {
+    const modal = document.getElementById('notif-modal');
+    if (!modal) return;
+    const visible = modal.style.display !== 'none' && modal.style.display !== '';
+    if (visible) { closeNotifCenter(); } else { openNotifCenter(); }
+}
+
+function openNotifCenter() {
+    if (!_isProUltra) return;
+    const modal = document.getElementById('notif-modal');
+    const list  = document.getElementById('notif-list');
+    if (!modal || !list) return;
+
+    if (_notifications.length === 0) {
+        list.innerHTML = '<p style="color:#555;text-align:center;padding:24px;font-size:0.85rem;">通知はありません</p>';
+    } else {
+        list.innerHTML = _notifications.map(n => {
+            const iconMap = { update:'🚀', security:'🔐', info:'ℹ️' };
+            const icon = iconMap[n.type] || 'ℹ️';
+            const isUpdate = n.type === 'update';
+            return `<div data-notif-id="${n.id}" style="padding:14px 18px;border-bottom:1px solid #1e1e1e;cursor:${isUpdate ? 'pointer' : 'default'};background:${n.read ? 'transparent' : 'rgba(99,102,241,0.08)'};"
+                ${isUpdate ? `onclick="openUpdateFromNotif('${n.id}')"` : ''}>
+                <div style="display:flex;align-items:flex-start;gap:10px;">
+                    <span style="font-size:1.1rem;flex-shrink:0;">${icon}</span>
+                    <div style="flex:1;min-width:0;">
+                        <div style="color:#fff;font-size:0.88rem;font-weight:${n.read ? '600' : '800'};margin-bottom:3px;display:flex;align-items:center;gap:6px;">
+                            ${n.title}
+                            ${!n.read ? '<span style="width:7px;height:7px;border-radius:50%;background:#6366f1;display:inline-block;flex-shrink:0;"></span>' : ''}
+                        </div>
+                        <div style="color:#666;font-size:0.79rem;line-height:1.5;">${n.body}</div>
+                        <div style="color:#444;font-size:0.75rem;margin-top:5px;">${n.date}</div>
+                        ${isUpdate ? '<div style="color:#6366f1;font-size:0.77rem;margin-top:4px;font-weight:700;">▶ アップデート情報を見る</div>' : ''}
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    // 全既読にする
+    const readIds = _notifications.map(n => n.id);
+    localStorage.setItem(NOTIF_KEY, JSON.stringify(readIds));
+    _notifications.forEach(n => n.read = true);
+    _updateNotifBadge();
+
+    modal.style.display = 'block';
+    setTimeout(() => document.addEventListener('click', _notifOutsideClick, { once: true }), 50);
+}
+
+function _notifOutsideClick(e) {
+    const modal = document.getElementById('notif-modal');
+    const btn   = document.getElementById('notif-btn');
+    if (modal && !modal.contains(e.target) && btn && !btn.contains(e.target)) closeNotifCenter();
+}
+
+function closeNotifCenter() {
+    const modal = document.getElementById('notif-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function openUpdateFromNotif(notifId) {
+    closeNotifCenter();
+    const overlay = document.getElementById('update-overlay');
+    if (overlay) {
+        overlay.style.display = 'flex';
+    } else {
+        alert('アップデート情報は既に閉じられています。\nページをリロードすると再度確認できます。');
+    }
+}
 
 // ── 友達コードログイン ──────────────────────────────────────────
 // ランタイムのみで保持（ページリロード後はCookieから復元）
@@ -4223,8 +4506,17 @@ function initFirebase() {
             updateAuthUI(user);
             if (user) {
                 syncHistoryFromCloud();
+                fetchUserPlan();
                 // Redirectログイン後にtui()が準備できてるか保証するため再適用
                 try { applyLanguage(); } catch(e) {}
+            } else {
+                // ログアウト時はProUltraフラグをリセット
+                _isProUltra = false;
+                document.body.removeAttribute('data-pu-skin');
+                const puBadge = document.getElementById('pu-header-badge');
+                if (puBadge) puBadge.style.display = 'none';
+                const notifBtn = document.getElementById('notif-btn');
+                if (notifBtn) notifBtn.style.display = 'none';
             }
         });
 
@@ -4240,6 +4532,9 @@ function initFirebase() {
         });
 
         document.getElementById('auth-bar').style.display = 'flex';
+
+        // 起動時にリマインドチェック（少し遅らせてPlanReady後に実行）
+        setTimeout(() => { checkPuReminder(); }, 3000);
     } catch(e) {
         console.error("Firebase初期化エラー:", e);
     }
@@ -4419,11 +4714,9 @@ async function sendPasswordReset() {
 function openChangeEmailModal() {
     const modal = document.getElementById('change-email-modal');
     if (!modal) return;
-    // 現在のメアドを表示
     const user = _fbAuth && _fbAuth.currentUser;
     const currentEl = document.getElementById('change-email-current');
     if (currentEl) currentEl.textContent = (user && user.email) ? user.email : '不明';
-    // 入力リセット
     const newEl = document.getElementById('change-email-new');
     const pwEl  = document.getElementById('change-email-pw');
     const errEl = document.getElementById('change-email-error');
@@ -4447,31 +4740,24 @@ async function changeEmailSend() {
     if (!newEmail)  { if (errEl) errEl.textContent = '新しいメールアドレスを入力してください'; return; }
     if (!password)  { if (errEl) errEl.textContent = 'パスワードを入力してください'; return; }
     if (errEl) errEl.textContent = '';
-
     const user = _fbAuth && _fbAuth.currentUser;
     if (!user) { if (errEl) errEl.textContent = 'ログインが必要です'; return; }
-
     try {
-        // 再認証（セキュリティのため）
         const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
         await user.reauthenticateWithCredential(credential);
-
-        // 確認メールを送信してメアド変更
         await user.verifyBeforeUpdateEmail(newEmail);
-
-        // Step2（完了メッセージ）へ
         const sentEl = document.getElementById('change-email-sent-addr');
         if (sentEl) sentEl.textContent = newEmail;
         document.getElementById('change-email-step1').style.display = 'none';
         document.getElementById('change-email-step2').style.display = 'block';
     } catch(e) {
         const msgs = {
-            'auth/invalid-email':           'メールアドレスの形式が正しくありません',
-            'auth/email-already-in-use':    'そのメールアドレスはすでに使われています',
-            'auth/wrong-password':          'パスワードが正しくありません',
-            'auth/too-many-requests':       'リクエストが多すぎます。しばらく待ってから試してください',
-            'auth/requires-recent-login':   'セキュリティのため再ログインが必要です',
-            'auth/invalid-credential':      'パスワードが正しくありません',
+            'auth/invalid-email':         'メールアドレスの形式が正しくありません',
+            'auth/email-already-in-use':  'そのメールアドレスはすでに使われています',
+            'auth/wrong-password':        'パスワードが正しくありません',
+            'auth/too-many-requests':     'リクエストが多すぎます。しばらく待ってから試してください',
+            'auth/requires-recent-login': 'セキュリティのため再ログインが必要です',
+            'auth/invalid-credential':    'パスワードが正しくありません',
         };
         if (errEl) errEl.textContent = msgs[e.code] || e.message;
     }

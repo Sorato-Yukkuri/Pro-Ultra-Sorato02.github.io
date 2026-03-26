@@ -93,10 +93,16 @@
     <div id="auth-user-info" style="display:flex;align-items:center;gap:10px;">
         <img id="auth-avatar" src="" style="width:28px;height:28px;border-radius:50%;display:none;">
         <span id="auth-username" style="color:#fff;font-size:0.88rem;font-weight:700;"></span>
+        <span id="pu-header-badge">👑 ProUltra</span>
         <span id="auth-sync-status" style="color:#34c759;font-size:0.75rem;"></span>
     </div>
     <div style="display:flex;gap:8px;align-items:center;">
         <button id="auth-logout-btn" onclick="signOut()" style="display:none;background:rgba(255,59,48,0.15);border:1px solid rgba(255,59,48,0.3);color:#ff6b6b;padding:6px 14px;border-radius:10px;font-size:0.82rem;font-weight:700;cursor:pointer;">ログアウト</button>
+        <!-- 🔔 通知ボタン（ProUltra専用・ログイン時のみ表示） -->
+        <button id="notif-btn" onclick="toggleNotifCenter()" style="display:none;position:relative;background:rgba(255,255,255,0.07);border:1px solid #2a2a2a;color:#fff;width:34px;height:34px;border-radius:10px;font-size:1rem;cursor:pointer;display:none;align-items:center;justify-content:center;">
+            🔔
+            <span id="notif-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#ff3b30;color:#fff;font-size:0.6rem;font-weight:900;min-width:16px;height:16px;border-radius:8px;padding:0 4px;line-height:16px;text-align:center;"></span>
+        </button>
         <button id="auth-friend-btn" onclick="openFriendModal()" style="background:linear-gradient(135deg,#ff9500,#ff6b00);color:#fff;border:none;padding:6px 12px;border-radius:10px;font-size:0.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;"><svg width="18" height="18" viewBox="0 0 140 140" xmlns="http://www.w3.org/2000/svg"><g transform="translate(70,70)"><circle cx="-30" cy="-20" r="15" fill="#fff"/><rect x="-43" y="-3" width="24" height="28" rx="7" fill="#fff"/><circle cx="30" cy="-20" r="15" fill="#fff"/><rect x="19" y="-3" width="24" height="28" rx="7" fill="#fff"/><path d="M -18 6 C -10 -12, -4 -18, 0 -6 C 4 -18, 10 -12, 18 6" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/><path d="M 0 -5 C 0 -16, -12 -20, -12 -10 C -12 -2, 0 6, 0 6 C 0 6, 12 -2, 12 -10 C 12 -20, 0 -16, 0 -5 Z" fill="#ffe000"/><circle cx="0" cy="-7" r="46" fill="none" stroke="#fff" stroke-width="3"/><circle cx="0" cy="-53" r="4" fill="#fff"/><circle cx="37" cy="-36" r="3" fill="#fff"/><circle cx="-37" cy="-36" r="3" fill="#fff"/><circle cx="37" cy="22" r="2.5" fill="#fff" opacity="0.7"/><circle cx="-37" cy="22" r="2.5" fill="#fff" opacity="0.7"/></g></svg> <span id="auth-friend-label">親友コード</span></button>
         <button id="auth-login-btn" onclick="openLoginModal()" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;border:none;padding:6px 18px;border-radius:10px;font-size:0.82rem;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:6px;">
             🔑 <span id="auth-login-label">ログイン</span>
@@ -236,27 +242,25 @@
             <div style="font-size:1.1rem;font-weight:800;color:#fff;">📧 メールアドレスの変更</div>
             <button onclick="closeChangeEmailModal()" style="background:#1e1e1e;border:none;color:#666;width:30px;height:30px;border-radius:50%;font-size:0.95rem;cursor:pointer;">✕</button>
         </div>
-        <!-- Step1: 新しいメアド入力 -->
         <div id="change-email-step1">
-            <p style="color:#888;font-size:0.85rem;margin:0 0 6px;line-height:1.6;">現在のメールアドレス</p>
-            <p id="change-email-current" style="color:#fff;font-size:0.93rem;font-weight:700;margin:0 0 18px;padding:10px 14px;background:#1a1a1a;border-radius:10px;"></p>
-            <p style="color:#888;font-size:0.85rem;margin:0 0 8px;line-height:1.6;">新しいメールアドレス</p>
+            <p style="color:#888;font-size:0.85rem;margin:0 0 6px;">現在のメールアドレス</p>
+            <p id="change-email-current" style="color:#fff;font-size:0.93rem;font-weight:700;margin:0 0 18px;padding:10px 14px;background:#1a1a1a;border-radius:10px;word-break:break-all;"></p>
+            <p style="color:#888;font-size:0.85rem;margin:0 0 8px;">新しいメールアドレス</p>
             <input id="change-email-new" type="email" placeholder="new@example.com"
                 style="width:100%;padding:12px 14px;border-radius:12px;background:#1a1a1a;border:1px solid #2a2a2a;color:#fff;font-size:0.93rem;outline:none;box-sizing:border-box;margin-bottom:8px;"
                 onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#2a2a2a'">
-            <p style="color:#888;font-size:0.85rem;margin:8px 0 8px;line-height:1.6;">パスワード（本人確認）</p>
+            <p style="color:#888;font-size:0.85rem;margin:8px 0 8px;">パスワード（本人確認）</p>
             <input id="change-email-pw" type="password" placeholder="現在のパスワード"
                 style="width:100%;padding:12px 14px;border-radius:12px;background:#1a1a1a;border:1px solid #2a2a2a;color:#fff;font-size:0.93rem;outline:none;box-sizing:border-box;margin-bottom:14px;"
                 onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#2a2a2a'">
             <p id="change-email-error" style="color:#ff6b6b;font-size:0.8rem;margin:0 0 12px;min-height:16px;"></p>
             <button onclick="changeEmailSend()" style="width:100%;padding:13px;border-radius:12px;background:#6366f1;color:#fff;border:none;font-size:0.95rem;font-weight:800;cursor:pointer;">確認メールを送信する</button>
         </div>
-        <!-- Step2: 完了メッセージ -->
         <div id="change-email-step2" style="display:none;text-align:center;">
             <div style="font-size:2.8rem;margin-bottom:14px;">📬</div>
             <p style="color:#fff;font-size:0.95rem;font-weight:700;margin:0 0 10px;">確認メールを送信しました！</p>
-            <p id="change-email-sent-addr" style="color:#6366f1;font-size:0.88rem;font-weight:700;margin:0 0 14px;"></p>
-            <p style="color:#888;font-size:0.83rem;margin:0 0 24px;line-height:1.7;">メール内のリンクをクリックすると、メールアドレスが変更されます。<br>変更後は新しいアドレスで再ログインしてください。</p>
+            <p id="change-email-sent-addr" style="color:#6366f1;font-size:0.88rem;font-weight:700;margin:0 0 14px;word-break:break-all;"></p>
+            <p style="color:#888;font-size:0.83rem;margin:0 0 24px;line-height:1.7;">メール内のリンクをクリックすると変更されます。<br>変更後は新しいアドレスで再ログインしてください。</p>
             <button onclick="closeChangeEmailModal()" style="width:100%;padding:13px;border-radius:12px;background:#1a1a1a;border:1px solid #2a2a2a;color:#888;font-size:0.9rem;font-weight:700;cursor:pointer;">閉じる</button>
         </div>
     </div>
