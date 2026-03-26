@@ -4457,11 +4457,30 @@ async function mfaSendSMS() {
     if (!phone) { if (errEl) errEl.textContent = '電話番号を入力してください'; return; }
     if (!_fbAuth || !_fbAuth.currentUser) { if (errEl) errEl.textContent = 'ログインが必要です'; return; }
     if (errEl) errEl.textContent = '';
+
+    // 📧 メール認証チェック：未確認の場合は確認メールを送って案内する
+    const user = _fbAuth.currentUser;
+    if (!user.emailVerified) {
+        try {
+            await user.sendEmailVerification();
+            if (errEl) errEl.innerHTML =
+                '📧 メールアドレスの確認が必要です。<br>' +
+                user.email + ' に確認メールを送信しました。<br>' +
+                'メール内のリンクをクリックしてから、このページをリロードして再度お試しください。';
+        } catch(e) {
+            const sendErrMsgs = {
+                'auth/too-many-requests': '確認メールの送信が多すぎます。しばらく待ってから試してください。',
+            };
+            if (errEl) errEl.textContent = sendErrMsgs[e.code] || ('確認メールの送信に失敗しました: ' + e.message);
+        }
+        return;
+    }
+
     try {
         if (!_mfaRecaptchaVerifier) {
             _mfaRecaptchaVerifier = new firebase.auth.RecaptchaVerifier('mfa-recaptcha', { size: 'normal' });
         }
-        const session = await _fbAuth.currentUser.multiFactor.getSession();
+        const session = await user.multiFactor.getSession();
         const phoneOpts = { phoneNumber: phone, session };
         const provider = new firebase.auth.PhoneAuthProvider();
         _mfaVerificationId = await provider.verifyPhoneNumber(phoneOpts, _mfaRecaptchaVerifier);
@@ -4472,6 +4491,7 @@ async function mfaSendSMS() {
             'auth/invalid-phone-number': '電話番号の形式が正しくありません（例: +81 90-1234-5678）',
             'auth/too-many-requests':    'リクエストが多すぎます。しばらく待ってから試してください',
             'auth/requires-recent-login':'セキュリティのため再ログインが必要です',
+            'auth/unverified-email':     '📧 メールアドレスの確認が必要です。受信トレイを確認してページをリロードしてください',
         };
         if (errEl) errEl.textContent = msgs[e.code] || e.message;
     }
