@@ -230,35 +230,34 @@
 </div>
 
 <!-- MFA モーダル -->
-<div id="mfa-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:9999999;justify-content:center;align-items:center;padding:20px;box-sizing:border-box;">
+<div id="change-email-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:9999999;justify-content:center;align-items:center;padding:20px;box-sizing:border-box;">
     <div style="background:#111;border:1px solid #2a2a2a;border-radius:24px;width:100%;max-width:400px;padding:28px 24px;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-            <div style="font-size:1.1rem;font-weight:800;color:#fff;">🔐 二段階認証の設定</div>
-            <button onclick="closeMfaModal()" style="background:#1e1e1e;border:none;color:#666;width:30px;height:30px;border-radius:50%;font-size:0.95rem;cursor:pointer;">✕</button>
+            <div style="font-size:1.1rem;font-weight:800;color:#fff;">📧 メールアドレスの変更</div>
+            <button onclick="closeChangeEmailModal()" style="background:#1e1e1e;border:none;color:#666;width:30px;height:30px;border-radius:50%;font-size:0.95rem;cursor:pointer;">✕</button>
         </div>
-        <div id="mfa-step1">
-            <p style="color:#888;font-size:0.85rem;margin:0 0 16px;line-height:1.6;">SMS認証を設定すると、ログイン時に電話番号へ確認コードが送られます。</p>
-            <input id="mfa-phone" type="tel" placeholder="+81 90-1234-5678"
+        <!-- Step1: 新しいメアド入力 -->
+        <div id="change-email-step1">
+            <p style="color:#888;font-size:0.85rem;margin:0 0 6px;line-height:1.6;">現在のメールアドレス</p>
+            <p id="change-email-current" style="color:#fff;font-size:0.93rem;font-weight:700;margin:0 0 18px;padding:10px 14px;background:#1a1a1a;border-radius:10px;"></p>
+            <p style="color:#888;font-size:0.85rem;margin:0 0 8px;line-height:1.6;">新しいメールアドレス</p>
+            <input id="change-email-new" type="email" placeholder="new@example.com"
                 style="width:100%;padding:12px 14px;border-radius:12px;background:#1a1a1a;border:1px solid #2a2a2a;color:#fff;font-size:0.93rem;outline:none;box-sizing:border-box;margin-bottom:8px;"
                 onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#2a2a2a'">
-            <p style="color:#555;font-size:0.75rem;margin:0 0 14px;">※ 国際番号形式で入力 例: +81 90-1234-5678</p>
-            <div id="mfa-recaptcha" style="margin-bottom:14px;"></div>
-            <p id="mfa-error" style="color:#ff6b6b;font-size:0.8rem;margin:0 0 12px;min-height:16px;"></p>
-            <button onclick="mfaSendSMS()" style="width:100%;padding:13px;border-radius:12px;background:#6366f1;color:#fff;border:none;font-size:0.95rem;font-weight:800;cursor:pointer;">SMSを送信する</button>
-        </div>
-        <div id="mfa-step2" style="display:none;">
-            <p style="color:#888;font-size:0.85rem;margin:0 0 16px;line-height:1.6;">SMSに届いた6桁のコードを入力してください。</p>
-            <input id="mfa-code" type="number" placeholder="123456"
-                style="width:100%;padding:12px 14px;border-radius:12px;background:#1a1a1a;border:1px solid #2a2a2a;color:#fff;font-size:1.2rem;font-weight:800;outline:none;box-sizing:border-box;margin-bottom:14px;letter-spacing:4px;text-align:center;"
+            <p style="color:#888;font-size:0.85rem;margin:8px 0 8px;line-height:1.6;">パスワード（本人確認）</p>
+            <input id="change-email-pw" type="password" placeholder="現在のパスワード"
+                style="width:100%;padding:12px 14px;border-radius:12px;background:#1a1a1a;border:1px solid #2a2a2a;color:#fff;font-size:0.93rem;outline:none;box-sizing:border-box;margin-bottom:14px;"
                 onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#2a2a2a'">
-            <p id="mfa-error2" style="color:#ff6b6b;font-size:0.8rem;margin:0 0 12px;min-height:16px;"></p>
-            <button id="mfa-verify-btn" onclick="typeof _mfaResolver!=='undefined'&&_mfaResolver?mfaVerifyLogin():mfaVerifyCode()" style="width:100%;padding:13px;border-radius:12px;background:#34c759;color:#fff;border:none;font-size:0.95rem;font-weight:800;cursor:pointer;margin-bottom:8px;">✅ 確認してログイン</button>
-            <button onclick="mfaBackToStep1()" id="mfa-back-btn" style="width:100%;padding:10px;border-radius:12px;background:transparent;color:#666;border:1px solid #2a2a2a;font-size:0.82rem;cursor:pointer;">← 戻る</button>
+            <p id="change-email-error" style="color:#ff6b6b;font-size:0.8rem;margin:0 0 12px;min-height:16px;"></p>
+            <button onclick="changeEmailSend()" style="width:100%;padding:13px;border-radius:12px;background:#6366f1;color:#fff;border:none;font-size:0.95rem;font-weight:800;cursor:pointer;">確認メールを送信する</button>
         </div>
-        <div id="mfa-step3" style="display:none;">
-            <p style="color:#888;font-size:0.85rem;margin:0 0 16px;line-height:1.6;">二段階認証は現在<span style="color:#34c759;font-weight:800;">有効</span>です。</p>
-            <p id="mfa-enrolled-phone" style="color:#fff;font-size:0.9rem;font-weight:700;margin:0 0 20px;"></p>
-            <button onclick="mfaDisable()" style="width:100%;padding:13px;border-radius:12px;background:rgba(255,59,48,0.15);border:1px solid rgba(255,59,48,0.4);color:#ff6b6b;font-size:0.95rem;font-weight:800;cursor:pointer;">🗑 二段階認証を解除する</button>
+        <!-- Step2: 完了メッセージ -->
+        <div id="change-email-step2" style="display:none;text-align:center;">
+            <div style="font-size:2.8rem;margin-bottom:14px;">📬</div>
+            <p style="color:#fff;font-size:0.95rem;font-weight:700;margin:0 0 10px;">確認メールを送信しました！</p>
+            <p id="change-email-sent-addr" style="color:#6366f1;font-size:0.88rem;font-weight:700;margin:0 0 14px;"></p>
+            <p style="color:#888;font-size:0.83rem;margin:0 0 24px;line-height:1.7;">メール内のリンクをクリックすると、メールアドレスが変更されます。<br>変更後は新しいアドレスで再ログインしてください。</p>
+            <button onclick="closeChangeEmailModal()" style="width:100%;padding:13px;border-radius:12px;background:#1a1a1a;border:1px solid #2a2a2a;color:#888;font-size:0.9rem;font-weight:700;cursor:pointer;">閉じる</button>
         </div>
     </div>
 </div>

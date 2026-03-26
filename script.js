@@ -914,10 +914,10 @@ async function openSettings() {
         ${_currentUser && _currentUser.email ? settingSection('🔐 セキュリティ', [
             `<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;">
                 <div>
-                    <div style="color:var(--text);font-size:0.9rem;font-weight:700;">二段階認証 (SMS)</div>
-                    <div style="color:var(--sub-text);font-size:0.78rem;margin-top:2px;">${_fbAuth && _fbAuth.currentUser && _fbAuth.currentUser.multiFactor && _fbAuth.currentUser.multiFactor.enrolledFactors.length > 0 ? '🟢 有効' : '⚪ 無効'}</div>
+                    <div style="color:var(--text);font-size:0.9rem;font-weight:700;">メールアドレスの変更</div>
+                    <div style="color:var(--sub-text);font-size:0.78rem;margin-top:2px;">${(_fbAuth && _fbAuth.currentUser && _fbAuth.currentUser.email) ? _fbAuth.currentUser.email : ''}</div>
                 </div>
-                <button onclick="openMfaModal();closeSettings();" style="padding:8px 16px;border-radius:10px;background:#6366f1;color:#fff;border:none;font-size:0.82rem;font-weight:700;cursor:pointer;">設定</button>
+                <button onclick="openChangeEmailModal();closeSettings();" style="padding:8px 16px;border-radius:10px;background:#6366f1;color:#fff;border:none;font-size:0.82rem;font-weight:700;cursor:pointer;">変更</button>
             </div>`
         ]) : ''}
 
@@ -4413,162 +4413,66 @@ async function sendPasswordReset() {
 }
 
 // ══════════════════════════════════════════════════════════════
-// 🔐 多要素認証 (MFA / SMS二段階認証)
+// 📧 メールアドレス変更
 // ══════════════════════════════════════════════════════════════
-let _mfaVerificationId = null;
-let _mfaRecaptchaVerifier = null;
-let _mfaResolver = null;
 
-function openMfaModal() {
-    const modal = document.getElementById('mfa-modal');
+function openChangeEmailModal() {
+    const modal = document.getElementById('change-email-modal');
     if (!modal) return;
-    // 既に登録済みか確認
+    // 現在のメアドを表示
     const user = _fbAuth && _fbAuth.currentUser;
-    if (user && user.multiFactor && user.multiFactor.enrolledFactors.length > 0) {
-        const factor = user.multiFactor.enrolledFactors[0];
-        document.getElementById('mfa-step1').style.display = 'none';
-        document.getElementById('mfa-step2').style.display = 'none';
-        document.getElementById('mfa-step3').style.display = 'block';
-        const phoneEl = document.getElementById('mfa-enrolled-phone');
-        if (phoneEl) phoneEl.textContent = '登録済み: ' + (factor.phoneNumber || factor.displayName || '電話番号');
-    } else {
-        document.getElementById('mfa-step1').style.display = 'block';
-        document.getElementById('mfa-step2').style.display = 'none';
-        document.getElementById('mfa-step3').style.display = 'none';
-    }
+    const currentEl = document.getElementById('change-email-current');
+    if (currentEl) currentEl.textContent = (user && user.email) ? user.email : '不明';
+    // 入力リセット
+    const newEl = document.getElementById('change-email-new');
+    const pwEl  = document.getElementById('change-email-pw');
+    const errEl = document.getElementById('change-email-error');
+    if (newEl)  newEl.value  = '';
+    if (pwEl)   pwEl.value   = '';
+    if (errEl)  errEl.textContent = '';
+    document.getElementById('change-email-step1').style.display = 'block';
+    document.getElementById('change-email-step2').style.display = 'none';
     modal.style.display = 'flex';
 }
 
-function closeMfaModal() {
-    const modal = document.getElementById('mfa-modal');
+function closeChangeEmailModal() {
+    const modal = document.getElementById('change-email-modal');
     if (modal) modal.style.display = 'none';
-    if (_mfaRecaptchaVerifier) { try { _mfaRecaptchaVerifier.clear(); } catch(e) {} _mfaRecaptchaVerifier = null; }
 }
 
-function mfaBackToStep1() {
-    document.getElementById('mfa-step1').style.display = 'block';
-    document.getElementById('mfa-step2').style.display = 'none';
-    if (_mfaRecaptchaVerifier) { try { _mfaRecaptchaVerifier.clear(); } catch(e) {} _mfaRecaptchaVerifier = null; }
-}
-
-async function mfaSendSMS() {
-    const phone = (document.getElementById('mfa-phone')?.value || '').trim();
-    const errEl = document.getElementById('mfa-error');
-    if (!phone) { if (errEl) errEl.textContent = '電話番号を入力してください'; return; }
-    if (!_fbAuth || !_fbAuth.currentUser) { if (errEl) errEl.textContent = 'ログインが必要です'; return; }
+async function changeEmailSend() {
+    const newEmail = (document.getElementById('change-email-new')?.value  || '').trim();
+    const password =  document.getElementById('change-email-pw')?.value   || '';
+    const errEl    =  document.getElementById('change-email-error');
+    if (!newEmail)  { if (errEl) errEl.textContent = '新しいメールアドレスを入力してください'; return; }
+    if (!password)  { if (errEl) errEl.textContent = 'パスワードを入力してください'; return; }
     if (errEl) errEl.textContent = '';
 
-    // 📧 メール認証チェック：未確認の場合は確認メールを送って案内する
-    const user = _fbAuth.currentUser;
-    if (!user.emailVerified) {
-        try {
-            await user.sendEmailVerification();
-            if (errEl) errEl.innerHTML =
-                '📧 メールアドレスの確認が必要です。<br>' +
-                user.email + ' に確認メールを送信しました。<br>' +
-                'メール内のリンクをクリックしてから、このページをリロードして再度お試しください。';
-        } catch(e) {
-            const sendErrMsgs = {
-                'auth/too-many-requests': '確認メールの送信が多すぎます。しばらく待ってから試してください。',
-            };
-            if (errEl) errEl.textContent = sendErrMsgs[e.code] || ('確認メールの送信に失敗しました: ' + e.message);
-        }
-        return;
-    }
-
-    try {
-        if (!_mfaRecaptchaVerifier) {
-            _mfaRecaptchaVerifier = new firebase.auth.RecaptchaVerifier('mfa-recaptcha', { size: 'normal' });
-        }
-        const session = await user.multiFactor.getSession();
-        const phoneOpts = { phoneNumber: phone, session };
-        const provider = new firebase.auth.PhoneAuthProvider();
-        _mfaVerificationId = await provider.verifyPhoneNumber(phoneOpts, _mfaRecaptchaVerifier);
-        document.getElementById('mfa-step1').style.display = 'none';
-        document.getElementById('mfa-step2').style.display = 'block';
-    } catch(e) {
-        const msgs = {
-            'auth/invalid-phone-number': '電話番号の形式が正しくありません（例: +81 90-1234-5678）',
-            'auth/too-many-requests':    'リクエストが多すぎます。しばらく待ってから試してください',
-            'auth/requires-recent-login':'セキュリティのため再ログインが必要です',
-            'auth/unverified-email':     '📧 メールアドレスの確認が必要です。受信トレイを確認してページをリロードしてください',
-        };
-        if (errEl) errEl.textContent = msgs[e.code] || e.message;
-    }
-}
-
-async function mfaVerifyCode() {
-    const code  = (document.getElementById('mfa-code')?.value || '').trim();
-    const errEl = document.getElementById('mfa-error2');
-    if (!code || code.length !== 6) { if (errEl) errEl.textContent = '6桁のコードを入力してください'; return; }
-    if (!_mfaVerificationId) { if (errEl) errEl.textContent = 'セッションが切れました。最初からやり直してください'; return; }
-    try {
-        const cred = firebase.auth.PhoneAuthProvider.credential(_mfaVerificationId, code);
-        const assertion = firebase.auth.PhoneMultiFactorGenerator.assertion(cred);
-        await _fbAuth.currentUser.multiFactor.enroll(assertion, 'SMS認証');
-        closeMfaModal();
-        alert('✅ 二段階認証を有効にしました！\n次回ログイン時からSMSコードが必要になります。');
-        openSettings();
-    } catch(e) {
-        const msgs = {
-            'auth/invalid-verification-code': 'コードが正しくありません',
-            'auth/code-expired':              'コードの有効期限が切れました。SMS送信からやり直してください',
-        };
-        if (errEl) errEl.textContent = msgs[e.code] || e.message;
-    }
-}
-
-async function mfaDisable() {
-    if (!confirm('二段階認証を解除しますか？')) return;
     const user = _fbAuth && _fbAuth.currentUser;
-    if (!user) return;
-    try {
-        const factors = user.multiFactor.enrolledFactors;
-        for (const f of factors) { await user.multiFactor.unenroll(f); }
-        closeMfaModal();
-        alert('二段階認証を解除しました。');
-        openSettings();
-    } catch(e) {
-        const msgs = { 'auth/requires-recent-login': 'セキュリティのため再ログインが必要です' };
-        alert(msgs[e.code] || e.message);
-    }
-}
+    if (!user) { if (errEl) errEl.textContent = 'ログインが必要です'; return; }
 
-// MFAが必要なログイン時の処理
-async function _handleMfaSignIn(error) {
-    if (error.code !== 'auth/multi-factor-auth-required') throw error;
-    _mfaResolver = error.resolver;
-    const hint = _mfaResolver.hints[0];
-    const modal = document.getElementById('mfa-modal');
-    document.getElementById('mfa-step1').style.display = 'none';
-    document.getElementById('mfa-step2').style.display = 'block';
-    document.getElementById('mfa-step3').style.display = 'none';
-    const errEl = document.getElementById('mfa-error2');
-    if (errEl) errEl.textContent = hint.phoneNumber + ' にSMSコードを送信中...';
-    if (modal) modal.style.display = 'flex';
     try {
-        if (!_mfaRecaptchaVerifier) {
-            _mfaRecaptchaVerifier = new firebase.auth.RecaptchaVerifier('mfa-recaptcha', { size: 'invisible' });
-        }
-        const provider = new firebase.auth.PhoneAuthProvider();
-        _mfaVerificationId = await provider.verifyPhoneNumber({ multiFactorHint: hint, session: _mfaResolver.session }, _mfaRecaptchaVerifier);
-        if (errEl) errEl.textContent = 'SMSコードを入力してください';
-    } catch(e) {
-        if (errEl) errEl.textContent = e.message;
-    }
-}
+        // 再認証（セキュリティのため）
+        const credential = firebase.auth.EmailAuthProvider.credential(user.email, password);
+        await user.reauthenticateWithCredential(credential);
 
-async function mfaVerifyLogin() {
-    const code  = (document.getElementById('mfa-code')?.value || '').trim();
-    const errEl = document.getElementById('mfa-error2');
-    if (!code) { if (errEl) errEl.textContent = 'コードを入力してください'; return; }
-    try {
-        const cred      = firebase.auth.PhoneAuthProvider.credential(_mfaVerificationId, code);
-        const assertion = firebase.auth.PhoneMultiFactorGenerator.assertion(cred);
-        await _mfaResolver.resolveSignIn(assertion);
-        closeMfaModal();
+        // 確認メールを送信してメアド変更
+        await user.verifyBeforeUpdateEmail(newEmail);
+
+        // Step2（完了メッセージ）へ
+        const sentEl = document.getElementById('change-email-sent-addr');
+        if (sentEl) sentEl.textContent = newEmail;
+        document.getElementById('change-email-step1').style.display = 'none';
+        document.getElementById('change-email-step2').style.display = 'block';
     } catch(e) {
-        const msgs = { 'auth/invalid-verification-code': 'コードが正しくありません' };
+        const msgs = {
+            'auth/invalid-email':           'メールアドレスの形式が正しくありません',
+            'auth/email-already-in-use':    'そのメールアドレスはすでに使われています',
+            'auth/wrong-password':          'パスワードが正しくありません',
+            'auth/too-many-requests':       'リクエストが多すぎます。しばらく待ってから試してください',
+            'auth/requires-recent-login':   'セキュリティのため再ログインが必要です',
+            'auth/invalid-credential':      'パスワードが正しくありません',
+        };
         if (errEl) errEl.textContent = msgs[e.code] || e.message;
     }
 }
