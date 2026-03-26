@@ -229,6 +229,40 @@
     </div>
 </div>
 
+<!-- MFA モーダル -->
+<div id="mfa-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:9999999;justify-content:center;align-items:center;padding:20px;box-sizing:border-box;">
+    <div style="background:#111;border:1px solid #2a2a2a;border-radius:24px;width:100%;max-width:400px;padding:28px 24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <div style="font-size:1.1rem;font-weight:800;color:#fff;">🔐 二段階認証の設定</div>
+            <button onclick="closeMfaModal()" style="background:#1e1e1e;border:none;color:#666;width:30px;height:30px;border-radius:50%;font-size:0.95rem;cursor:pointer;">✕</button>
+        </div>
+        <div id="mfa-step1">
+            <p style="color:#888;font-size:0.85rem;margin:0 0 16px;line-height:1.6;">SMS認証を設定すると、ログイン時に電話番号へ確認コードが送られます。</p>
+            <input id="mfa-phone" type="tel" placeholder="+81 90-1234-5678"
+                style="width:100%;padding:12px 14px;border-radius:12px;background:#1a1a1a;border:1px solid #2a2a2a;color:#fff;font-size:0.93rem;outline:none;box-sizing:border-box;margin-bottom:8px;"
+                onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#2a2a2a'">
+            <p style="color:#555;font-size:0.75rem;margin:0 0 14px;">※ 国際番号形式で入力 例: +81 90-1234-5678</p>
+            <div id="mfa-recaptcha" style="margin-bottom:14px;"></div>
+            <p id="mfa-error" style="color:#ff6b6b;font-size:0.8rem;margin:0 0 12px;min-height:16px;"></p>
+            <button onclick="mfaSendSMS()" style="width:100%;padding:13px;border-radius:12px;background:#6366f1;color:#fff;border:none;font-size:0.95rem;font-weight:800;cursor:pointer;">SMSを送信する</button>
+        </div>
+        <div id="mfa-step2" style="display:none;">
+            <p style="color:#888;font-size:0.85rem;margin:0 0 16px;line-height:1.6;">SMSに届いた6桁のコードを入力してください。</p>
+            <input id="mfa-code" type="number" placeholder="123456"
+                style="width:100%;padding:12px 14px;border-radius:12px;background:#1a1a1a;border:1px solid #2a2a2a;color:#fff;font-size:1.2rem;font-weight:800;outline:none;box-sizing:border-box;margin-bottom:14px;letter-spacing:4px;text-align:center;"
+                onfocus="this.style.borderColor='#6366f1'" onblur="this.style.borderColor='#2a2a2a'">
+            <p id="mfa-error2" style="color:#ff6b6b;font-size:0.8rem;margin:0 0 12px;min-height:16px;"></p>
+            <button id="mfa-verify-btn" onclick="typeof _mfaResolver!=='undefined'&&_mfaResolver?mfaVerifyLogin():mfaVerifyCode()" style="width:100%;padding:13px;border-radius:12px;background:#34c759;color:#fff;border:none;font-size:0.95rem;font-weight:800;cursor:pointer;margin-bottom:8px;">✅ 確認してログイン</button>
+            <button onclick="mfaBackToStep1()" id="mfa-back-btn" style="width:100%;padding:10px;border-radius:12px;background:transparent;color:#666;border:1px solid #2a2a2a;font-size:0.82rem;cursor:pointer;">← 戻る</button>
+        </div>
+        <div id="mfa-step3" style="display:none;">
+            <p style="color:#888;font-size:0.85rem;margin:0 0 16px;line-height:1.6;">二段階認証は現在<span style="color:#34c759;font-weight:800;">有効</span>です。</p>
+            <p id="mfa-enrolled-phone" style="color:#fff;font-size:0.9rem;font-weight:700;margin:0 0 20px;"></p>
+            <button onclick="mfaDisable()" style="width:100%;padding:13px;border-radius:12px;background:rgba(255,59,48,0.15);border:1px solid rgba(255,59,48,0.4);color:#ff6b6b;font-size:0.95rem;font-weight:800;cursor:pointer;">🗑 二段階認証を解除する</button>
+        </div>
+    </div>
+</div>
+
 <div class="app" id="capture-area">
     <header>
         <div class="main-rank-card">
@@ -488,46 +522,53 @@
             
             <strong>【Beta 1.7.5 大型アップデート！】</strong><br><br>
 
-           <strong>👤 ログイン・アカウント機能の強化（NEW！）</strong><br>
-            ・<strong>ProUltraアカウント</strong>：メールとパスワードで専用アカウントを作成可能。
-            <span style="color:var(--accent); font-size:0.9em;">メールアドレスはパスワードリセット時に使用されます</span><br>
-            ・<strong>SNSログイン</strong>：Google / GitHub / Twitter / Discord に対応。<br>
-            ・<strong>匿名ログイン</strong>：アカウントを作らず、今のデバイスの履歴を一時的に保護できます。<br><br>
-
-            <strong>🔑 パスワードをお忘れの場合</strong><br>
-            ログイン画面の「パスワードを忘れた方」から再設定メールを送信できます。
-            <strong>※再設定メールも迷惑メールフォルダに入ることが多いため、必ず全フォルダを確認してください。</strong><br><br>
-
-            <strong>🌓 ライトモードのバグ修正</strong><br>
-            設定メニューから「ライト」を選択した際に、背景色が正しく切り替わらない問題を修正しました。白を基調としたデザインが快適に利用可能です。<br><br>
-
             <strong>🆚 デバイス対戦（NEW！）</strong><br>
             診断完了後に「🆚 デバイス対戦」ボタンが出現。友達と診断結果を比較して勝負できます！<br>
-            ・<strong>Firestoreコード方式</strong>：6桁コードを発行→友達が入力→対戦（有効期限20分）<br>
-            ・<strong>QR/URL方式</strong>：QR/URLシェアで、友達が診断後に自動で対戦開始<br>
+            ・<strong>Firestoreコード方式</strong>：6桁コードを発行→友達がコード入力→対戦（有効期限20分）<br>
+            ・<strong>QR/URL方式</strong>：QRコードまたはURLをシェア→友達が診断後に自動で対戦画面<br>
             ・項目ごとに勝ち負けを🟢🔴で色分け表示<br><br>
 
-            <strong>💬 フィードバック・バグ報告</strong><br>
-            画面下部の「💬 フィードバック」から、バグ報告・機能要望を匿名送信できます。<br><br>
+            <strong>💬 フィードバック・バグ報告（NEW！）</strong><br>
+            画面下部の「💬 フィードバック」から、バグ報告・機能要望などを送信できます。<br>
+            匿名で送信されます。デバイス情報の添付も選択できます。<br><br>
 
-            <strong>📈 スコア推移グラフ</strong><br>
-            「📊 過去の診断結果を見る」に、2件以上の履歴がある場合スコア推移グラフを表示します。<br><br>
+            <strong>📈 スコア推移グラフ（NEW！）</strong><br>
+            「📊 過去の診断結果を見る」に診断スコアの推移グラフを追加。2件以上たまると表示されます。<br><br>
 
-            <strong>📌 履歴の固定・保存件数（ログイン特典）</strong><br>
-            ログイン済みの方は、履歴の「固定」が可能になり、保存件数も3件 → <strong>5件</strong>に拡張されます。<br><br>
+            <strong>📌 履歴の固定機能（ログイン特典）</strong><br>
+            ログイン済みの方（Google / GitHub）は、過去の診断結果を「固定」できるようになりました。固定した結果は常に先頭に表示されます。<br><br>
+
+            <strong>💾 履歴5件保存（ログイン特典）</strong><br>
+            ログイン済みの方（Google / GitHub）は、保存件数が3件→<strong>5件</strong>に拡張されます。<br><br>
 
             <strong>⚙️ 設定機能の強化</strong><br>
-            ・<strong>フォント変更</strong>：システム標準・ゴシック・明朝・丸ゴシック・等幅から選択可能。<br>
-            ・<strong>サウンド</strong>：4種プリセット＋カスタム音声ファイル対応。試聴ボタン付き。<br><br>
+            ・<strong>フォント変更</strong>：システム標準・ゴシック・明朝・丸ゴシック・等幅から選択。Chromeでは端末インストール済みフォントも使用可能<br>
+            ・<strong>カスタムフォントサイズ</strong>：スライダーで10〜32pxを自由設定<br>
+            ・<strong>サウンドプリセット</strong>：デフォルト・ベル・ビープ・ファンファーレの4種＋カスタム音声ファイル（MP3/WAV/FLAC）対応。試聴ボタン付き<br><br>
 
             <strong>📄 書き出し形式の追加</strong><br>
-            ・<strong>CSV / PDF</strong>：Excel用や保存用として、診断結果をファイルで書き出せます。<br><br>
+            ・<strong>CSV</strong>：診断結果を表計算ソフト（Excel等）で開けるCSVとして書き出し<br>
+            ・<strong>PDF</strong>：jsPDFで本物のPDFファイルとして書き出し（スマホ対応）<br><br>
 
             <strong>📋 利用規約を追加</strong><br>
-            画面下部の「📋 利用規約」から確認できます。11言語に対応しました。<br><br>
+            画面下部の「📋 利用規約」から確認できます。11言語対応。<br><br>
 
-            <strong>【今後の開発予定】</strong><br>
-            未定
+            <strong>【Beta 1.7.0での告知】</strong><br>
+            Beta 1.6で延期していた「親友コード」の自己申請機能は、<strong>Beta 1.8</strong>での実装を目標に開発中です。<br><br>
+
+            <strong>【Beta 1.7.5 親友グループ修正】</strong><br><br>
+
+            <strong>👥 親友グループ機能の改善</strong><br>
+            ・グループ参加時にニックネームを設定できるようになりました<br>
+            ・参加後、次回起動時も「〇〇が🏆グループ名でログイン中」が表示されるよう改善（Cookie保存）<br>
+            ・GitHub・Googleどちらでもログイン・グループ参加が可能に<br>
+            ・Firestoreルールを調整し、未ログインでもグループ参加できるように修正<br>
+            ・「メールアドレスごとに1つのアカウント」設定変更により、Google・GitHub同一メールでの利用が可能に<br><br>
+
+            <strong>🔔 通知センター（NEW！）</strong><br>
+            ログイン者・親友コード参加者に🔔ベルアイコンが表示されます。<br>
+            ・アップデート情報の再確認<br>
+            ・メンバー削除申請の通知<br><br>
 
             <!-- 次のアプデ文はこの下に追加していくだけでOK -->
 
@@ -543,7 +584,7 @@
 
 <script>
     // バージョン識別キー（アプデのたびに末尾の数字などを変えてください）
-    const CURRENT_UPDATE_ID = "Beta_1.7.6r2";
+    const CURRENT_UPDATE_ID = "Beta_1.7.5r4";
 
     // 読み込み時に表示を判定
     window.addEventListener('DOMContentLoaded', () => {

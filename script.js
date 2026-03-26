@@ -911,6 +911,16 @@ async function openSettings() {
             settingToggle(ui.labelGuard, 'clumsiGuard', 'clumsiGuard'),
         ])}
 
+        ${_currentUser && _currentUser.email ? settingSection('🔐 セキュリティ', [
+            `<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;">
+                <div>
+                    <div style="color:var(--text);font-size:0.9rem;font-weight:700;">二段階認証 (SMS)</div>
+                    <div style="color:var(--sub-text);font-size:0.78rem;margin-top:2px;">${_fbAuth && _fbAuth.currentUser && _fbAuth.currentUser.multiFactor && _fbAuth.currentUser.multiFactor.enrolledFactors.length > 0 ? '🟢 有効' : '⚪ 無効'}</div>
+                </div>
+                <button onclick="openMfaModal();closeSettings();" style="padding:8px 16px;border-radius:10px;background:#6366f1;color:#fff;border:none;font-size:0.82rem;font-weight:700;cursor:pointer;">設定</button>
+            </div>`
+        ]) : ''}
+
         </div>
         <div style="padding:0 20px;">
         <button onclick="resetSettings()" style="width:100%;margin-top:16px;padding:12px;border-radius:14px;background:rgba(255,59,48,0.12);border:1px solid rgba(255,59,48,0.3);color:#ff6b6b;font-size:0.9rem;font-weight:700;cursor:pointer;">${ui.settingsReset}</button>
@@ -1003,19 +1013,6 @@ function clearSoundFile() {
     openSettings();
 }
 
-let _localFontsCache = null; // 一度取得したらキャッシュして許可ダイアログを1回だけにする
-
-async function _getLocalFonts() {
-    if (_localFontsCache !== null) return _localFontsCache;
-    if (!('queryLocalFonts' in window)) { _localFontsCache = []; return []; }
-    try {
-        const fonts = await window.queryLocalFonts();
-        const families = [...new Set(fonts.map(f => f.family))].sort();
-        _localFontsCache = families.slice(0, 80);
-    } catch(e) { _localFontsCache = []; }
-    return _localFontsCache;
-}
-
 async function settingFontFamily(ui) {
     const label = ui.labelFont || 'フォント';
     const cur   = _settings.fontFamily || 'system';
@@ -1027,7 +1024,14 @@ async function settingFontFamily(ui) {
         ['mono',    ui.fontMono    || '等幅フォント'],
     ];
 
-    const localFonts = await _getLocalFonts();
+    let localFonts = [];
+    if ('queryLocalFonts' in window) {
+        try {
+            const fonts = await window.queryLocalFonts();
+            const families = [...new Set(fonts.map(f => f.family))].sort();
+            localFonts = families.slice(0, 80);
+        } catch(e) {}
+    }
 
     const presetOpts = presets.map(([v, t]) =>
         '<option value="' + v + '" ' + (v === cur ? 'selected' : '') + '>' + t + '</option>'
@@ -1045,7 +1049,7 @@ async function settingFontFamily(ui) {
     return settingRow(label, ctrl, 'fontFamily');
 }
 
-async function settingFontFamily_unused(ui) {
+async function settingFontFamily(ui) {
     const label = ui.labelFont || 'フォント';
     const cur   = _settings.fontFamily || 'system';
     const presets = [
@@ -1056,7 +1060,14 @@ async function settingFontFamily_unused(ui) {
         ['mono',    ui.fontMono    || '等幅フォント'],
     ];
 
-    const localFonts = await _getLocalFonts();
+    let localFonts = [];
+    if ('queryLocalFonts' in window) {
+        try {
+            const fonts = await window.queryLocalFonts();
+            const families = [...new Set(fonts.map(f => f.family))].sort();
+            localFonts = families.slice(0, 80);
+        } catch(e) {}
+    }
 
     const presetOpts = presets.map(([v, t]) =>
         '<option value="' + v + '" ' + (v === cur ? 'selected' : '') + '>' + t + '</option>'
@@ -4401,6 +4412,147 @@ async function sendPasswordReset() {
     }
 }
 
+// ══════════════════════════════════════════════════════════════
+// 🔐 多要素認証 (MFA / SMS二段階認証)
+// ══════════════════════════════════════════════════════════════
+let _mfaVerificationId = null;
+let _mfaRecaptchaVerifier = null;
+let _mfaResolver = null;
+
+function openMfaModal() {
+    const modal = document.getElementById('mfa-modal');
+    if (!modal) return;
+    // 既に登録済みか確認
+    const user = _fbAuth && _fbAuth.currentUser;
+    if (user && user.multiFactor && user.multiFactor.enrolledFactors.length > 0) {
+        const factor = user.multiFactor.enrolledFactors[0];
+        document.getElementById('mfa-step1').style.display = 'none';
+        document.getElementById('mfa-step2').style.display = 'none';
+        document.getElementById('mfa-step3').style.display = 'block';
+        const phoneEl = document.getElementById('mfa-enrolled-phone');
+        if (phoneEl) phoneEl.textContent = '登録済み: ' + (factor.phoneNumber || factor.displayName || '電話番号');
+    } else {
+        document.getElementById('mfa-step1').style.display = 'block';
+        document.getElementById('mfa-step2').style.display = 'none';
+        document.getElementById('mfa-step3').style.display = 'none';
+    }
+    modal.style.display = 'flex';
+}
+
+function closeMfaModal() {
+    const modal = document.getElementById('mfa-modal');
+    if (modal) modal.style.display = 'none';
+    if (_mfaRecaptchaVerifier) { try { _mfaRecaptchaVerifier.clear(); } catch(e) {} _mfaRecaptchaVerifier = null; }
+}
+
+function mfaBackToStep1() {
+    document.getElementById('mfa-step1').style.display = 'block';
+    document.getElementById('mfa-step2').style.display = 'none';
+    if (_mfaRecaptchaVerifier) { try { _mfaRecaptchaVerifier.clear(); } catch(e) {} _mfaRecaptchaVerifier = null; }
+}
+
+async function mfaSendSMS() {
+    const phone = (document.getElementById('mfa-phone')?.value || '').trim();
+    const errEl = document.getElementById('mfa-error');
+    if (!phone) { if (errEl) errEl.textContent = '電話番号を入力してください'; return; }
+    if (!_fbAuth || !_fbAuth.currentUser) { if (errEl) errEl.textContent = 'ログインが必要です'; return; }
+    if (errEl) errEl.textContent = '';
+    try {
+        if (!_mfaRecaptchaVerifier) {
+            _mfaRecaptchaVerifier = new firebase.auth.RecaptchaVerifier('mfa-recaptcha', { size: 'normal' });
+        }
+        const session = await _fbAuth.currentUser.multiFactor.getSession();
+        const phoneOpts = { phoneNumber: phone, session };
+        const provider = new firebase.auth.PhoneAuthProvider();
+        _mfaVerificationId = await provider.verifyPhoneNumber(phoneOpts, _mfaRecaptchaVerifier);
+        document.getElementById('mfa-step1').style.display = 'none';
+        document.getElementById('mfa-step2').style.display = 'block';
+    } catch(e) {
+        const msgs = {
+            'auth/invalid-phone-number': '電話番号の形式が正しくありません（例: +81 90-1234-5678）',
+            'auth/too-many-requests':    'リクエストが多すぎます。しばらく待ってから試してください',
+            'auth/requires-recent-login':'セキュリティのため再ログインが必要です',
+        };
+        if (errEl) errEl.textContent = msgs[e.code] || e.message;
+    }
+}
+
+async function mfaVerifyCode() {
+    const code  = (document.getElementById('mfa-code')?.value || '').trim();
+    const errEl = document.getElementById('mfa-error2');
+    if (!code || code.length !== 6) { if (errEl) errEl.textContent = '6桁のコードを入力してください'; return; }
+    if (!_mfaVerificationId) { if (errEl) errEl.textContent = 'セッションが切れました。最初からやり直してください'; return; }
+    try {
+        const cred = firebase.auth.PhoneAuthProvider.credential(_mfaVerificationId, code);
+        const assertion = firebase.auth.PhoneMultiFactorGenerator.assertion(cred);
+        await _fbAuth.currentUser.multiFactor.enroll(assertion, 'SMS認証');
+        closeMfaModal();
+        alert('✅ 二段階認証を有効にしました！\n次回ログイン時からSMSコードが必要になります。');
+        openSettings();
+    } catch(e) {
+        const msgs = {
+            'auth/invalid-verification-code': 'コードが正しくありません',
+            'auth/code-expired':              'コードの有効期限が切れました。SMS送信からやり直してください',
+        };
+        if (errEl) errEl.textContent = msgs[e.code] || e.message;
+    }
+}
+
+async function mfaDisable() {
+    if (!confirm('二段階認証を解除しますか？')) return;
+    const user = _fbAuth && _fbAuth.currentUser;
+    if (!user) return;
+    try {
+        const factors = user.multiFactor.enrolledFactors;
+        for (const f of factors) { await user.multiFactor.unenroll(f); }
+        closeMfaModal();
+        alert('二段階認証を解除しました。');
+        openSettings();
+    } catch(e) {
+        const msgs = { 'auth/requires-recent-login': 'セキュリティのため再ログインが必要です' };
+        alert(msgs[e.code] || e.message);
+    }
+}
+
+// MFAが必要なログイン時の処理
+async function _handleMfaSignIn(error) {
+    if (error.code !== 'auth/multi-factor-auth-required') throw error;
+    _mfaResolver = error.resolver;
+    const hint = _mfaResolver.hints[0];
+    const modal = document.getElementById('mfa-modal');
+    document.getElementById('mfa-step1').style.display = 'none';
+    document.getElementById('mfa-step2').style.display = 'block';
+    document.getElementById('mfa-step3').style.display = 'none';
+    const errEl = document.getElementById('mfa-error2');
+    if (errEl) errEl.textContent = hint.phoneNumber + ' にSMSコードを送信中...';
+    if (modal) modal.style.display = 'flex';
+    try {
+        if (!_mfaRecaptchaVerifier) {
+            _mfaRecaptchaVerifier = new firebase.auth.RecaptchaVerifier('mfa-recaptcha', { size: 'invisible' });
+        }
+        const provider = new firebase.auth.PhoneAuthProvider();
+        _mfaVerificationId = await provider.verifyPhoneNumber({ multiFactorHint: hint, session: _mfaResolver.session }, _mfaRecaptchaVerifier);
+        if (errEl) errEl.textContent = 'SMSコードを入力してください';
+    } catch(e) {
+        if (errEl) errEl.textContent = e.message;
+    }
+}
+
+async function mfaVerifyLogin() {
+    const code  = (document.getElementById('mfa-code')?.value || '').trim();
+    const errEl = document.getElementById('mfa-error2');
+    if (!code) { if (errEl) errEl.textContent = 'コードを入力してください'; return; }
+    try {
+        const cred      = firebase.auth.PhoneAuthProvider.credential(_mfaVerificationId, code);
+        const assertion = firebase.auth.PhoneMultiFactorGenerator.assertion(cred);
+        await _mfaResolver.resolveSignIn(assertion);
+        closeMfaModal();
+    } catch(e) {
+        const msgs = { 'auth/invalid-verification-code': 'コードが正しくありません' };
+        if (errEl) errEl.textContent = msgs[e.code] || e.message;
+    }
+}
+
 async function signInWithEmail() {
     const email  = (document.getElementById('email-login-email')?.value    || '').trim();
     const pw     =  document.getElementById('email-login-password')?.value || '';
@@ -4411,6 +4563,11 @@ async function signInWithEmail() {
         await _fbAuth.signInWithEmailAndPassword(email, pw);
         closeEmailLoginModal();
     } catch(e) {
+        if (e.code === 'auth/multi-factor-auth-required') {
+            closeEmailLoginModal();
+            await _handleMfaSignIn(e);
+            return;
+        }
         const msgs = {
             'auth/user-not-found':   'このメールアドレスは登録されていません',
             'auth/wrong-password':   'パスワードが違います',
