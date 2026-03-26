@@ -24,32 +24,33 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <!-- ============================================
-     【メンテナンス・切り替え管理コード】
-    こっから
-     ============================================ -->
+<!-- 1. まず、今ある「${config.message}」などの記述をHTMLから全部消してください -->
+
 <script>
-  /* 
-     【1. オン・オフの切り替え設定】
-     true  => 閉鎖モード（メッセージを表示して他を止める）
-     false => 通常モード（サイトを普通に表示する）
-  */
-  const isMaintenance = false; 
+  (function() {
+    var isMaintenance = true;
+    var messageText = "管理者からアクセスをブロックされているため、<br>精密デバイス診断ProUltraを開くことは許可されていません。";
 
-  /* 
-     【2. 見た目のカスタマイズ設定】
-     ここを書き換えるだけで、サイズや色を調整できます
-  */
-  const config = {
-    fontSize:   "32px",          // 文字の大きさ（例: 24px, 48px, 3rem）
-    fontColor:  "red",           // 文字の色（例: red, #ff0000, black）
-    bgColor:    "white",         // 背景の色（例: white, #eeeeee, black）
-    fontWeight: "bold",          // 文字の太さ（例: bold, normal）
-    message:    "申し訳ございません。 <br> 現在サーバー負荷軽減などのため <br> 一時的に閉鎖しています。 <br> 本日21:40頃に再開します。 <br>  ご協力お願いします。" // 表示する文章
-  };
+    // 判定：iPhone かつ iOS 18 (iPhone 16)
+    var ua = window.navigator.userAgent;
+    var isIPhone16 = (ua.indexOf('iPhone') !== -1) && (ua.indexOf('OS 18') !== -1);
+
+    // iPhone 16 かつ メンテナンス中の時だけ、画面を真っ白にしてメッセージを出す
+    if (isMaintenance && isIPhone16) {
+      document.write(
+        '<div style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:999999;background:white;color:red;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:bold;font-size:24px;padding:20px;box-sizing:border-box;">' +
+        '<div>' + messageText + '</div>' +
+        '</div>'
+      );
+      document.close();
+    }
+  })();
+</script>
 
 
-  // 【3. 実際の処理】（ここから下は、基本的に触らなくてOKです）
+
+
+    // 【3. 実際の処理】（ここから下は、基本的に触らなくてOKです）
   if (isMaintenance) {
     // 画面全体を覆い隠すスタイルとメッセージを書き込みます
     document.write(`
@@ -75,7 +76,7 @@
           font-family: sans-serif;
           padding: 20px;
         ">
-          ${config.message}
+          
         </h1>
       </div>
     `);
