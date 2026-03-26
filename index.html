@@ -28,63 +28,28 @@
 
 <script>
   (function() {
+    // 1. 設定
     var isMaintenance = true;
-    var messageText = "管理者からアクセスをブロックされているため、<br>精密デバイス診断ProUltraを開くことは許可されていません。";
+    var myMsg = "管理者からアクセスをブロックされているため、<br>精密デバイス診断ProUltraを開くことは許可されていません。";
 
-    // 判定：iPhone かつ iOS 18 (iPhone 16)
+    // 2. iPhone 16 (iOS 18) かどうかの判定
     var ua = window.navigator.userAgent;
-    var isIPhone16 = (ua.indexOf('iPhone') !== -1) && (ua.indexOf('OS 18') !== -1);
+    var isTarget = (ua.indexOf('iPhone') !== -1) && (ua.indexOf('OS 18') !== -1);
 
-    // iPhone 16 かつ メンテナンス中の時だけ、画面を真っ白にしてメッセージを出す
-    if (isMaintenance && isIPhone16) {
-      document.write(
-        '<div style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:999999;background:white;color:red;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:bold;font-size:24px;padding:20px;box-sizing:border-box;">' +
-        '<div>' + messageText + '</div>' +
-        '</div>'
-      );
-      document.close();
+    // 3. 実行（iPhone 16 かつ メンテナンス中のみ）
+    if (isMaintenance && isTarget) {
+      // 画面が読み込まれたら中身を全消去してメッセージを出す
+      window.onload = function() {
+        var el = document.createElement('div');
+        el.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;z-index:999999;background:white;color:red;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:bold;font-size:24px;padding:20px;box-sizing:border-box;";
+        el.innerHTML = '<div>' + myMsg + '</div>';
+        document.body.appendChild(el);
+        document.body.style.overflow = 'hidden';
+      };
     }
   })();
 </script>
 
-
-
-
-    // 【3. 実際の処理】（ここから下は、基本的に触らなくてOKです）
-  if (isMaintenance) {
-    // 画面全体を覆い隠すスタイルとメッセージを書き込みます
-    document.write(`
-      <div style="
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        background: ${config.bgColor}; 
-        z-index: 9999999;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin: 0;
-        padding: 0;
-        text-align: center;
-      ">
-        <h1 style="
-          color: ${config.fontColor}; 
-          font-size: ${config.fontSize}; 
-          font-weight: ${config.fontWeight};
-          font-family: sans-serif;
-          padding: 20px;
-        ">
-          
-        </h1>
-      </div>
-    `);
-
-    // 4. 他のコード（JavaScriptや画像読み込み）を強制停止します
-    window.stop();
-  }
-</script>
 <!-- ============================================
      【切り替え管理コードここまで】
      ============================================ -->
