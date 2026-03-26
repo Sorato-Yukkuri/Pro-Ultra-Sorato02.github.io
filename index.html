@@ -24,36 +24,6 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<!-- 1. まず、今ある「${config.message}」などの記述をHTMLから全部消してください -->
-
-<script>
-  (function() {
-    // 1. 設定
-    // 下のtrueをfalseにすればアクセス可能
-    var isMaintenance = false;
-    var myMsg = "管理者からアクセスをブロックされているため、<br>精密デバイス診断ProUltraを開くことは許可されていません。";
-
-    // 2. iPhone 16 (iOS 18) かどうかの判定
-    var ua = window.navigator.userAgent;
-    var isTarget = (ua.indexOf('iPhone') !== -1) && (ua.indexOf('OS 18') !== -1);
-
-    // 3. 実行（iPhone 16 かつ メンテナンス中のみ）
-    if (isMaintenance && isTarget) {
-      // 画面が読み込まれたら中身を全消去してメッセージを出す
-      window.onload = function() {
-        var el = document.createElement('div');
-        el.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;z-index:999999;background:white;color:red;display:flex;align-items:center;justify-content:center;text-align:center;font-weight:bold;font-size:24px;padding:20px;box-sizing:border-box;";
-        el.innerHTML = '<div>' + myMsg + '</div>';
-        document.body.appendChild(el);
-        document.body.style.overflow = 'hidden';
-      };
-    }
-  })();
-</script>
-
-<!-- ============================================
-     【切り替え管理コードここまで】
-     ============================================ -->
 
 <!-- ログインバー（capture-area外） -->
 <div id="auth-bar" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9000;background:rgba(5,5,5,0.95);backdrop-filter:blur(10px);border-bottom:1px solid #282828;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;box-sizing:border-box;">
