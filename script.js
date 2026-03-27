@@ -3661,7 +3661,7 @@ function loadPuSkin() {
 function applyPuSkin(skinId, save) {
     if (save === undefined) save = true;
     const body = document.body;
-    // ProUltraでない場合はスキン適用不可・強制剥奪
+    // ProUltraでない場合は適用不可・強制剥奪（古いアカウント対策）
     if (!_isProUltra) {
         body.removeAttribute('data-pu-skin');
         return;
@@ -4953,8 +4953,6 @@ window.addEventListener('load',()=>{
     // ページ読み込み時は必ず最上部へ（ブラウザのスクロール位置保持を無効化）
     history.scrollRestoration = 'manual';
     window.scrollTo({ top: 0, behavior: 'instant' });
-    // planチェック前はスキンを剥奪（古いアカウント対策）
-    document.body.removeAttribute('data-pu-skin');
     // 設定読み込み・適用（エラーが起きても診断は必ず実行）
     try { loadSettings(); } catch(e) { console.warn('loadSettings error:', e); }
     try { applySettings(); } catch(e) { console.warn('applySettings error:', e); }
