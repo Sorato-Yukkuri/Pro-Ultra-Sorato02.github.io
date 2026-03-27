@@ -939,7 +939,7 @@ async function openSettings() {
                     <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:14px;padding:12px 16px;">
                         <div style="color:#f59e0b;font-size:0.88rem;font-weight:700;margin-bottom:8px;">👑 ProUltraアカウント特典</div>
                         <div style="color:#888;font-size:0.8rem;line-height:1.9;">🔔 アプリ内通知が解放<br>📊 診断履歴を最大10件保存<br>🎨 限定テーマスキン（ゴールド・オーロラ・ダイヤ）</div>
-                        <div style="color:#555;font-size:0.75rem;margin-top:8px;">※ 管理者によりプランが付与されます<br>メールアドレス認証をしないと特典は付与されません</div>
+                        <div style="color:#555;font-size:0.75rem;margin-top:8px;">※ 管理者によりプランが付与されます</div>
                     </div>
                 </div>`
         ]) : ''}
@@ -3727,12 +3727,21 @@ function _showVerifyBanner(show) {
     } else if (!show && updBanner) {
         updBanner.style.display = 'none';
     }
-    // padding-top調整
+    // padding-top: バナーの実際の高さを取得して積み上げ
     if (show) {
-        const bothVisible = updBanner && updBanner.style.display === 'flex';
-        document.body.style.paddingTop = (bothVisible ? 110 : 70) + 'px';
+        const authBar = document.getElementById('auth-bar');
+        const authH = authBar ? authBar.offsetHeight : 49;
+        banner.style.top = authH + 'px';
+        requestAnimationFrame(() => {
+            const verifyH = banner.offsetHeight;
+            const showUpd = updBanner && updBanner.style.display === 'flex';
+            if (showUpd) updBanner.style.top = (authH + verifyH) + 'px';
+            const updH = showUpd ? (updBanner.offsetHeight || 40) : 0;
+            document.body.style.paddingTop = (authH + verifyH + updH) + 'px';
+        });
+    } else {
+        document.body.style.paddingTop = (_currentUser ? '49px' : '0px');
     }
-    // show=false 時はupdateAuthUIに任せる
 }
 
 async function resendVerificationEmail() {
@@ -4676,7 +4685,7 @@ async function submitSignUp() {
         // 一旦サインアウトして「確認メールを確認してから再ログイン」へ誘導
         await _fbAuth.signOut();
         closeSignUpModal();
-        alert('📧 確認メールを送信しました！\n\nメール内のリンクをクリックして認証を完了してください。\n認証後にログインするとProUltra特典が有効になります。\n\n※ 迷惑メールフォルダもご確認ください。');
+        alert('📧 確認メールを送信しました！\n\nメール内のリンクをクリックして認証を完了してください。\n認証後にログインするとProUltraが有効になります。\n\n※ 迷惑メールフォルダもご確認ください。');
     } catch(e) {
         const msgs = {
             'auth/email-already-in-use': 'このメールアドレスは既に使われています',
