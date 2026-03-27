@@ -911,13 +911,20 @@ async function openSettings() {
             settingToggle(ui.labelGuard, 'clumsiGuard', 'clumsiGuard'),
         ])}
 
-        ${_currentUser && _currentUser.email ? settingSection('🔐 セキュリティ', [
-            `<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;">
+        ${_currentUser && !_currentUser.isAnonymous ? settingSection('🔐 セキュリティ', [
+            _currentUser.email ? `<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;border-bottom:1px solid var(--border);">
                 <div>
                     <div style="color:var(--text);font-size:0.9rem;font-weight:700;">メールアドレスの変更</div>
                     <div style="color:var(--sub-text);font-size:0.78rem;margin-top:2px;">${(_fbAuth && _fbAuth.currentUser && _fbAuth.currentUser.email) ? _fbAuth.currentUser.email : ''}</div>
                 </div>
                 <button onclick="openChangeEmailModal();closeSettings();" style="padding:8px 16px;border-radius:10px;background:#6366f1;color:#fff;border:none;font-size:0.82rem;font-weight:700;cursor:pointer;">変更</button>
+            </div>` : '',
+            `<div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0;">
+                <div>
+                    <div style="color:#ff6b6b;font-size:0.9rem;font-weight:700;">アカウントを削除する</div>
+                    <div style="color:var(--sub-text);font-size:0.78rem;margin-top:2px;">データはすべて削除されます</div>
+                </div>
+                <button onclick="openDeleteAccountModal();closeSettings();" style="padding:8px 16px;border-radius:10px;background:rgba(255,59,48,0.12);border:1px solid rgba(255,59,48,0.3);color:#ff6b6b;font-size:0.82rem;font-weight:700;cursor:pointer;">削除</button>
             </div>`
         ]) : ''}
 
@@ -3661,11 +3668,7 @@ function loadPuSkin() {
 function applyPuSkin(skinId, save) {
     if (save === undefined) save = true;
     const body = document.body;
-    // ProUltraでない場合は適用不可・強制剥奪（古いアカウント対策）
-    if (!_isProUltra) {
-        body.removeAttribute('data-pu-skin');
-        return;
-    }
+    if (!_isProUltra) { body.removeAttribute('data-pu-skin'); return; }
     if (skinId && skinId !== 'default') {
         body.setAttribute('data-pu-skin', skinId);
     } else {
@@ -4764,6 +4767,54 @@ async function changeEmailSend() {
             'auth/invalid-credential':    'パスワードが正しくありません',
         };
         if (errEl) errEl.textContent = msgs[e.code] || e.message;
+    }
+}
+
+function openDeleteAccountModal() {
+    const modal = document.getElementById('delete-account-modal');
+    if (!modal) return;
+    const pwEl = document.getElementById('delete-account-pw');
+    const errEl = document.getElementById('delete-account-error');
+    if (pwEl) pwEl.value = '';
+    if (errEl) errEl.textContent = '';
+    document.getElementById('delete-account-step1').style.display = 'block';
+    document.getElementById('delete-account-done').style.display = 'none';
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeDeleteAccountModal() {
+    const modal = document.getElementById('delete-account-modal');
+    if (modal) { modal.style.display = 'none'; document.body.style.overflow = ''; }
+}
+
+async function confirmDeleteAccount() {
+    const pw    = document.getElementById('delete-account-pw')?.value || '';
+    const errEl = document.getElementById('delete-account-error');
+    const btn   = document.querySelector('#delete-account-step1 button[onclick*="confirmDelete"]');
+    if (!pw) { if (errEl) errEl.textContent = 'パスワードを入力してください'; return; }
+    if (!_fbAuth || !_fbAuth.currentUser) return;
+    if (errEl) errEl.textContent = '';
+    if (btn) { btn.disabled = true; btn.textContent = '削除中...'; }
+    try {
+        const user = _fbAuth.currentUser;
+        const cred = firebase.auth.EmailAuthProvider.credential(user.email, pw);
+        await user.reauthenticateWithCredential(cred);
+        if (_fbDb) {
+            try { await _fbDb.collection('users').doc(user.uid).delete(); } catch(e2) {}
+        }
+        await user.delete();
+        document.getElementById('delete-account-step1').style.display = 'none';
+        document.getElementById('delete-account-done').style.display = 'block';
+    } catch(e) {
+        const msgs = {
+            'auth/wrong-password':        'パスワードが正しくありません',
+            'auth/invalid-credential':    'パスワードが正しくありません',
+            'auth/too-many-requests':     'しばらく待ってから再試行してください',
+            'auth/requires-recent-login': '再ログインが必要です',
+        };
+        if (errEl) errEl.textContent = msgs[e.code] || ('エラー: ' + e.message);
+        if (btn) { btn.disabled = false; btn.textContent = 'アカウントを削除する'; }
     }
 }
 

@@ -116,15 +116,16 @@
         📧 メールアドレスの確認が完了していません。確認メールのリンクをクリックするとProUltraが有効になります。<br>
         <span style="font-size:0.75rem;font-weight:400;color:#c8a060;">※ 迷惑メールフォルダもご確認ください</span>
     </span>
-    <div style="display:flex;gap:8px;flex-shrink:0;">
+    <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;">
         <button onclick="resendVerificationEmail()" style="background:rgba(245,158,11,0.2);border:1px solid rgba(245,158,11,0.4);color:#f59e0b;padding:5px 12px;border-radius:8px;font-size:0.78rem;font-weight:700;cursor:pointer;">再送する</button>
         <button onclick="recheckEmailVerified()" style="background:rgba(52,199,89,0.15);border:1px solid rgba(52,199,89,0.3);color:#34c759;padding:5px 12px;border-radius:8px;font-size:0.78rem;font-weight:700;cursor:pointer;">確認済み ✓</button>
+        <button onclick="openDeleteAccountModal()" style="background:rgba(255,59,48,0.15);border:1px solid rgba(255,59,48,0.3);color:#ff6b6b;padding:5px 12px;border-radius:8px;font-size:0.78rem;font-weight:700;cursor:pointer;">🗑 削除して作り直す</button>
     </div>
 </div>
 
 <!-- アップデート通知バナー（メール認証必須化） -->
 <div id="auth-update-banner" style="display:none;position:fixed;top:49px;left:0;right:0;z-index:8998;background:rgba(99,102,241,0.13);border-bottom:1px solid rgba(99,102,241,0.35);padding:9px 16px;align-items:center;justify-content:space-between;gap:12px;box-sizing:border-box;">
-    <span style="color:#a5b4fc;font-size:0.82rem;font-weight:700;"><br><br><br><br>🆕 アップデートによりメール認証が必須になりました。上のバナーから認証を完了してください。</span>
+    <span style="color:#a5b4fc;font-size:0.82rem;font-weight:700;">🆕 アップデートによりメール認証が必須になりました。上のバナーから認証を完了してください。</span>
     <button onclick="document.getElementById('auth-update-banner').style.display='none';localStorage.setItem('pu_upd_banner_v1','1');" style="background:none;border:none;color:#6366f1;font-size:0.82rem;font-weight:700;cursor:pointer;flex-shrink:0;">閉じる ✕</button>
 </div>
 
@@ -250,6 +251,37 @@
         <button onclick="signInWithEmail()" style="width:100%;padding:13px;border-radius:12px;background:#6366f1;color:#fff;border:none;font-size:0.95rem;font-weight:800;cursor:pointer;margin-bottom:8px;">ログイン</button>
         <button onclick="sendPasswordReset()" style="width:100%;padding:10px;border-radius:12px;background:transparent;color:#6366f1;border:1px solid #6366f1;font-size:0.82rem;cursor:pointer;margin-bottom:8px;">🔑 パスワードを忘れた場合</button>
         <button onclick="closeEmailLoginModal();openSignUpModal();" style="width:100%;padding:10px;border-radius:12px;background:transparent;color:#666;border:1px solid #2a2a2a;font-size:0.82rem;cursor:pointer;">アカウントをお持ちでない方はこちら →</button>
+    </div>
+</div>
+
+<!-- アカウント削除モーダル -->
+<div id="delete-account-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.95);z-index:9999999;justify-content:center;align-items:center;padding:20px;box-sizing:border-box;">
+    <div style="background:#111;border:1px solid #2a2a2a;border-radius:24px;width:100%;max-width:400px;padding:28px 24px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <div style="font-size:1.1rem;font-weight:800;color:#ff6b6b;">🗑 アカウントを削除する</div>
+            <button onclick="closeDeleteAccountModal()" style="background:#1e1e1e;border:none;color:#666;width:30px;height:30px;border-radius:50%;font-size:0.95rem;cursor:pointer;">✕</button>
+        </div>
+        <div id="delete-account-step1">
+            <p style="color:#ff6b6b;font-size:0.85rem;font-weight:700;margin:0 0 6px;">⚠️ この操作は取り消せません</p>
+            <p style="color:#888;font-size:0.82rem;margin:0 0 20px;line-height:1.7;">アカウントと診断履歴がすべて削除されます。<br>削除後は同じメールアドレスで再登録できます。</p>
+            <p style="color:#ccc;font-size:0.85rem;margin:0 0 8px;">パスワードを入力して確認</p>
+            <div style="position:relative;margin-bottom:8px;">
+                <input id="delete-account-pw" type="password" placeholder="パスワード"
+                    style="width:100%;padding:12px 44px 12px 14px;border-radius:12px;background:#1a1a1a;border:1px solid #333;color:#fff;font-size:0.93rem;outline:none;box-sizing:border-box;"
+                    onfocus="this.style.borderColor='#ff3b30'" onblur="this.style.borderColor='#333'"
+                    onkeydown="if(event.key==='Enter')confirmDeleteAccount()">
+                <button onclick="_togglePw('delete-account-pw',this)" style="position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:#555;cursor:pointer;font-size:1rem;padding:0;">👁</button>
+            </div>
+            <p id="delete-account-error" style="color:#ff6b6b;font-size:0.8rem;margin:0 0 16px;min-height:16px;"></p>
+            <button onclick="confirmDeleteAccount()" style="width:100%;padding:13px;border-radius:12px;background:rgba(255,59,48,0.15);border:1px solid rgba(255,59,48,0.4);color:#ff6b6b;font-size:0.95rem;font-weight:800;cursor:pointer;">アカウントを削除する</button>
+            <button onclick="closeDeleteAccountModal()" style="width:100%;padding:11px;border-radius:12px;background:transparent;color:#555;border:1px solid #2a2a2a;font-size:0.85rem;cursor:pointer;margin-top:8px;">キャンセル</button>
+        </div>
+        <div id="delete-account-done" style="display:none;text-align:center;">
+            <div style="font-size:2.8rem;margin-bottom:14px;">✅</div>
+            <p style="color:#fff;font-size:1rem;font-weight:800;margin:0 0 8px;">アカウントを削除しました</p>
+            <p style="color:#888;font-size:0.85rem;margin:0 0 20px;line-height:1.7;">同じメールアドレスで再登録してください。<br>新規登録後は自動でProUltraが有効になります。</p>
+            <button onclick="location.reload()" style="width:100%;padding:13px;border-radius:12px;background:linear-gradient(135deg,#ff6b35,#ff2d55);color:#fff;border:none;font-size:0.95rem;font-weight:800;cursor:pointer;">✨ 再登録する</button>
+        </div>
     </div>
 </div>
 
