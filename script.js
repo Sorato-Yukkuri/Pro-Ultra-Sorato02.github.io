@@ -3661,6 +3661,11 @@ function loadPuSkin() {
 function applyPuSkin(skinId, save) {
     if (save === undefined) save = true;
     const body = document.body;
+    // ProUltraでない場合はスキン適用不可・強制剥奪
+    if (!_isProUltra) {
+        body.removeAttribute('data-pu-skin');
+        return;
+    }
     if (skinId && skinId !== 'default') {
         body.setAttribute('data-pu-skin', skinId);
     } else {
@@ -3727,21 +3732,10 @@ function _showVerifyBanner(show) {
     } else if (!show && updBanner) {
         updBanner.style.display = 'none';
     }
-    // padding-top: バナーの実際の高さを取得して積み上げ
-    if (show) {
-        const authBar = document.getElementById('auth-bar');
-        const authH = authBar ? authBar.offsetHeight : 49;
-        banner.style.top = authH + 'px';
-        requestAnimationFrame(() => {
-            const verifyH = banner.offsetHeight;
-            const showUpd = updBanner && updBanner.style.display === 'flex';
-            if (showUpd) updBanner.style.top = (authH + verifyH) + 'px';
-            const updH = showUpd ? (updBanner.offsetHeight || 40) : 0;
-            document.body.style.paddingTop = (authH + verifyH + updH) + 'px';
-        });
-    } else {
-        document.body.style.paddingTop = (_currentUser ? '49px' : '0px');
-    }
+    // padding-top調整（バナー2段分 or 1段分）
+    const bothVisible = show && updBanner && updBanner.style.display === 'flex';
+    const bannerH = bothVisible ? 110 : show ? 70 : 49;
+    document.body.style.paddingTop = (show ? bannerH : 49) + 'px';
 }
 
 async function resendVerificationEmail() {
@@ -4959,6 +4953,8 @@ window.addEventListener('load',()=>{
     // ページ読み込み時は必ず最上部へ（ブラウザのスクロール位置保持を無効化）
     history.scrollRestoration = 'manual';
     window.scrollTo({ top: 0, behavior: 'instant' });
+    // planチェック前はスキンを剥奪（古いアカウント対策）
+    document.body.removeAttribute('data-pu-skin');
     // 設定読み込み・適用（エラーが起きても診断は必ず実行）
     try { loadSettings(); } catch(e) { console.warn('loadSettings error:', e); }
     try { applySettings(); } catch(e) { console.warn('applySettings error:', e); }
