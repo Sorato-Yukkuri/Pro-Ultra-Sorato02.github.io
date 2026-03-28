@@ -1,11 +1,123 @@
 let capturedDataUrl = null;
+
+// 🚫 永久追放ブラックリスト
+const PERMANENT_BAN_LIST = {
+    'gintc50veo3nu@yahoo.co.jp': '理由：不適切なフィードバック'
+    };
+
+/**
+ * 📢 報告送信関数
+ */
+async function sendIncorrectReport(category, userComment, inputEmail) {
+    if (!inputEmail || !inputEmail.includes('@')) {
+        alert("登録したメールアドレスを入力してください。");
+        return;
+    }
+    if (!userComment || userComment.trim() === "") {
+        alert("内容を入力してください。");
+        return;
+    }
+
+    const btn = document.getElementById('ban-appeal-btn');
+    if (btn) { btn.disabled = true; btn.innerText = "Sending..."; }
+
+    const formData = new FormData();
+    formData.append("Email", inputEmail);
+    formData.append("Type", category);
+    formData.append("Message", userComment);
+
+    try {
+        const res = await fetch("https://formspree.io/f/mojkzbvz", {
+            method: 'POST',
+            body: formData,
+            headers: { 'Accept': 'application/json' }
+        });
+        if (res.ok) {
+            alert("送信が完了しました。");
+            if (btn) btn.innerText = "Sent";
+        } else { throw new Error(); }
+    } catch (e) {
+        alert("送信に失敗しました。異議などせずにこのサービスから**離れてください**。");
+        if (btn) { btn.disabled = false; btn.innerText = "Retry"; }
+    }
+}
+
+/**
+ * 💣 画面破壊型BANシステム
+ */
+function showBanScreen(email) {
+    // BAN情報をローカルに刻む
+    localStorage.setItem('sys_banned_user', 'true');
+    if (email && email !== 'stored') {
+        localStorage.setItem('sys_banned_email', email);
+    }
+
+    // メールの特定と理由の取得
+    const targetEmail = (email && email !== 'stored') ? email : localStorage.getItem('sys_banned_email');
+    const reason = PERMANENT_BAN_LIST[targetEmail] || '理由：重大な規約違反が確認されました。';
+
+    // すでに画面があるなら理由だけ更新して終了
+    const reasonEl = document.getElementById('ban-reason-text');
+    if (reasonEl) {
+        reasonEl.textContent = reason;
+        return;
+    }
+
+    if (!document.body) return;
+
+    // UI表示（初期の「Account Blocked」デザイン）
+    document.body.innerHTML = `
+        <div id="ban-overlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background-color: black; z-index: 2147483647; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: white; font-family: sans-serif; padding: 20px; box-sizing: border-box;">
+            <h1 style="font-size: 3rem; color: red; margin-bottom: 10px; font-weight: bold;">Account Blocked</h1>
+            <p id="ban-reason-text" style="font-size: 1.2rem; margin-bottom: 30px; color: white; opacity: 0.9;">${reason}</p>
+
+            <div style="width: 100%; max-width: 450px; text-align: left; margin-top: 10px;">
+                <input type="email" id="ban-appeal-email" placeholder="登録メールアドレス (必須)" 
+                       style="width: 100%; padding: 12px; background: transparent; color: white; border: 1px solid #333; margin-bottom: 10px; box-sizing: border-box; font-size: 1rem; outline: none;">
+                <textarea id="ban-appeal-text" placeholder="間違い報告・異議申し立ての内容" 
+                          style="width: 100%; height: 100px; background: transparent; color: white; border: 1px solid #333; padding: 12px; margin-bottom: 15px; box-sizing: border-box; resize: none; font-size: 1rem; outline: none;"></textarea>
+                <button id="ban-appeal-btn" 
+                        onclick="sendIncorrectReport('BAN_APPEAL', document.getElementById('ban-appeal-text').value, document.getElementById('ban-appeal-email').value)" 
+                        style="background: transparent; color: red; border: 1px solid red; padding: 12px; cursor: pointer; font-weight: bold; width: 100%; font-size: 1rem;">
+                    送信
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.style.overflow = 'hidden';
+}
+
+// 🚫 監視・実行ロジック
+// 1. ページ読み込み時、すでにBANフラグがあるなら即座に表示（前回のメールアドレスを復元）
+if (localStorage.getItem('sys_banned_user') === 'true') {
+    const checkReady = setInterval(() => {
+        if (document.body) {
+            showBanScreen('stored');
+            clearInterval(checkReady);
+        }
+    }, 10);
+}
+
+// 2. Firebaseのログイン状態を監視して、ブラックリスト照合
+const banObserver = setInterval(() => {
+    // _fbAuth が存在し、かつ currentUser が取れた瞬間を狙う
+    const user = (typeof _fbAuth !== 'undefined') ? _fbAuth.currentUser : null;
+    if (user && user.email) {
+        if (PERMANENT_BAN_LIST[user.email]) {
+            showBanScreen(user.email);
+            clearInterval(banObserver);
+        }
+    }
+}, 100);
+
 const scores = { cpu:0, gpu:0, mem:0, fps:0 };
 const diag   = {};
-
 const wait   = ms => new Promise(r => setTimeout(r, ms));
 const setRow = (id, text, cls) => {
-    document.getElementById('v-'+id).textContent = text;
-    document.getElementById('row-'+id).className = 'spec-row st-'+cls;
+    const el = document.getElementById('v-'+id);
+    if(el) el.textContent = text;
+    const row = document.getElementById('row-'+id);
+    if(row) row.className = 'spec-row st-'+cls;
 };
 const st = (ok, warn) => ok ? 'ok' : (warn ? 'warn' : 'bad');
 
@@ -2967,159 +3079,150 @@ async function sendAIMessage() {
         ...recent
     ];
 
-    let reply    = null;
-    let lastErr  = '';
-    // 各サービスのエラーを蓄積（最終表示用）
-    const _errLog = [];  // { service, code, msg } の配列
+    let reply   = null;
+    let _errMsg = '';
+
+    // ── セッション中の失敗プロバイダーをスキップ ──────────────
+    // ページリロードするまで失敗したサービスは再試行しない
+    if (!window._aiFailedProviders) window._aiFailedProviders = new Set();
+    const _skip = (name) => window._aiFailedProviders.has(name);
+    const _fail = (name, msg) => { window._aiFailedProviders.add(name); _errMsg = msg; };
 
     // ══════════════════════════════════════════════════════
-    // 【1位】Pollinations — openaiモデルのみ・キーなし
-    // 失敗したら即2位へ（リトライなし・8秒タイムアウト）
+    // 【1位】Gemini 1.5 Flash — CORS許可・無料枠あり
     // ══════════════════════════════════════════════════════
-    try {
-        _resetTimer(18, '回答を生成しています...');
-        const _ctrl = new AbortController();
-        const _tout = setTimeout(() => _ctrl.abort(), 12000);
-        const resp = await fetch('https://text.pollinations.ai/v1/chat/completions', {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ model: 'openai', messages, private: true }),
-            signal:  _ctrl.signal
-        });
-        clearTimeout(_tout);
-        if (resp.ok) {
-            const data = await resp.json();
-            const raw  = data.choices?.[0]?.message?.content || '';
-            if (raw) {
-                let cleaned = raw.replace(/\n---[\s\S]*$/m, '');
-                cleaned = cleaned.replace(/Powered by Pollinations[^\n]*/gi, '');
-                cleaned = cleaned.replace(/Support our mission[^\n]*/gi, '');
-                reply = cleaned.trim() || raw.trim();
-            } else {
-                lastErr = 'Pollinations: 空のレスポンス';
-                _errLog.push({ service: 'Pollinations', code: '空レスポンス', msg: 'AIが空の返答を返しました。サービスが混雑しています。' });
-            }
-        } else {
-            lastErr = 'Pollinations: HTTP ' + resp.status;
-            const _codeMap = { 429: 'レート制限（使いすぎ）', 503: 'サーバー過負荷', 500: 'サーバー内部エラー', 401: '認証エラー' };
-            _errLog.push({ service: 'Pollinations', code: 'HTTP ' + resp.status, msg: (_codeMap[resp.status] || 'サーバーエラー') + '。OpenRouterに切り替えます。' });
-        }
-    } catch(e) {
-        const _isTimeout = e.name === 'AbortError';
-        lastErr = _isTimeout ? 'Pollinations: タイムアウト(8秒)' : 'Pollinations: ' + (e.message || 'ネットワークエラー');
-        _errLog.push({ service: 'Pollinations', code: _isTimeout ? 'タイムアウト' : 'ネットワークエラー',
-            msg: _isTimeout ? 'Pollinationsが8秒以内に応答しませんでした。OpenRouterに切り替えます。'
-                            : 'Pollinationsへの接続に失敗しました。OpenRouterに切り替えます。' });
-    }
-
-    // ══════════════════════════════════════════════════════
-    // 【2位】OpenRouter — APIキーあり・安定
-    // ══════════════════════════════════════════════════════
-    if (!reply) {
-        _resetTimer(20, '別サービスで再試行中 (OpenRouter)...');
-        await new Promise(r => setTimeout(r, 1000));
-        // OpenAI系2モデルのみ（無料枠節約）
-        const orModels = [
-            'openai/gpt-4o-mini',
-            'openai/gpt-3.5-turbo'
-        ];
-        for (const orModel of orModels) {
-            try {
-                const resp = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                    method:  'POST',
-                    headers: {
-                        'Content-Type':  'application/json',
-                        'Authorization': 'Bearer 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',
-                        'HTTP-Referer':  'https://sorato-yukkuri.github.io/Pro-Ultra-Sorato02.github.io/',
-                        'X-Title':       '精密デバイス診断 Pro Ultra'
-                    },
-                    body: JSON.stringify({ model: orModel, messages })
-                });
-                if (resp.ok) {
-                    const data = await resp.json();
-                    const raw  = data.choices?.[0]?.message?.content || '';
-                    if (raw) { reply = raw.trim(); break; }
-                    lastErr = 'OpenRouter(' + orModel + '): 空のレスポンス';
-                    _errLog.push({ service: 'OpenRouter', code: '空レスポンス', msg: 'モデル ' + orModel + ' が空の返答を返しました。' });
-                } else {
-                    lastErr = 'OpenRouter(' + orModel + '): HTTP ' + resp.status;
-                    const _orMap = { 402: '無料クレジット枯渇。OpenRouterの無料枠を使い切りました。', 403: 'APIキーが無効または期限切れ。', 429: 'レート制限。短時間に送りすぎています。', 503: 'OpenRouterサーバーが過負荷状態。' };
-                    _errLog.push({ service: 'OpenRouter', code: 'HTTP ' + resp.status, msg: _orMap[resp.status] || 'OpenRouterサーバーエラー (HTTP ' + resp.status + ')。' });
-                    if (resp.status === 402 || resp.status === 403) break;
-                }
-            } catch(e) {
-                lastErr = 'OpenRouter: ' + (e.message || 'ネットワークエラー');
-                _errLog.push({ service: 'OpenRouter', code: 'ネットワークエラー', msg: 'OpenRouterへの接続に失敗しました。' });
-            }
-            await new Promise(r => setTimeout(r, 1500));
-        }
-    }
-
-    // ══════════════════════════════════════════════════════
-    // 【3位】Puter.js — ログイン済みなら無制限・キーなし
-    // isSignedIn()は仮想環境で誤動作するため使わない
-    // → 直接AIを呼んで、認証エラー時にログイン促しUIを表示
-    // ══════════════════════════════════════════════════════
-    if (!reply) {
-        _resetTimer(25, '最終手段で再試行中 (Puter.js)...');
-        await new Promise(r => setTimeout(r, 1000));
+    if (!reply && !_skip('gemini')) {
+        _resetTimer(20, 'AIが回答を生成しています (Gemini)...');
         try {
-            // Puter.js がまだ読み込まれていなければ動的に読み込む
-            if (typeof puter === 'undefined') {
-                await new Promise((resolve, reject) => {
-                    const s = document.createElement('script');
-                    s.src = 'https://js.puter.com/v2/';
-                    s.onload  = resolve;
-                    s.onerror = reject;
-                    document.head.appendChild(s);
-                });
-                await new Promise(r => setTimeout(r, 2000));
-            }
-
-            // isSignedIn()チェックなし → 直接AIを呼ぶ
-            // 認証エラーが出たらcatchでログイン促しUIを表示
-            const res = await puter.ai.chat(messages, { model: 'gpt-4o-mini' });
-            const raw = (typeof res === 'string')
-                ? res
-                : res?.message?.content
-               || res?.choices?.[0]?.message?.content
-               || res?.content
-               || '';
-            if (raw) {
-                reply = raw.trim();
+            const _ctrl = new AbortController();
+            const _tout = setTimeout(() => _ctrl.abort(), 20000);
+            // Gemini はsystem roleをサポートしないため分離
+            const geminiMsgs = messages
+                .filter(m => m.role !== 'system')
+                .map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
+            const sysMsg = messages.find(m => m.role === 'system');
+            const body = {
+                contents: geminiMsgs,
+                generationConfig: { maxOutputTokens: 1000 }
+            };
+            if (sysMsg) body.systemInstruction = { parts: [{ text: sysMsg.content }] };
+            const resp = await fetch(
+                'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyCNz_lHk3pJHAYtgcf6eCoHyP849eCpQI0',
+                { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: _ctrl.signal }
+            );
+            clearTimeout(_tout);
+            if (resp.ok) {
+                const data = await resp.json();
+                const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                if (raw) { reply = raw.trim(); }
+                else { _fail('gemini', 'Gemini: 空のレスポンスです。'); }
             } else {
-                lastErr = 'Puter.js: 空のレスポンス';
-                _errLog.push({ service: 'Puter.js', code: '空レスポンス', msg: 'Puter.jsが空の返答を返しました。再試行してください。' });
+                const e2 = await resp.json().catch(() => ({}));
+                const msg = e2?.error?.message || ('HTTP ' + resp.status);
+                _fail('gemini', 'Gemini: ' + msg);
             }
-
         } catch(e) {
-            const _isAuthErr = /auth|login|sign|unauthorized|401/i.test(e.message || '');
-            if (_isAuthErr) {
-                // 認証エラー → ログイン促しUIを表示して終了
-                clearInterval(_tickInterval);
-                loading.innerHTML = `
-                    <div style="background:#1a1a2e;border:1px solid #a78bfa;border-radius:16px;padding:20px;text-align:center;">
-                        <div style="font-size:1.6rem;margin-bottom:8px;">⚠️</div>
-                        <div style="font-weight:800;font-size:1rem;color:#fff;margin-bottom:6px;">AIの一部にアクセスできませんでした</div>
-                        <div style="color:#aaa;font-size:0.85rem;line-height:1.6;margin-bottom:16px;">
-                            このAI（Puter.js）を使うには<br>
-                            <strong style="color:#a78bfa;">Puter.js のログイン / サインアップ</strong>が必要です。<br>
-                            無料で登録できます。
-                        </div>
-                        <button onclick="window.open('https://puter.com', '_blank', 'noopener')"
-                            style="width:100%;padding:12px;border-radius:12px;background:linear-gradient(135deg,#7c3aed,#a78bfa);color:#fff;border:none;font-weight:800;font-size:0.95rem;cursor:pointer;margin-bottom:8px;">
-                            🔑 Puter.js にログイン / サインアップ
-                        </button>
-                        <div style="color:#666;font-size:0.75rem;">登録後、このページを再読み込みして再送信してください</div>
-                    </div>`;
-                btn.disabled = false;
-                document.getElementById('ai-messages').scrollTop = 99999;
-                input.focus();
-                return;
+            _fail('gemini', e.name === 'AbortError' ? 'Gemini: タイムアウト。' : 'Gemini: ' + (e.message || 'エラー。'));
+        }
+    }
+
+    // ══════════════════════════════════════════════════════
+    // 【2位】GitHub Models — OpenAI互換・CORS許可
+    // ══════════════════════════════════════════════════════
+    if (!reply && !_skip('github')) {
+        _resetTimer(22, '別サービスで再試行中 (GitHub Models)...');
+        await new Promise(r => setTimeout(r, 400));
+        try {
+            const _ctrl2 = new AbortController();
+            const _tout2 = setTimeout(() => _ctrl2.abort(), 25000);
+            const resp2 = await fetch('https://models.inference.ai.azure.com/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type':  'application/json',
+                    'Authorization': 'Bearer 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'
+                },
+                body: JSON.stringify({ model: 'gpt-4o-mini', messages, max_tokens: 1000 }),
+                signal: _ctrl2.signal
+            });
+            clearTimeout(_tout2);
+            if (resp2.ok) {
+                const data2 = await resp2.json();
+                const raw2  = data2.choices?.[0]?.message?.content || '';
+                if (raw2) { reply = raw2.trim(); }
+                else { _fail('github', 'GitHub Models: 空のレスポンスです。'); }
+            } else {
+                const e3 = await resp2.json().catch(() => ({}));
+                _fail('github', 'GitHub Models: HTTP ' + resp2.status + ' ' + (e3?.error?.message || ''));
             }
-            // 認証以外のエラー → 通常エラーログに追加
-            lastErr = 'Puter.js: ' + (e.message || 'エラー');
-            _errLog.push({ service: 'Puter.js', code: 'エラー', msg: e.message || '不明なエラーが発生しました。' });
+        } catch(e) {
+            _fail('github', e.name === 'AbortError' ? 'GitHub Models: タイムアウト。' : 'GitHub Models: ' + (e.message || 'エラー。'));
+        }
+    }
+
+    // ══════════════════════════════════════════════════════
+    // 【3位】OpenRouter — 無料モデルあり・CORS許可
+    // ══════════════════════════════════════════════════════
+    if (!reply && !_skip('openrouter')) {
+        _resetTimer(25, '別サービスで再試行中 (OpenRouter)...');
+        await new Promise(r => setTimeout(r, 400));
+        try {
+            const _ctrl3 = new AbortController();
+            const _tout3 = setTimeout(() => _ctrl3.abort(), 25000);
+            const resp3 = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type':  'application/json',
+                    'Authorization': 'Bearer sk-d653185be4d7d865651b7cb12d2779d49c1125f7cf0278aad32582308257d520',
+                    'HTTP-Referer':  'https://sorato-yukkuri.github.io/Pro-Ultra-Sorato02.github.io/',
+                    'X-Title':       '精密デバイス診断 Pro Ultra'
+                },
+                body: JSON.stringify({ model: 'meta-llama/llama-3.1-8b-instruct:free', messages, max_tokens: 1000 }),
+                signal: _ctrl3.signal
+            });
+            clearTimeout(_tout3);
+            if (resp3.ok) {
+                const data3 = await resp3.json();
+                const raw3  = data3.choices?.[0]?.message?.content || '';
+                if (raw3) { reply = raw3.trim(); }
+                else { _fail('openrouter', 'OpenRouter: 空のレスポンスです。'); }
+            } else {
+                const e4 = await resp3.json().catch(() => ({}));
+                _fail('openrouter', 'OpenRouter: HTTP ' + resp3.status + ' ' + (e4?.error?.message || ''));
+            }
+        } catch(e) {
+            _fail('openrouter', e.name === 'AbortError' ? 'OpenRouter: タイムアウト。' : 'OpenRouter: ' + (e.message || 'エラー。'));
+        }
+    }
+
+    // ══════════════════════════════════════════════════════
+    // 【4位】Pollinations — 完全無料・キーなし
+    // ══════════════════════════════════════════════════════
+    if (!reply && !_skip('pollinations')) {
+        _resetTimer(20, '最終手段で再試行中 (Pollinations)...');
+        await new Promise(r => setTimeout(r, 400));
+        try {
+            const _ctrl4 = new AbortController();
+            const _tout4 = setTimeout(() => _ctrl4.abort(), 15000);
+            const resp4 = await fetch('https://text.pollinations.ai/v1/chat/completions', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ model: 'openai', messages, private: true }),
+                signal:  _ctrl4.signal
+            });
+            clearTimeout(_tout4);
+            if (resp4.ok) {
+                const data4 = await resp4.json();
+                let raw4 = data4.choices?.[0]?.message?.content || '';
+                if (raw4) {
+                    raw4 = raw4.split('\n---')[0].replace(/Powered by Pollinations[^\n]*/gi, '').trim();
+                    if (raw4) { reply = raw4; }
+                    else { _fail('pollinations', 'Pollinations: 空のレスポンスです。'); }
+                } else { _fail('pollinations', 'Pollinations: 空のレスポンスです。'); }
+            } else {
+                _fail('pollinations', 'Pollinations: HTTP ' + resp4.status);
+            }
+        } catch(e) {
+            _fail('pollinations', e.name === 'AbortError' ? 'Pollinations: タイムアウト。' : 'Pollinations: ' + (e.message || 'エラー。'));
         }
     }
 
@@ -3129,30 +3232,18 @@ async function sendAIMessage() {
         loading.innerHTML = parseMarkdown(reply);
         _aiHistory.push({ role: 'assistant', content: reply });
     } else {
-        // 原因別エラーUIを生成
-        const _errRows = _errLog.map(e =>
-            `<div style="background:#1a1a1a;border-left:3px solid #ff453a;border-radius:8px;padding:10px 14px;margin-bottom:8px;text-align:left;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
-                    <span style="font-weight:800;color:#fff;font-size:0.88rem;">${e.service}</span>
-                    <span style="background:rgba(255,69,58,0.2);color:#ff6b6b;font-size:0.75rem;padding:2px 8px;border-radius:20px;font-weight:700;">${e.code}</span>
-                </div>
-                <div style="color:#aaa;font-size:0.82rem;line-height:1.5;">${e.msg}</div>
-            </div>`
-        ).join('');
-
         loading.innerHTML = `
             <div style="background:#1c0a0a;border:1px solid #ff453a;border-radius:16px;padding:18px;">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
                     <span style="font-size:1.3rem;">❌</span>
-                    <span style="font-weight:800;font-size:1rem;color:#fff;">すべてのAIサービスに接続できませんでした</span>
+                    <span style="font-weight:800;font-size:1rem;color:#fff;">AIに接続できませんでした</span>
                 </div>
-                <div style="margin-bottom:14px;">${_errRows || '<div style="color:#aaa;font-size:0.85rem;">エラー詳細を取得できませんでした。</div>'}</div>
+                <div style="color:#aaa;font-size:0.85rem;line-height:1.7;margin-bottom:12px;">${_errMsg || '不明なエラー。'}</div>
                 <div style="background:#111;border-radius:10px;padding:12px;font-size:0.82rem;color:#888;line-height:1.7;">
                     💡 <strong style="color:#ccc;">対処法</strong><br>
                     ① しばらく待ってから再送信<br>
-                    ② ページをリロードして再診断<br>
-                    ③ 別のWi-Fi / 回線に切り替える<br>
-                    ④ Puter.jsにログインすると接続が安定します
+                    ② ページをリロードすると別のAIで再試行できます<br>
+                    ③ ネットワーク環境を確認する
                 </div>
             </div>`;
     }
