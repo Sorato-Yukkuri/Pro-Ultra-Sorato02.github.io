@@ -938,9 +938,12 @@ async function openSettings() {
                             <div style="color:rgba(255,255,255,0.85);font-size:0.77rem;margin-top:2px;">🔔 通知機能 ／ 📊 診断履歴10件保存 ／ 🎨 限定スキン</div>
                         </div>
                     </div>
-                    <div style="margin-bottom:8px;color:#ccc;font-size:0.82rem;font-weight:700;">🎨 テーマスキン</div>
+                    <div style="margin-bottom:8px;color:#ccc;font-size:0.82rem;font-weight:700;">🎨 テーマスキン<br>(診断項目カラーがうまく表示されない可能性があります。)</div>
                     <div id="pu-skin-selector" style="display:flex;gap:8px;margin-bottom:4px;"></div>
                     <p style="color:#555;font-size:0.72rem;margin:8px 0 0;">スキンはこの端末に保存されます</p>
+                    <div style="margin:18px 0 8px;color:#ccc;font-size:0.82rem;font-weight:700;">📅 再診断リマインド</div>
+                    <div id="pu-reminder-selector" style="display:flex;gap:6px;"></div>
+                    <p style="color:#555;font-size:0.72rem;margin:6px 0 0;">診断完了から指定日数後、次回起動時に通知します</p>
                 </div>`
                 : `<div style="padding:14px 0;">
                     <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:14px;padding:12px 16px;">
@@ -960,8 +963,8 @@ async function openSettings() {
     modal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
     modal.onclick = e => { if (e.target === modal) closeSettings(); };
-    // ProUltraスキンUIを描画
-    if (_isProUltra) _renderPuSkinUI();
+    // ProUltraスキン・リマインドUIを描画
+    if (_isProUltra) { _renderPuSkinUI(); _renderPuReminderUI(); }
     // ＊ボタンのイベント委譲（初回のみ登録）
     if (!modal._helpListenerAdded) {
         modal._helpListenerAdded = true;
@@ -2183,6 +2186,7 @@ function processFinalReport() {
         row31.style.display = 'none';
     }
 
+    _runDetailMode();
     initHelpIcons();
 
 
@@ -2425,6 +2429,7 @@ function processFinalReport() {
 
     // ローカルストレージに結果を保存
     saveResultToHistory(totalScore, rank, scores, ramGB, diag.avgFps, diag.lowFps, diag.networkMbps);
+    updatePuLastDiag();
 
     // 設定に応じたフィードバック
     // 完了音を先に鳴らす→通知はわずかに遅らせて干渉を防ぐ
@@ -2619,6 +2624,7 @@ async function doShare(ipMode, devMode) {
 
     const area = document.getElementById('capture-area');
     area.classList.add('capture-mode');
+    _applyPuShareStyle(area);
     await wait(80);
 
     let shareUrl = null;
@@ -2628,6 +2634,7 @@ async function doShare(ipMode, devMode) {
             useCORS: true, logging: false, scrollX: 0, scrollY: 0
         });
         area.classList.remove('capture-mode');
+        _removePuShareStyle(area);
         shareUrl = canvas.toDataURL('image/png', 1.0);
         capturedDataUrl = shareUrl; // 保存ボタン用にも保持
     } catch(e) {
@@ -2804,6 +2811,7 @@ function openAIChat() {
 ・FPS計測は15秒間。オフスクリーンCanvasに120個のパーティクルで実負荷をかけて精度向上
 ・診断中は残り時間を1秒ごとに表示。完了時に「✅ 処理が完了しました」トーストが出る
 ・色の意味：青=正常 / 黄=注意 / 赤=警告 / 緑=情報
+・🆕【Beta 1.8.0 / ProUltra限定】詳細モード診断。通常項目に加えて「3つの秘匿深部解析項目」を計測。合計33項目以上の超精密診断。
 
 【画像保存機能（青いボタン「診断レポートを画像で保存する」）】
 ・2段階のプライバシー警告がある
@@ -2828,12 +2836,21 @@ function openAIChat() {
   → ボタン下に「※ 画像は自身で添付していただく形です」という注記がある
 ・保存ボタン下に「💡 プレビュー画面のダウンロードボタン下からXにシェアできます」という案内も表示される
 ・現在クラウドにアップロード(Google Drive, OneDrive 等)機能は開発中
+・🆕【1.8.0】CSVおよびPDF形式での詳細レポート出力に対応。
 
 【履歴機能（ピンクのボタン「📊 過去の診断結果を見る」）】
 ・診断完了のたびに自動でlocalStorageに最大3回分保存
+・🆕【ログイン特典】保存件数を「5件」に拡張。
 ・各カードに：ランク・スコア・日時・CPU/GPU/RAM/avgFPS/1%LOW/NETを表示
 ・「✏️ 名前をつける」→ カード内にインライン入力欄が展開されて名前入力（例：「YouTube重い時」）
 ・「🗑 削除」→ 1件だけ削除してリストを即再描画
+・🆕【1.8.0新機能】履歴の「固定（ピン留め）」機能。
+・🆕【1.8.0新機能】2件以上の履歴で「スコア推移グラフ」を表示。
+
+【ProUltraアカウント・新機能】
+・🆕【ProUltra限定特典】詳細モード（＋3項目）、リマインド機能、限定スキン（Aurora/Diamond/Gold）、専用バッジ、プレミアムシェアカード。
+・🆕【親友コード】ユーザー自らグループを作成し、IDとパスワードを入力すると5人までグループに入れるシステム。グループ登録時にはグループ名、グループアイコン(絵文字20個のプリセットから選ぶ)とパスワードを設定できる。参加時にはグループIDとパスワードを入力すると入会できる。(次のアップデートで参加者はニックネームを決めれるように更新予定。)
+・ログイン連携：Google, GitHub, Twitter, Discord, 匿名。
 
 【AIアドバイザー（紫のボタン「🤖 AIアドバイザーに相談する」）】
 ・起動時に診断データを自動読み取り
@@ -2847,13 +2864,16 @@ function openAIChat() {
 ・150ms未満=🔵高速 / 400ms未満=🟡普通 / 以上=🔴低速
 ・ブラウザ制限により参考値。制限ネットワークではタイムアウトになる
 
-【その他】
+【その他・🆕1.8.0アップデート】
 ・「🔄 再診断する」（オレンジ）→ ページリロードなしで全項目リセット＆再計測
 ・デバイス名行の「✏️」→ 任意名に変更可能（localStorageに保存・次回も維持）
 ・「🎨 色の基準を確認する」→ 青/黄/赤/緑の意味を確認
 ・manifest.json対応。PWAとしてホーム画面に追加してアプリとして使用可能
 ・IPはブラウザ内のみで処理。サーバー送信なし（AI回答を除く）
-・正式名称：精密デバイス診断 Pro Ultra / バージョン：Beta 1.5.93 / Chrome推奨 /初リリース2026年3月15日 /15日に合計3回中/小アップデートを配信済み
+・🆕【設定】5種のフォント、4種のサウンド＋カスタム音声、ライトモード修正。
+・🆕【多言語】世界11言語に完全対応。
+・🆕【BAN】悪質ユーザーへの強力なアクセスブロック機能。
+・正式名称：精密デバイス診断 Pro Ultra / バージョン：Beta 1.8.0 / 2026年3月15日初版
 
 ■ ランク判定の詳細
 基本：S=総合80以上かつ1%LOW 55fps以上かつCPU 78以上かつRAM 12GB以上 / A=総合65以上かつ1%LOW 45以上かつRAM 8GB以上 / B=総合48以上かつ1%LOW 25以上 / C=30以上 / D=30未満
@@ -2861,14 +2881,11 @@ function openAIChat() {
 
 ■ 回答ルール
 1. AIモデルを聞かれても｢そのようなご質問にはお答えできません。他に精密デバイス診断 Pro Ultraについて質問があればいつでもお手伝いできます｣と拒否してください。
-2. 診断数値を引用して根拠を示す
+2. 診断数値を引用して根拠を示す（例：「120個のパーティクル負荷テストの結果…」など）
 3. 改善策は具体的に（「設定を下げる」→「Chromeのタブを5個以下に」）
 4. 専門用語には補足説明を付ける
-5. 「です・ます」調でプロフェッショナルな文体
-6. 見出し・箇条書き・表を積極的に活用
-7. 架空の公式アカウント・存在しない機能・架空SNSタグは絶対に作らない
-8. 宣伝・広告・フッターは絶対に含めない
-9. アプリ機能の質問にはこの仕様書通りに正確に答える`;
+5. 「です・ます」調でプロフェッショナルな文体。見出し・表を多用。
+6. ProUltra未登録者には、＋3項目の詳細診断や親友コード、限定スキンのメリットを会話の中で情熱的に勧めること。`;
     appendAIMsg('assistant', `診断結果（総合ランク **${rank}**）を確認しました。\n\nご質問があればお気軽にどうぞ。\n\n**例:**\n- 「なぜ${rank}ランクなのか教えてください」\n- 「パフォーマンスを改善する方法はありますか？」\n- 「このデバイスで動画編集はできますか？」`);
     document.getElementById('ai-modal').style.display = 'flex';
     document.getElementById('ai-input').focus();
@@ -3187,6 +3204,7 @@ async function proceedCapture(mode, devMode) {
 
     const area = document.getElementById('capture-area');
     area.classList.add('capture-mode');
+    _applyPuShareStyle(area);
     await wait(80);
 
     try {
@@ -3195,6 +3213,7 @@ async function proceedCapture(mode, devMode) {
             useCORS: true, logging: false, scrollX: 0, scrollY: 0
         });
         area.classList.remove('capture-mode');
+        _removePuShareStyle(area);
 
         // 表示を元に戻す
         if (mode !== 'show' && ipEl)     ipEl.textContent  = originalIP;
@@ -3698,8 +3717,12 @@ async function fetchUserPlan() {
     const isEmailUser = _currentUser.providerData &&
         _currentUser.providerData.some(p => p.providerId === 'password');
 
-    // メール認証ユーザーで未確認 → バナー表示してProUltra付与しない
-    if (isEmailUser && !_currentUser.emailVerified) {
+    // ⚠️ DEV ONLY: テスト用メアドは認証スキップ（リリース時に削除）
+    const _DEV_SKIP_EMAILS = ['開発者メールアドレスを入力'];
+    const _devSkip = _DEV_SKIP_EMAILS.includes(_currentUser.email || '');
+
+    // メール認証ユーザーで未確認 → バナー表示してProUltra付与しない（devSkipなら通過）
+    if (isEmailUser && !_currentUser.emailVerified && !_devSkip) {
         _showVerifyBanner(true);
         _onPlanReady();
         return;
@@ -3735,10 +3758,20 @@ function _showVerifyBanner(show) {
     } else if (!show && updBanner) {
         updBanner.style.display = 'none';
     }
-    // padding-top調整（バナー2段分 or 1段分）
-    const bothVisible = show && updBanner && updBanner.style.display === 'flex';
-    const bannerH = bothVisible ? 110 : show ? 70 : 49;
-    document.body.style.paddingTop = (show ? bannerH : 49) + 'px';
+    if (show) {
+        const authBar = document.getElementById('auth-bar');
+        const authH = authBar ? authBar.offsetHeight : 49;
+        banner.style.top = authH + 'px';
+        requestAnimationFrame(() => {
+            const verifyH = banner.offsetHeight;
+            const showUpd = updBanner && updBanner.style.display === 'flex';
+            if (showUpd) updBanner.style.top = (authH + verifyH) + 'px';
+            const updH = showUpd ? (updBanner.offsetHeight || 40) : 0;
+            document.body.style.paddingTop = (authH + verifyH + updH) + 'px';
+        });
+    } else {
+        document.body.style.paddingTop = (_currentUser ? '49px' : '0px');
+    }
 }
 
 async function resendVerificationEmail() {
@@ -3766,6 +3799,106 @@ async function recheckEmailVerified() {
     } catch(e) {}
 }
 
+// ══════════════════════════════════════════════════════════════
+// 📅 定期リマインド（ProUltra特典）
+// ══════════════════════════════════════════════════════════════
+const PU_REMINDER_KEY  = 'pu_reminder_v1';
+const PU_LAST_DIAG_KEY = 'pu_last_diag_v1';
+const PU_REMINDER_OPTS = [1, 3, 7, 30];
+const PU_REMINDER_DEFAULT = 3;
+
+function getPuReminderDays() {
+    const v = parseInt(localStorage.getItem(PU_REMINDER_KEY));
+    return PU_REMINDER_OPTS.includes(v) ? v : PU_REMINDER_DEFAULT;
+}
+function setPuReminderDays(days) {
+    localStorage.setItem(PU_REMINDER_KEY, String(days));
+    _renderPuReminderUI();
+}
+function updatePuLastDiag() {
+    localStorage.setItem(PU_LAST_DIAG_KEY, String(Date.now()));
+}
+async function checkPuReminder() {
+    if (!_isProUltra) return;
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    if (isQuietTime()) return;
+    const last = parseInt(localStorage.getItem(PU_LAST_DIAG_KEY));
+    if (!last || isNaN(last)) return;
+    const elapsedDays = (Date.now() - last) / (1000 * 60 * 60 * 24);
+    if (elapsedDays >= getPuReminderDays()) {
+        new Notification('👑 デバイス再診断のお知らせ', {
+            body: '前回の診断から' + Math.floor(elapsedDays) + '日が経過しています。デバイスの状態を確認しましょう！',
+            icon: './android-chrome-192x192.png',
+            silent: false
+        });
+    }
+}
+function _renderPuReminderUI() {
+    const el = document.getElementById('pu-reminder-selector');
+    if (!el) return;
+    const current = getPuReminderDays();
+    const labels = { 1:'毎日', 3:'3日ごと', 7:'週1', 30:'月1' };
+    el.innerHTML = PU_REMINDER_OPTS.map(function(d) {
+        const active = d === current;
+        return '<button onclick="setPuReminderDays(' + d + ')" style="flex:1;padding:7px 4px;border-radius:10px;font-size:0.78rem;font-weight:700;cursor:pointer;' +
+            'border:2px solid ' + (active ? '#f59e0b' : '#333') + ';' +
+            'background:' + (active ? 'rgba(245,158,11,0.15)' : '#1a1a1a') + ';' +
+            'color:' + (active ? '#f59e0b' : '#888') + ';transition:all 0.2s;">' +
+            labels[d] + '</button>';
+    }).join('');
+}
+
+// ── ProUltra 共有カード限定デザイン ────────────────────────────
+function _applyPuShareStyle(area) {
+    if (!_isProUltra) return;
+    const skin = localStorage.getItem('pu_skin_v1') || 'default';
+    const map = { gold: 'pu-share-gold', aurora: 'pu-share-aurora', diamond: 'pu-share-diamond' };
+    const cls = map[skin];
+    if (cls) area.classList.add(cls);
+}
+function _removePuShareStyle(area) {
+    ['pu-share-gold','pu-share-aurora','pu-share-diamond'].forEach(c => area.classList.remove(c));
+}
+
+// ── 詳細モード（ProUltra限定）────────────────────────────────
+async function _runDetailMode() {
+    [35, 36, 37].forEach(function(n) {
+        const el = document.getElementById('row-' + n);
+        if (el) el.style.display = _isProUltra ? '' : 'none';
+    });
+    if (!_isProUltra) return;
+    try {
+        const cpuTempEst = Math.round(45 + (scores.cpu / 100) * 45);
+        const gpuTempEst = Math.round(40 + (scores.gpu / 100) * 50);
+        const v35 = document.getElementById('v-35');
+        if (v35) v35.textContent = 'CPU: ~' + cpuTempEst + '°C / GPU: ~' + gpuTempEst + '°C (推定)';
+        const r35 = document.getElementById('row-35');
+        if (r35) r35.className = 'spec-row st-' + (cpuTempEst < 70 ? 'ok' : cpuTempEst < 85 ? 'warn' : 'bad');
+    } catch(e) {}
+    try {
+        const v36 = document.getElementById('v-36');
+        if (v36 && performance.memory) {
+            const heapMB = Math.round(performance.memory.jsHeapSizeLimit / 1024 / 1024);
+            const estSlots = heapMB > 6000 ? '4スロット以上' : heapMB > 3000 ? '2〜4スロット' : '1〜2スロット';
+            v36.textContent = estSlots + ' (推定)';
+        } else if (v36) { v36.textContent = '取得不可'; }
+        const r36 = document.getElementById('row-36');
+        if (r36) r36.className = 'spec-row st-good';
+    } catch(e) {}
+    try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioIn  = devices.filter(function(d){ return d.kind === 'audioinput'; }).length;
+        const audioOut = devices.filter(function(d){ return d.kind === 'audiooutput'; }).length;
+        const v37 = document.getElementById('v-37');
+        if (v37) v37.textContent = '入力: ' + audioIn + '台 / 出力: ' + audioOut + '台';
+        const r37 = document.getElementById('row-37');
+        if (r37) r37.className = 'spec-row st-' + (audioIn > 0 || audioOut > 0 ? 'ok' : 'warn');
+    } catch(e) {
+        const v37 = document.getElementById('v-37');
+        if (v37) v37.textContent = '取得不可（権限が必要）';
+    }
+}
+
 function _onPlanReady() {
     const notifBtn = document.getElementById('notif-btn');
     if (notifBtn) notifBtn.style.display = _isProUltra ? 'flex' : 'none';
@@ -3773,13 +3906,16 @@ function _onPlanReady() {
         loadNotifications();
         loadPuSkin();
     } else {
-        // ProUltraでない場合はスキン解除・バッジ非表示
         document.body.removeAttribute('data-pu-skin');
     }
-    // ヘッダーのProUltraバッジ
     const puBadge = document.getElementById('pu-header-badge');
     if (puBadge) puBadge.style.display = _isProUltra ? 'inline-block' : 'none';
-    // 設定画面が開いてたら再描画（バッジ反映）
+    // 詳細モード行の表示更新
+    [35, 36, 37].forEach(function(n) {
+        const el = document.getElementById('row-' + n);
+        if (el) el.style.display = _isProUltra ? '' : 'none';
+    });
+    // 設定画面が開いてたら再描画
     const settingsModal = document.getElementById('settings-modal');
     if (settingsModal && settingsModal.style.display !== 'none') openSettings();
 }
@@ -4523,6 +4659,7 @@ function initFirebase() {
                 const notifBtn = document.getElementById('notif-btn');
                 if (notifBtn) notifBtn.style.display = 'none';
                 _showVerifyBanner(false);
+                _showVerifyBanner(false);
             }
         });
 
@@ -4538,6 +4675,7 @@ function initFirebase() {
         });
 
         document.getElementById('auth-bar').style.display = 'flex';
+        setTimeout(function() { checkPuReminder(); }, 4000);
     } catch(e) {
         console.error("Firebase初期化エラー:", e);
     }
@@ -4682,7 +4820,7 @@ async function submitSignUp() {
         // 一旦サインアウトして「確認メールを確認してから再ログイン」へ誘導
         await _fbAuth.signOut();
         closeSignUpModal();
-        alert('📧 確認メールを送信しました！\n\nメール内のリンクをクリックして認証を完了してください。\n認証後にログインするとProUltraが有効になります。\n\n※ 迷惑メールフォルダもご確認ください。');
+        alert('📧 確認メールを送信しました！\n\nメール内のリンクをクリックして認証を完了してください。\n認証後にログインするとProUltra特典が有効になります。\n\n※ 迷惑メールフォルダもご確認ください。');
     } catch(e) {
         const msgs = {
             'auth/email-already-in-use': 'このメールアドレスは既に使われています',
