@@ -3089,45 +3089,37 @@ async function sendAIMessage() {
     const _fail = (name, msg) => { window._aiFailedProviders.add(name); _errMsg = msg; };
 
     // ══════════════════════════════════════════════════════
-    // 【1位】Gemini 1.5 Flash — CORS許可・無料枠あり
+    // 【1位】中継サーバー (OpenRouter→Geminiフォールバック)
     // ══════════════════════════════════════════════════════
-    if (!reply && !_skip('gemini')) {
-        _resetTimer(20, 'AIが回答を生成しています (Gemini)...');
+    if (!reply && !_skip('worker')) {
+        _resetTimer(25, 'AIが回答を生成しています...');
         try {
             const _ctrl = new AbortController();
-            const _tout = setTimeout(() => _ctrl.abort(), 20000);
-            // Gemini はsystem roleをサポートしないため分離
-            const geminiMsgs = messages
-                .filter(m => m.role !== 'system')
-                .map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.content }] }));
-            const sysMsg = messages.find(m => m.role === 'system');
-            const body = {
-                contents: geminiMsgs,
-                generationConfig: { maxOutputTokens: 1000 }
-            };
-            if (sysMsg) body.systemInstruction = { parts: [{ text: sysMsg.content }] };
-            const resp = await fetch(
-                'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=AIzaSyCNz_lHk3pJHAYtgcf6eCoHyP849eCpQI0',
-                { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: _ctrl.signal }
-            );
+            const _tout = setTimeout(() => _ctrl.abort(), 25000);
+            const resp = await fetch('https://proultra.yuyusesabuchanneru.workers.dev/', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ messages }),
+                signal: _ctrl.signal
+            });
             clearTimeout(_tout);
             if (resp.ok) {
                 const data = await resp.json();
-                const raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                const raw = data.choices?.[0]?.message?.content || '';
                 if (raw) { reply = raw.trim(); }
-                else { _fail('gemini', 'Gemini: 空のレスポンスです。'); }
+                else { _fail('worker', '中継サーバー: 空のレスポンスです。'); }
             } else {
                 const e2 = await resp.json().catch(() => ({}));
-                const msg = e2?.error?.message || ('HTTP ' + resp.status);
-                _fail('gemini', 'Gemini: ' + msg);
+                _fail('worker', '中継サーバー: HTTP ' + resp.status + ' ' + (e2?.error || ''));
             }
         } catch(e) {
-            _fail('gemini', e.name === 'AbortError' ? 'Gemini: タイムアウト。' : 'Gemini: ' + (e.message || 'エラー。'));
+            _fail('worker', e.name === 'AbortError' ? '中継サーバー: タイムアウト。' : '中継サーバー: ' + (e.message || 'エラー。'));
         }
     }
 
     // ══════════════════════════════════════════════════════
     // 【2位】GitHub Models — OpenAI互換・CORS許可
+
     // ══════════════════════════════════════════════════════
     if (!reply && !_skip('github')) {
         _resetTimer(22, '別サービスで再試行中 (GitHub Models)...');
@@ -3160,42 +3152,7 @@ async function sendAIMessage() {
     }
 
     // ══════════════════════════════════════════════════════
-    // 【3位】OpenRouter — 無料モデルあり・CORS許可
-    // ══════════════════════════════════════════════════════
-    if (!reply && !_skip('openrouter')) {
-        _resetTimer(25, '別サービスで再試行中 (OpenRouter)...');
-        await new Promise(r => setTimeout(r, 400));
-        try {
-            const _ctrl3 = new AbortController();
-            const _tout3 = setTimeout(() => _ctrl3.abort(), 25000);
-            const resp3 = await fetch('https://proultra.yuyusesabuchanneru.workers.dev/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type':  'application/json',
-                    'Authorization': 'Bearer sk-d653185be4d7d865651b7cb12d2779d49c1125f7cf0278aad32582308257d520',
-                    'HTTP-Referer':  'https://sorato-yukkuri.github.io/Pro-Ultra-Sorato02.github.io/',
-                    'X-Title':       '精密デバイス診断 Pro Ultra'
-                },
-                body: JSON.stringify({ model: 'meta-llama/llama-3.1-8b-instruct:free', messages, max_tokens: 1000 }),
-                signal: _ctrl3.signal
-            });
-            clearTimeout(_tout3);
-            if (resp3.ok) {
-                const data3 = await resp3.json();
-                const raw3  = data3.choices?.[0]?.message?.content || '';
-                if (raw3) { reply = raw3.trim(); }
-                else { _fail('openrouter', 'OpenRouter: 空のレスポンスです。'); }
-            } else {
-                const e4 = await resp3.json().catch(() => ({}));
-                _fail('openrouter', 'OpenRouter: HTTP ' + resp3.status + ' ' + (e4?.error?.message || ''));
-            }
-        } catch(e) {
-            _fail('openrouter', e.name === 'AbortError' ? 'OpenRouter: タイムアウト。' : 'OpenRouter: ' + (e.message || 'エラー。'));
-        }
-    }
-
-    // ══════════════════════════════════════════════════════
-    // 【4位】Pollinations — 完全無料・キーなし
+    // 【3位】Pollinations — 完全無料・キーなし
     // ══════════════════════════════════════════════════════
     if (!reply && !_skip('pollinations')) {
         _resetTimer(20, '最終手段で再試行中 (Pollinations)...');
