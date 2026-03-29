@@ -3168,7 +3168,7 @@ async function sendAIMessage() {
         try {
             const _ctrl3 = new AbortController();
             const _tout3 = setTimeout(() => _ctrl3.abort(), 25000);
-            const resp3 = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            const resp3 = await fetch('https://proultra.yuyusesabuchanneru.workers.dev/', {
                 method: 'POST',
                 headers: {
                     'Content-Type':  'application/json',
