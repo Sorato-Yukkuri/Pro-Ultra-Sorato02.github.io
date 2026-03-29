@@ -170,7 +170,7 @@ function saveSettings() {
 
 // 診断項目ラベル（row-1〜row-34対応）
 const I18N_LABELS = {
-    'ja': ['CPU 論理コア数','システムメモリ容量','GPU レンダラー','GPU 最大テクスチャサイズ','実測 CPU ベンチスコア','実測 GPU 描画スコア','実測メモリ帯域スコア','実測平均フレームレート','実測 1% LOW フレームレート','画面リフレッシュレート(推定)','画面解像度 (物理ピクセル)','デバイスピクセル比 (DPR)','カラー深度 / HDR 対応','JS ヒープ上限','UIスレッド応答レイテンシ','ネットワーク速度 (実測)','回線種別 / API 実効帯域','バッテリー残量 / 充電状態','タッチポイント数','ダークモード / ハイコントラスト','セキュア通信 (HTTPS)','Cookie / IndexedDB','WebGL バージョン','WebGL 最大頂点属性数','WakeLock / 振動 API','PWA / Service Worker','自動操縦検知 (WebDriver)','FPS ジッタースコア','システム言語 / タイムゾーン','診断エンジンバージョン','IP アドレス (WebRTC)','ダークモード / ハイコントラスト','使用ブラウザ','デバイス機種'],
+    'ja': ['CPU 論理コア数','システムメモリ容量','GPU レンダラー','GPU 最大テクスチャサイズ','実測 CPU ベンチスコア','実測 GPU 描画スコア','実測メモリ帯域スコア','実測最高フレームレート','実測 1% LOW フレームレート','画面リフレッシュレート(推定)','画面解像度 (物理ピクセル)','デバイスピクセル比 (DPR)','カラー深度 / HDR 対応','JS ヒープ上限','UIスレッド応答レイテンシ','ネットワーク速度 (実測)','回線種別 / API 実効帯域','バッテリー残量 / 充電状態','タッチポイント数','ダークモード / ハイコントラスト','セキュア通信 (HTTPS)','Cookie / IndexedDB','WebGL バージョン','WebGL 最大頂点属性数','WakeLock / 振動 API','PWA / Service Worker','自動操縦検知 (WebDriver)','FPS ジッタースコア','システム言語 / タイムゾーン','診断エンジンバージョン','IP アドレス (WebRTC)','ダークモード / ハイコントラスト','使用ブラウザ','デバイス機種'],
     'ja-hira': ['CPUのこあすう','めもりようりょう','GPUのしゅるい','GPUさいだいてくすちゃ','CPUせいのうすこあ','GPUせいのうすこあ','めもりたいいきすこあ','へいきんFPS','1%LOWのFPS','がめんこうしんひんど(すいてい)','がめんかいぞうど','でばいすぴくせるひ','からーふかど/HDR','JSひーぷじょうげん','UIおうとうそくど','つうしんそくど(じっそく)','かいせんしゅるい','でんちざんりょう','たっちぽいんとすう','だーくもーど','あんごうつうしん','Cookieとほぞん','WebGLばーじょん','WebGLちょうてんぞくせい','WakeLock/しんどう','PWA/サービスワーカー','じどうそうじゅうけんち','FPSあんていせい','げんごとたいむぞーん','しんだんえんじんばーじょん','IPあどれす','だーくもーど','つかっているぶらうざ','でばいすのきしゅ'],
     'en': ['CPU Logical Cores','System Memory','GPU Renderer','GPU Max Texture Size','CPU Bench Score','GPU Render Score','Memory Bandwidth Score','Avg Frame Rate','1% LOW Frame Rate','Screen Refresh Rate (est.)','Screen Resolution (Physical)','Device Pixel Ratio (DPR)','Color Depth / HDR','JS Heap Limit','UI Thread Latency','Network Speed (measured)','Connection Type / API Bandwidth','Battery / Charging Status','Touch Points','Dark Mode / High Contrast','Secure Connection (HTTPS)','Cookie / IndexedDB','WebGL Version','WebGL Max Vertex Attribs','WakeLock / Vibration API','PWA / Service Worker','Bot Detection (WebDriver)','FPS Jitter Score','System Language / Timezone','Diagnostic Engine Version','IP Address (WebRTC)','Dark Mode / High Contrast','Browser','Device Model'],
     'zh-hans': ['CPU逻辑核心数','系统内存容量','GPU渲染器','GPU最大纹理尺寸','CPU基准分数','GPU渲染分数','内存带宽分数','平均帧率','1%低帧率','屏幕刷新率(估计)','屏幕分辨率(物理像素)','设备像素比(DPR)','色彩深度/HDR支持','JS堆内存上限','UI线程响应延迟','网络速度(实测)','网络类型/API带宽','电池余量/充电状态','触控点数量','深色模式/高对比度','安全连接(HTTPS)','Cookie/IndexedDB','WebGL版本','WebGL最大顶点属性数','WakeLock/振动API','PWA/Service Worker','自动化检测(WebDriver)','FPS抖动分数','系统语言/时区','诊断引擎版本','IP地址(WebRTC)','深色模式/高对比度','使用的浏览器','设备型号'],
@@ -267,7 +267,7 @@ const I18N = {
             friendCodeTitle:'しんゆうこーどでろぐいん', friendCodePlaceholder:'こーどをにゅうりょく...', friendCodeError:'こーどがちがいます', friendLoginBtn:'ろぐいん',
             diagComplete:'✅ しょりがかんりょうしました', imgGenComplete:'✅ がぞうがかんりょうしました',
             retryConfirm:'もういちどしんだんしますか？',
-            fpsAvgLabel:'へいきんFPS', fpsLowLabel:'1%さいていFPS', uaLabel:'ぶらうざじょうほう',
+            fpsAvgLabel:'さいこうFPS', fpsLowLabel:'1%さいていFPS', uaLabel:'ぶらうざじょうほう',
         },
     },
     'en': {
@@ -308,7 +308,7 @@ const I18N = {
             diagComplete:'✅ Diagnosis complete', imgGenComplete:'✅ Image generated',
             retryConfirm:'Re-diagnose?\nCurrent results will be overwritten.',
             notifyPromptReason:'Allow desktop notifications when diagnosis completes?\nYou will be asked for browser notification permission.',
-            fpsAvgLabel:'Avg Frame Rate', fpsLowLabel:'1% LOW Frame Rate', uaLabel:'User Agent Stack',
+            fpsAvgLabel:'Peak Frame Rate', fpsLowLabel:'1% LOW Frame Rate', uaLabel:'User Agent Stack',
         },
     },
     'zh-hans': {
@@ -345,7 +345,7 @@ const I18N = {
             friendCodeTitle:'使用亲友码登录', friendCodePlaceholder:'请输入代码...', friendCodeError:'代码错误', friendLoginBtn:'登录',
             diagComplete:'✅ 诊断完成', imgGenComplete:'✅ 图片已生成',
             retryConfirm:'重新诊断？\n当前结果将被覆盖。',
-            fpsAvgLabel:'平均帧率', fpsLowLabel:'1%低帧率', uaLabel:'用户代理字符串',
+            fpsAvgLabel:'最高帧率', fpsLowLabel:'1%低帧率', uaLabel:'用户代理字符串',
         },
     },
     'zh-hant': {
@@ -382,7 +382,7 @@ const I18N = {
             friendCodeTitle:'使用親友碼登入', friendCodePlaceholder:'請輸入代碼...', friendCodeError:'代碼錯誤', friendLoginBtn:'登入',
             diagComplete:'✅ 診斷完成', imgGenComplete:'✅ 圖片已生成',
             retryConfirm:'重新診斷？\n目前結果將被覆蓋。',
-            fpsAvgLabel:'平均幀率', fpsLowLabel:'1%低幀率', uaLabel:'使用者代理字串',
+            fpsAvgLabel:'最高幀率', fpsLowLabel:'1%低幀率', uaLabel:'使用者代理字串',
         },
     },
     'ko': {
@@ -419,7 +419,7 @@ const I18N = {
             friendCodeTitle:'친구 코드로 로그인', friendCodePlaceholder:'코드 입력...', friendCodeError:'코드가 틀립니다', friendLoginBtn:'로그인',
             diagComplete:'✅ 진단 완료', imgGenComplete:'✅ 이미지 생성 완료',
             retryConfirm:'재진단하시겠습니까?\n현재 결과가 덮어쓰여집니다.',
-            fpsAvgLabel:'평균 프레임률', fpsLowLabel:'1% LOW 프레임률', uaLabel:'유저 에이전트',
+            fpsAvgLabel:'최고 프레임률', fpsLowLabel:'1% LOW 프레임률', uaLabel:'유저 에이전트',
         },
     },
     'vi': {
@@ -456,7 +456,7 @@ const I18N = {
             friendCodeTitle:'Đăng nhập bằng mã bạn bè', friendCodePlaceholder:'Nhập mã...', friendCodeError:'Mã không đúng', friendLoginBtn:'Đăng nhập',
             diagComplete:'✅ Chẩn đoán hoàn tất', imgGenComplete:'✅ Ảnh đã tạo',
             retryConfirm:'Chẩn đoán lại?\nKết quả hiện tại sẽ bị ghi đè.',
-            fpsAvgLabel:'FPS trung bình', fpsLowLabel:'1% LOW FPS', uaLabel:'User Agent',
+            fpsAvgLabel:'FPS tối đa', fpsLowLabel:'1% LOW FPS', uaLabel:'User Agent',
         },
     },
     'es': {
@@ -493,7 +493,7 @@ const I18N = {
             friendCodeTitle:'Iniciar sesión con código', friendCodePlaceholder:'Introduce código...', friendCodeError:'Código incorrecto', friendLoginBtn:'Iniciar sesión',
             diagComplete:'✅ Diagnóstico completo', imgGenComplete:'✅ Imagen generada',
             retryConfirm:'¿Volver a diagnosticar?\nLos resultados actuales se sobrescribirán.',
-            fpsAvgLabel:'FPS promedio', fpsLowLabel:'1% LOW FPS', uaLabel:'User Agent',
+            fpsAvgLabel:'FPS máximo', fpsLowLabel:'1% LOW FPS', uaLabel:'User Agent',
         },
     },
     'pt': {
@@ -1019,7 +1019,8 @@ async function openSettings() {
         ${settingSection(ui.secData, [
             settingSelect(ui.labelExportFmt, 'exportFormat', [['png',ui.optPNG],['csv',ui.optCSV],['pdf',ui.optPDF||'PDF']], 'exportFormat'),
             settingSelect(ui.labelSpeedUnit, 'speedUnit', [['mbps','Mbps'],['mbs','MB/s']], 'speedUnit'),
-            settingToggle(ui.labelAutoCheck, 'autoCheck', 'autoCheck'),
+            // 🚀 自動チェック機能はProUltra限定
+            _isProUltra ? settingToggle(ui.labelAutoCheck, 'autoCheck', 'autoCheck') : `<div style="padding:14px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;opacity:0.5;"><div><div style="color:var(--text);font-size:0.9rem;font-weight:700;">${ui.labelAutoCheck}</div><div style="color:var(--sub-text);font-size:0.78rem;margin-top:2px;">👑 ProUltra限定</div></div><span style="color:#888;font-size:0.85rem;">ロック</span></div>`,
             settingToggle(ui.labelGuard, 'clumsiGuard', 'clumsiGuard'),
         ])}
 
@@ -1268,6 +1269,12 @@ function settingTime(label, key, descKey) {
 }
 
 function toggleSetting(key) {
+    // 🚀 自動チェック機能はProUltra限定
+    if (key === 'autoCheck' && !_isProUltra) {
+        alert('⚠️ この機能はProUltraで利用可能です。');
+        return;
+    }
+    
     _settings[key] = !_settings[key];
     // 通知系：deniedの場合のみ警告、defaultは起動時の許可フローに任せる
     if ((key === 'desktopNotify' || key === 'badge') && _settings[key]) {
@@ -1583,16 +1590,37 @@ function runFPSBench(onComplete) {
 // ── 集計 ──
             if (frameTimes.length < 30) { onComplete(30, 20, 30, rr); return; }
 
-            // 1. 全フレームの合計時間から平均を算出（カクつきを反映させる）
-            const sumTimes = frameTimes.reduce((a, b) => a + b, 0);
-            const avgTime  = sumTimes / frameTimes.length;
+            // 1. フレーム時間の最小値（最速フレーム）から最高FPSを算出
+            const minTime  = Math.min(...frameTimes);
+            const maxFps   = Math.min(rr, Math.round(1000 / minTime));
 
             // 2. 1% Lowに近い値（下位3%）を出すためにソート
             const sorted  = [...frameTimes].sort((a,b)=>a-b);
             const p97     = sorted[Math.floor(sorted.length * 0.97)];
             
-            const avgFps = Math.min(rr, Math.round(1000 / avgTime));
+            // ✅ 正しい平均FPS計算（rr制限なし）
+            // フレーム時間の中央値から平均FPSを算出（外れ値の影響を軽減）
+            const medianFrameTime = sorted[Math.floor(sorted.length * 0.5)];
+            const avgFps = Math.round(1000 / medianFrameTime);
             const lowFps = Math.min(rr, Math.round(1000 / p97));
+            
+            // デバッグ用ログ（ブラウザコンソールで確認）
+            console.log('【FPS診断データ】');
+            console.log('frameTimes長:', frameTimes.length);
+            console.log('最短フレーム時間:', minTime.toFixed(2), 'ms →', maxFps, 'FPS');
+            console.log('中央フレーム時間:', medianFrameTime.toFixed(2), 'ms →', avgFps, 'FPS');
+            console.log('p97フレーム時間:', p97.toFixed(2), 'ms →', lowFps, 'FPS');
+            console.log('画面リフレッシュレート(rr):', rr, 'Hz');
+            
+            // フレーム時間の分布を表示
+            const avgFrameTime = frameTimes.reduce((a,b)=>a+b,0) / frameTimes.length;
+            console.log('--- フレーム時間の分布 ---');
+            console.log('平均フレーム時間:', avgFrameTime.toFixed(2), 'ms');
+            console.log('最大フレーム時間:', Math.max(...frameTimes).toFixed(2), 'ms');
+            console.log('最小フレーム時間:', minTime.toFixed(2), 'ms');
+            console.log('16.7ms以下（60FPS相当）:', frameTimes.filter(d=>d<=16.7).length, '個');
+            console.log('16.7-33.3ms（30-60FPS）:', frameTimes.filter(d=>d>16.7 && d<=33.3).length, '個');
+            console.log('33.3ms以上（30FPS未満）:', frameTimes.filter(d=>d>33.3).length, '個');
 
             // 3. ジッター（安定性）スコアの計算
             const gapMed  = gaps.length > 0
@@ -2909,7 +2937,7 @@ function openAIChat() {
     const lFps  = document.getElementById('v-9')?.textContent  || '不明';
     const cpu   = document.getElementById('v-5')?.textContent  || '不明';
     const gpu   = document.getElementById('v-6')?.textContent  || '不明';
-    _aiHistory._sys = `あなたは「精密デバイス診断 Pro Ultra」の公式AIアシスタントです。以下の診断データとアプリ仕様を完全に記憶して正確に回答してください。
+    _aiHistory._sys = `あなたは「精密デバイス診断 Pro Ultra」のAIアドバイザーです。以下の診断データとアプリ仕様を基に、ユーザーの質問に対して正確で実用的なアドバイスを提供してください。
 
 ■ ユーザーの診断結果
 ランク: ${rank}（S=最高峰 / A=高性能 / B=標準 / C=やや非力 / D=旧式）
@@ -3117,71 +3145,7 @@ async function sendAIMessage() {
         }
     }
 
-    // ══════════════════════════════════════════════════════
-    // 【2位】GitHub Models — OpenAI互換・CORS許可
 
-    // ══════════════════════════════════════════════════════
-    if (!reply && !_skip('github')) {
-        _resetTimer(22, '別サービスで再試行中 (GitHub Models)...');
-        await new Promise(r => setTimeout(r, 400));
-        try {
-            const _ctrl2 = new AbortController();
-            const _tout2 = setTimeout(() => _ctrl2.abort(), 25000);
-            const resp2 = await fetch('https://models.inference.ai.azure.com/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Content-Type':  'application/json',
-                    'Authorization': 'Bearer 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'
-                },
-                body: JSON.stringify({ model: 'gpt-4o-mini', messages, max_tokens: 1000 }),
-                signal: _ctrl2.signal
-            });
-            clearTimeout(_tout2);
-            if (resp2.ok) {
-                const data2 = await resp2.json();
-                const raw2  = data2.choices?.[0]?.message?.content || '';
-                if (raw2) { reply = raw2.trim(); }
-                else { _fail('github', 'GitHub Models: 空のレスポンスです。'); }
-            } else {
-                const e3 = await resp2.json().catch(() => ({}));
-                _fail('github', 'GitHub Models: HTTP ' + resp2.status + ' ' + (e3?.error?.message || ''));
-            }
-        } catch(e) {
-            _fail('github', e.name === 'AbortError' ? 'GitHub Models: タイムアウト。' : 'GitHub Models: ' + (e.message || 'エラー。'));
-        }
-    }
-
-    // ══════════════════════════════════════════════════════
-    // 【3位】Pollinations — 完全無料・キーなし
-    // ══════════════════════════════════════════════════════
-    if (!reply && !_skip('pollinations')) {
-        _resetTimer(20, '最終手段で再試行中 (Pollinations)...');
-        await new Promise(r => setTimeout(r, 400));
-        try {
-            const _ctrl4 = new AbortController();
-            const _tout4 = setTimeout(() => _ctrl4.abort(), 15000);
-            const resp4 = await fetch('https://text.pollinations.ai/v1/chat/completions', {
-                method:  'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ model: 'openai', messages, private: true }),
-                signal:  _ctrl4.signal
-            });
-            clearTimeout(_tout4);
-            if (resp4.ok) {
-                const data4 = await resp4.json();
-                let raw4 = data4.choices?.[0]?.message?.content || '';
-                if (raw4) {
-                    raw4 = raw4.split('\n---')[0].replace(/Powered by Pollinations[^\n]*/gi, '').trim();
-                    if (raw4) { reply = raw4; }
-                    else { _fail('pollinations', 'Pollinations: 空のレスポンスです。'); }
-                } else { _fail('pollinations', 'Pollinations: 空のレスポンスです。'); }
-            } else {
-                _fail('pollinations', 'Pollinations: HTTP ' + resp4.status);
-            }
-        } catch(e) {
-            _fail('pollinations', e.name === 'AbortError' ? 'Pollinations: タイムアウト。' : 'Pollinations: ' + (e.message || 'エラー。'));
-        }
-    }
 
     clearInterval(_tickInterval);
 
@@ -3199,7 +3163,7 @@ async function sendAIMessage() {
                 <div style="background:#111;border-radius:10px;padding:12px;font-size:0.82rem;color:#888;line-height:1.7;">
                     💡 <strong style="color:#ccc;">対処法</strong><br>
                     ① しばらく待ってから再送信<br>
-                    ② ページをリロードすると別のAIで再試行できます<br>
+                    ② ページをリロードすると再試行できます<br>
                     ③ ネットワーク環境を確認する
                 </div>
             </div>`;
@@ -3366,8 +3330,11 @@ function saveRename(index) {
 /* ── 履歴保存・表示 ── */
 function saveResultToHistory(totalScore, rank, scores, ramGB, avgFps, lowFps, networkMbps) {
     try {
+        const now = new Date();
         const entry = {
-            date: new Date().toLocaleString('ja-JP'),
+            date: now.toLocaleString('ja-JP'),
+            timestamp: now.getTime(),
+            iso: now.toISOString(),
             name: '',
             totalScore, rank,
             cpu: scores.cpu, gpu: scores.gpu, mem: scores.mem, fps: scores.fps,
@@ -3417,7 +3384,9 @@ function showHistoryModal() {
                         <div class="history-name-area">${h.name ? `<div style="font-weight:800;font-size:0.9rem;color:#6bb5ff;margin-bottom:2px;">📌 ${h.name}</div>` : ''}</div>
                         ${h.pinned ? '<div style="font-size:0.72rem;color:#a78bfa;font-weight:700;margin-bottom:2px;">📍 固定中</div>' : ''}
                         <div style="font-weight:800;font-size:1.1rem;">総合スコア ${h.totalScore}/100</div>
+                        <div style="font-size:0.85rem;color:#f59e0b;font-weight:700;margin-top:2px;">${getDeviceTitle(h.totalScore)}</div>
                         <div style="color:var(--sub-text);font-size:0.82rem;">${h.date}</div>
+                        ${h.timestamp ? `<div style="color:var(--sub-text);font-size:0.72rem;margin-top:2px;">⏰ ${new Date(h.timestamp).toLocaleTimeString('ja-JP', {hour:'2-digit',minute:'2-digit',second:'2-digit'})}</div>` : ''}
                     </div>
                 </div>
                 <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:0.82rem;">
@@ -3476,6 +3445,20 @@ function togglePin(idx) {
         localStorage.setItem('diag_history', JSON.stringify(history));
         showHistoryModal();
     } catch(e) {}
+}
+
+function getDeviceTitle(totalScore) {
+    // スコアに応じた称号を返す
+    if (totalScore >= 95) return '🏆 伝説級デバイス';
+    if (totalScore >= 90) return '👑 最高級デバイス';
+    if (totalScore >= 80) return '⭐ 優秀級デバイス';
+    if (totalScore >= 70) return '💎 高性能デバイス';
+    if (totalScore >= 60) return '🚀 良好デバイス';
+    if (totalScore >= 50) return '🎯 標準デバイス';
+    if (totalScore >= 40) return '⚙️ 基本デバイス';
+    if (totalScore >= 30) return '⚠️ 要チューン';
+    if (totalScore >= 20) return '🔧 要メンテ';
+    return '⚡ 初期化推奨';
 }
 
 function drawScoreChart(canvas, history) {
@@ -3910,11 +3893,15 @@ function _removePuShareStyle(area) {
 
 // ── 詳細モード（ProUltra限定）────────────────────────────────
 async function _runDetailMode() {
+    console.log('【詳細モード実行】_isProUltra:', _isProUltra);
     [35, 36, 37].forEach(function(n) {
         const el = document.getElementById('row-' + n);
         if (el) el.style.display = _isProUltra ? '' : 'none';
     });
-    if (!_isProUltra) return;
+    if (!_isProUltra) {
+        console.log('【詳細モード】ProUltraではないためスキップ');
+        return;
+    }
     try {
         const cpuTempEst = Math.round(45 + (scores.cpu / 100) * 45);
         const gpuTempEst = Math.round(40 + (scores.gpu / 100) * 50);
@@ -3922,17 +3909,26 @@ async function _runDetailMode() {
         if (v35) v35.textContent = 'CPU: ~' + cpuTempEst + '°C / GPU: ~' + gpuTempEst + '°C (推定)';
         const r35 = document.getElementById('row-35');
         if (r35) r35.className = 'spec-row st-' + (cpuTempEst < 70 ? 'ok' : cpuTempEst < 85 ? 'warn' : 'bad');
-    } catch(e) {}
+        console.log('【詳細モード】温度推定 - CPU:', cpuTempEst, '°C, GPU:', gpuTempEst, '°C');
+    } catch(e) {
+        console.error('【詳細モード】温度推定エラー:', e.message);
+    }
     try {
         const v36 = document.getElementById('v-36');
         if (v36 && performance.memory) {
             const heapMB = Math.round(performance.memory.jsHeapSizeLimit / 1024 / 1024);
             const estSlots = heapMB > 6000 ? '4スロット以上' : heapMB > 3000 ? '2〜4スロット' : '1〜2スロット';
             v36.textContent = estSlots + ' (推定)';
-        } else if (v36) { v36.textContent = '取得不可'; }
+            console.log('【詳細モード】メモリスロット推定 - ヒープ:', heapMB, 'MB →', estSlots);
+        } else if (v36) {
+            v36.textContent = '取得不可';
+            console.log('【詳細モード】メモリスロット取得不可');
+        }
         const r36 = document.getElementById('row-36');
         if (r36) r36.className = 'spec-row st-good';
-    } catch(e) {}
+    } catch(e) {
+        console.error('【詳細モード】メモリスロット推定エラー:', e.message);
+    }
     try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const audioIn  = devices.filter(function(d){ return d.kind === 'audioinput'; }).length;
@@ -3941,9 +3937,11 @@ async function _runDetailMode() {
         if (v37) v37.textContent = '入力: ' + audioIn + '台 / 出力: ' + audioOut + '台';
         const r37 = document.getElementById('row-37');
         if (r37) r37.className = 'spec-row st-' + (audioIn > 0 || audioOut > 0 ? 'ok' : 'warn');
+        console.log('【詳細モード】オーディオデバイス - 入力:', audioIn, '台, 出力:', audioOut, '台');
     } catch(e) {
         const v37 = document.getElementById('v-37');
         if (v37) v37.textContent = '取得不可（権限が必要）';
+        console.error('【詳細モード】オーディオデバイス取得エラー:', e.message);
     }
 }
 
@@ -5216,6 +5214,7 @@ window.addEventListener('load',()=>{
     document.body.appendChild(fab);
 
     // 診断は必ず実行（設定エラーに関わらず）
+    // 但し「自動チェック機能」はProUltra限定
     runBenchmark();
 
     // 通知許可：desktopNotifyがONかつ未許可なら起動後3秒後に理由説明→要求
@@ -5235,6 +5234,17 @@ window.addEventListener('load',()=>{
                 saveSettings();
             }
         }, 3000);
+    }
+
+    // 🚀 自動チェック機能（ProUltra限定）
+    // autoCheck が有効 & ProUltra ユーザーなら、診断を自動で再実行
+    if (_settings.autoCheck && _isProUltra) {
+        console.log('✨ AutoCheck enabled for ProUltra user');
+        // 診断は既に runBenchmark() で実行されているので、追加の自動実行は不要
+        // 設定画面では ON/OFF 切り替え可能だが、非ProUltraユーザーには効果なし
+    } else if (_settings.autoCheck && !_isProUltra) {
+        // 非ProUltraユーザーが autoCheck を有効にしていた場合、無視
+        _settings.autoCheck = false;
     }
 
     // バッジクリア（起動時・フォーカス時・タブ表示時の全イベントで確実に消す）
