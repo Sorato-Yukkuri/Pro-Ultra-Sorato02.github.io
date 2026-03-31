@@ -22,36 +22,8 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
     <link rel="stylesheet" href="style.css">
-        <!-- 🔐 Google reCAPTCHA v2 完全動作版（自動処理付き） -->
-<script>
-  // reCAPTCHA読み込み後に自動初期化
-  function onRecaptchaLoad() {
-    console.log("reCAPTCHA 読み込み完了");
-
-    // recaptcha要素があればレンダリング
-    const el = document.querySelector('.g-recaptcha');
-    if (el && !el.innerHTML.trim()) {
-      grecaptcha.render(el, {
-        sitekey: "6LeuPJ8sAAAAAMA4eBeux_5J_fQqMOBecBVCYz8J",
-        callback: onRecaptchaSuccess
-      });
-    }
-  }
-
-  // ✔ チェック成功時
-  function onRecaptchaSuccess(token) {
-    console.log("認証完了:", token);
-
-    // 🔥 ここが超重要：全処理の再開ポイント
-    if (typeof window.afterRecaptcha === "function") {
-      window.afterRecaptcha(token);
-    } else {
-      console.warn("afterRecaptcha() が未定義");
-    }
-  }
-</script>
-
-<script src="https://www.google.com/recaptcha/api.js?onload=onRecaptchaLoad&render=explicit" async defer></script>
+        <!-- 🔐 Google reCAPTCHA v2 (Checkbox) スクリプト -->
+    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
 </head>
 <body>
     <!-- ============================================
