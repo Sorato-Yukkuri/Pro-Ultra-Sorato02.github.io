@@ -48,10 +48,25 @@ async function sendIncorrectReport(category, userComment, inputEmail) {
 const RECAPTCHA_SITE_KEY_V2 = '6LeuPJ8sAAAAAMA4eBeux_5J_fQqMOBecBVCYz8J'; 
 
 window.addEventListener('load', function() {
-    // 既に認証済みなら、そのままスキャンを開始して終了
+    // 🔍 開発環境判定（localhost, file://, 127.0.0.1）
+    const isDev = window.location.hostname === 'localhost' || 
+                  window.location.hostname === '127.0.0.1' ||
+                  window.location.protocol === 'file:';
+    
+    console.log('🌐 環境:', isDev ? '開発環境（reCAPTCHA スキップ）' : '本番環境');
+    
+    // 開発環境ならreCAPTCHAをスキップして診断開始
+    if (isDev) {
+        console.log('✅ 開発環境: 診断を直接開始します');
+        localStorage.setItem('recaptcha_verified_v2', 'true');
+        runBenchmark();
+        return;
+    }
+    
+    // 既に認証済みなら、そのまま診断を開始して終了
     if (localStorage.getItem('recaptcha_verified_v2') === 'true') {
-        console.log('✅ 認証済み: スキャンを開始します');
-        if (typeof startScan === 'function') startScan();
+        console.log('✅ reCAPTCHA認証済み: 診断を開始します');
+        runBenchmark();
         return;
     }
 
@@ -108,13 +123,9 @@ window.addEventListener('load', function() {
                 if (document.body.contains(overlay)) {
                     document.body.removeChild(overlay);
                 }
-                // スキャン開始
-                if (typeof startScan === 'function') {
-                    startScan(); 
-                } else {
-                    // 関数が見つからない場合のみリロード
-                    location.reload();
-                }
+                // ✅ 診断スタート（runBenchmarkを呼ぶ）
+                console.log('📊 reCAPTCHA認証成功 → 診断開始');
+                runBenchmark();
             }, 400);
         }, 500);
     };
