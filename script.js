@@ -43,8 +43,134 @@ async function sendIncorrectReport(category, userComment, inputEmail) {
 }
 
 /**
- * 💣 画面破壊型BANシステム
+ * 🔐 reCAPTCHA v3 チェック（ページ開いた直後）
  */
+const RECAPTCHA_SITE_KEY_V3 = '6LfqGp8sAAAAAKCDguJXOKnSmQ9UYUXdkDfO2nRJ';
+
+function showRecaptchaCheck() {
+    // 既にチェック済みならスキップ
+    if (localStorage.getItem('recaptcha_verified_v1') === 'true') {
+        console.log('✅ reCAPTCHA 既に認証済み');
+        return;
+    }
+    
+    // reCAPTCHA v3 スクリプトが読み込まれてるか確認
+    if (typeof grecaptcha === 'undefined') {
+        console.warn('⚠️ reCAPTCHA v3 スクリプトが読み込まれていません');
+        // スクリプトが未読み込みなら少し待ってから再度チェック
+        setTimeout(() => showRecaptchaCheck(), 500);
+        return;
+    }
+    
+    console.log('📱 reCAPTCHA v3 モーダルを表示');
+    
+    // モーダルを作成
+    const overlay = document.createElement('div');
+    overlay.id = 'recaptcha-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0, 0, 0, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 99999;
+    `;
+    
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        background: #1a1a1a;
+        border: 1px solid #444;
+        border-radius: 16px;
+        padding: 32px;
+        max-width: 400px;
+        text-align: center;
+        color: #fff;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    `;
+    
+    modal.innerHTML = `
+        <h2 style="font-size: 1.2rem; margin: 0 0 16px; font-weight: 700;">
+            セキュリティチェック
+        </h2>
+        <p style="color: #aaa; font-size: 0.9rem; margin: 0 0 24px; line-height: 1.6;">
+            このアプリを安全に利用するため、reCAPTCHA でボット確認を行っています。
+        </p>
+        <div id="recaptcha-check" style="margin: 20px 0;">
+            <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 12px; border: 1px solid #444; border-radius: 8px;">
+                <input type="checkbox" id="recaptcha-agree" style="width: 20px; height: 20px; cursor: pointer;">
+                <span style="text-align: left;">
+                    <span style="color: #fff; font-weight: 600;">人間であることを確認</span><br>
+                    <span style="color: #888; font-size: 0.8rem;">続行するにはチェック</span>
+                </span>
+            </label>
+        </div>
+        <button id="recaptcha-continue" style="
+            width: 100%;
+            padding: 12px;
+            background: #6366f1;
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 16px;
+        ">
+            続行する
+        </button>
+    `;
+    
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+    
+    // チェックボックスとボタンのイベント
+    const checkbox = document.getElementById('recaptcha-agree');
+    const button = document.getElementById('recaptcha-continue');
+    
+    button.addEventListener('click', async () => {
+        if (!checkbox.checked) {
+            alert('チェックボックスをオンにしてください');
+            return;
+        }
+        
+        button.disabled = true;
+        button.textContent = '検証中...';
+        
+        try {
+            console.log('🔍 reCAPTCHA v3 トークン取得中...');
+            // reCAPTCHA v3 トークン取得
+            const token = await grecaptcha.execute(RECAPTCHA_SITE_KEY_V3, { action: 'homepage' });
+            console.log('✅ トークン取得成功:', token.substring(0, 20) + '...');
+            
+            if (token && token.length > 0) {
+                // 検証済みをlocalStorageに記録
+                localStorage.setItem('recaptcha_verified_v1', 'true');
+                localStorage.setItem('recaptcha_token', token);
+                console.log('💾 localStorage に記録');
+                
+                // モーダルを閉じる
+                overlay.style.opacity = '0';
+                overlay.style.transition = 'opacity 0.3s';
+                setTimeout(() => {
+                    document.body.removeChild(overlay);
+                    console.log('🎉 モーダルクローズ完了');
+                }, 300);
+            } else {
+                alert('検証に失敗しました。もう一度お試しください。');
+                button.disabled = false;
+                button.textContent = '続行する';
+            }
+        } catch (error) {
+            console.error('❌ reCAPTCHA error:', error);
+            alert('検証エラーが発生しました: ' + error.message);
+            button.disabled = false;
+            button.textContent = '続行する';
+        }
+    });
+}
+
+
 function showBanScreen(email) {
     // BAN情報をローカルに刻む
     localStorage.setItem('sys_banned_user', 'true');
@@ -3026,7 +3152,7 @@ function openAIChat() {
 4. 専門用語には補足説明を付ける
 5. 「です・ます」調でプロフェッショナルな文体。見出し・表を多用。
 6. ProUltra未登録者には、＋3項目の詳細診断や親友コード、限定スキンのメリットを会話の中で情熱的に勧めること。
-7.表は表示がおかしくなるため使わないこと。`;
+`;
     appendAIMsg('assistant', `診断結果（総合ランク **${rank}**）を確認しました。\n\nご質問があればお気軽にどうぞ。\n\n**例:**\n- 「なぜ${rank}ランクなのか教えてください」\n- 「パフォーマンスを改善する方法はありますか？」\n- 「このデバイスで動画編集はできますか？」`);
     document.getElementById('ai-modal').style.display = 'flex';
     document.getElementById('ai-input').focus();
@@ -3037,6 +3163,13 @@ function closeAIChat() { document.getElementById('ai-modal').style.display = 'no
 function parseMarkdown(text) {
     let s = text
         .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    
+    // 🚫 テーブル記法（|で区切られた行）をプレーンテキストに変換
+    // 例: | 項目 | 値 | → 項目 | 値
+    s = s.replace(/\|\s*/g, ' ').replace(/\s*\|/g, '');
+    // ─ や ── などのセパレータ行を削除
+    s = s.replace(/^[\s\-\|]+$/gm, '');
+    
     s = s.replace(/[*][*][*](.+?)[*][*][*]/g,'<strong><em>$1</em></strong>');
     s = s.replace(/[*][*](.+?)[*][*]/g,'<strong>$1</strong>');
     s = s.replace(/[*](.+?)[*]/g,'<em>$1</em>');
@@ -5189,6 +5322,10 @@ window.addEventListener('load',()=>{
     // ページ読み込み時は必ず最上部へ（ブラウザのスクロール位置保持を無効化）
     history.scrollRestoration = 'manual';
     window.scrollTo({ top: 0, behavior: 'instant' });
+    
+    // 🔐 reCAPTCHA v3 チェック（初回ロード時）
+    showRecaptchaCheck();
+    
     // 設定読み込み・適用（エラーが起きても診断は必ず実行）
     try { loadSettings(); } catch(e) { console.warn('loadSettings error:', e); }
     try { applySettings(); } catch(e) { console.warn('applySettings error:', e); }
