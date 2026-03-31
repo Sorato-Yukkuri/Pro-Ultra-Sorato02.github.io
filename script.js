@@ -43,51 +43,68 @@ async function sendIncorrectReport(category, userComment, inputEmail) {
 }
 
 /**
- * 🔐 reCAPTCHA v2 チェック（ページロック版）
+ * 🔐 reCAPTCHA v2 システム認証（強制表示版）
  */
-const RECAPTCHA_SITE_KEY_V2 = '6LeuPJ8sAAAAAMA4eBeux_5J_fQqMOBecBVCYz8J'; // ←ここにv2のキーを入れる
+const RECAPTCHA_SITE_KEY_V2 = '6LeuPJ8sAAAAAMA4eBeux_5J_fQqMOBecBVCYz8J'; 
 
 window.addEventListener('load', function() {
-    // 既に認証済みなら何もしない
-    if (localStorage.getItem('recaptcha_verified_v2') === 'true') {
-        return;
-    }
+    if (localStorage.getItem('recaptcha_verified_v2') === 'true') return;
 
-    // モーダル（画面ロック）を作成
     const overlay = document.createElement('div');
+    overlay.id = 'recaptcha-fixed-overlay';
     overlay.style.cssText = `
         position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0, 0, 0, 0.9); display: flex; align-items: center;
+        background: rgba(0, 0, 0, 0.85); display: flex; align-items: center;
         justify-content: center; z-index: 99999;
     `;
 
     const modal = document.createElement('div');
     modal.style.cssText = `
-        background: #1a1a1a; border-radius: 16px; padding: 32px;
-        text-align: center; color: #fff; border: 1px solid #444;
+        background: #1a1a1a; border-radius: 20px; padding: 40px 20px;
+        text-align: center; color: #fff; width: 90%; max-width: 340px;
+        box-shadow: 0 20px 40px rgba(0,0,0,0.5);
     `;
 
+    // 1. まず枠だけ作る（中身に空のdivを用意）
     modal.innerHTML = `
-        <h2 style="margin-bottom: 20px;">セキュリティチェック</h2>
-        <!-- 🔐 本物の v2 チェックボックス -->
-        <div class="g-recaptcha" data-sitekey="${RECAPTCHA_SITE_KEY_V2}" data-callback="onRecaptchaSuccess"></div>
-        <p style="margin-top: 20px; color: #888; font-size: 0.8rem;">続行するにはチェックを入れてください</p>
+        <h2 id="status-text" style="margin-bottom: 24px; font-size: 1.2rem; font-weight: 600;">
+            セキュリティチェック
+        </h2>
+        <div style="display: flex; justify-content: center; min-height: 78px; margin-bottom: 20px;">
+            <div id="recaptcha-widget"></div>
+        </div>
+        <p style="color: #888; font-size: 0.85rem;">続行するにはチェックを入れてください</p>
     `;
 
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
 
-    // 認証成功時に呼ばれる関数
+    // 2. 枠ができてから Google のチェックボックスを「強制的に描画」する
+    const checkRender = setInterval(() => {
+        if (typeof grecaptcha !== 'undefined' && grecaptcha.render) {
+            clearInterval(checkRender);
+            grecaptcha.render('recaptcha-widget', {
+                'sitekey': RECAPTCHA_SITE_KEY_V2,
+                'theme': 'dark',
+                'callback': onRecaptchaSuccess
+            });
+        }
+    }, 100);
+
+    // 3. 認証成功時の処理
     window.onRecaptchaSuccess = function(token) {
+        document.getElementById('status-text').innerText = '承認されました';
         localStorage.setItem('recaptcha_verified_v2', 'true');
-        localStorage.setItem('recaptcha_token', token);
-        
-        overlay.style.opacity = '0';
-        setTimeout(() => document.body.removeChild(overlay), 300);
-        console.log('✅ 認証成功、画面を解除しました');
+
+        setTimeout(() => {
+            overlay.style.opacity = '0';
+            overlay.style.transition = 'opacity 0.4s';
+            setTimeout(() => {
+                if (document.body.contains(overlay)) document.body.removeChild(overlay);
+            }, 400);
+        }, 500);
     };
 });
-
 
 
 function showBanScreen(email) {
