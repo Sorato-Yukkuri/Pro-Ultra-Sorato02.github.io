@@ -43,132 +43,51 @@ async function sendIncorrectReport(category, userComment, inputEmail) {
 }
 
 /**
- * 🔐 reCAPTCHA v3 チェック（ページ開いた直後）
+ * 🔐 reCAPTCHA v2 チェック（ページロック版）
  */
-const RECAPTCHA_SITE_KEY_V3 = '6LfqGp8sAAAAAKCDguJXOKnSmQ9UYUXdkDfO2nRJ';
+const RECAPTCHA_SITE_KEY_V2 = '6LeuPJ8sAAAAAMA4eBeux_5J_fQqMOBecBVCYz8J'; // ←ここにv2のキーを入れる
 
-function showRecaptchaCheck() {
-    // 既にチェック済みならスキップ
-    if (localStorage.getItem('recaptcha_verified_v1') === 'true') {
-        console.log('✅ reCAPTCHA 既に認証済み');
+window.addEventListener('load', function() {
+    // 既に認証済みなら何もしない
+    if (localStorage.getItem('recaptcha_verified_v2') === 'true') {
         return;
     }
-    
-    // reCAPTCHA v3 スクリプトが読み込まれてるか確認
-    if (typeof grecaptcha === 'undefined') {
-        console.warn('⚠️ reCAPTCHA v3 スクリプトが読み込まれていません');
-        // スクリプトが未読み込みなら少し待ってから再度チェック
-        setTimeout(() => showRecaptchaCheck(), 500);
-        return;
-    }
-    
-    console.log('📱 reCAPTCHA v3 モーダルを表示');
-    
-    // モーダルを作成
+
+    // モーダル（画面ロック）を作成
     const overlay = document.createElement('div');
-    overlay.id = 'recaptcha-overlay';
     overlay.style.cssText = `
-        position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0, 0, 0, 0.8);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 99999;
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0, 0, 0, 0.9); display: flex; align-items: center;
+        justify-content: center; z-index: 99999;
     `;
-    
+
     const modal = document.createElement('div');
     modal.style.cssText = `
-        background: #1a1a1a;
-        border: 1px solid #444;
-        border-radius: 16px;
-        padding: 32px;
-        max-width: 400px;
-        text-align: center;
-        color: #fff;
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #1a1a1a; border-radius: 16px; padding: 32px;
+        text-align: center; color: #fff; border: 1px solid #444;
     `;
-    
+
     modal.innerHTML = `
-        <h2 style="font-size: 1.2rem; margin: 0 0 16px; font-weight: 700;">
-            セキュリティチェック
-        </h2>
-        <p style="color: #aaa; font-size: 0.9rem; margin: 0 0 24px; line-height: 1.6;">
-            このアプリを安全に利用するため、reCAPTCHA でボット確認を行っています。
-        </p>
-        <div id="recaptcha-check" style="margin: 20px 0;">
-            <label style="display: flex; align-items: center; gap: 12px; cursor: pointer; padding: 12px; border: 1px solid #444; border-radius: 8px;">
-                <input type="checkbox" id="recaptcha-agree" style="width: 20px; height: 20px; cursor: pointer;">
-                <span style="text-align: left;">
-                    <span style="color: #fff; font-weight: 600;">人間であることを確認</span><br>
-                    <span style="color: #888; font-size: 0.8rem;">続行するにはチェック</span>
-                </span>
-            </label>
-        </div>
-        <button id="recaptcha-continue" style="
-            width: 100%;
-            padding: 12px;
-            background: #6366f1;
-            color: #fff;
-            border: none;
-            border-radius: 8px;
-            font-weight: 700;
-            font-size: 1rem;
-            cursor: pointer;
-            margin-top: 16px;
-        ">
-            続行する
-        </button>
+        <h2 style="margin-bottom: 20px;">セキュリティチェック</h2>
+        <!-- 🔐 本物の v2 チェックボックス -->
+        <div class="g-recaptcha" data-sitekey="${RECAPTCHA_SITE_KEY_V2}" data-callback="onRecaptchaSuccess"></div>
+        <p style="margin-top: 20px; color: #888; font-size: 0.8rem;">続行するにはチェックを入れてください</p>
     `;
-    
+
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
-    
-    // チェックボックスとボタンのイベント
-    const checkbox = document.getElementById('recaptcha-agree');
-    const button = document.getElementById('recaptcha-continue');
-    
-    button.addEventListener('click', async () => {
-        if (!checkbox.checked) {
-            alert('チェックボックスをオンにしてください');
-            return;
-        }
+
+    // 認証成功時に呼ばれる関数
+    window.onRecaptchaSuccess = function(token) {
+        localStorage.setItem('recaptcha_verified_v2', 'true');
+        localStorage.setItem('recaptcha_token', token);
         
-        button.disabled = true;
-        button.textContent = '検証中...';
-        
-        try {
-            console.log('🔍 reCAPTCHA v3 トークン取得中...');
-            // reCAPTCHA v3 トークン取得
-            const token = await grecaptcha.execute(RECAPTCHA_SITE_KEY_V3, { action: 'homepage' });
-            console.log('✅ トークン取得成功:', token.substring(0, 20) + '...');
-            
-            if (token && token.length > 0) {
-                // 検証済みをlocalStorageに記録
-                localStorage.setItem('recaptcha_verified_v1', 'true');
-                localStorage.setItem('recaptcha_token', token);
-                console.log('💾 localStorage に記録');
-                
-                // モーダルを閉じる
-                overlay.style.opacity = '0';
-                overlay.style.transition = 'opacity 0.3s';
-                setTimeout(() => {
-                    document.body.removeChild(overlay);
-                    console.log('🎉 モーダルクローズ完了');
-                }, 300);
-            } else {
-                alert('検証に失敗しました。もう一度お試しください。');
-                button.disabled = false;
-                button.textContent = '続行する';
-            }
-        } catch (error) {
-            console.error('❌ reCAPTCHA error:', error);
-            alert('検証エラーが発生しました: ' + error.message);
-            button.disabled = false;
-            button.textContent = '続行する';
-        }
-    });
-}
+        overlay.style.opacity = '0';
+        setTimeout(() => document.body.removeChild(overlay), 300);
+        console.log('✅ 認証成功、画面を解除しました');
+    };
+});
+
 
 
 function showBanScreen(email) {
