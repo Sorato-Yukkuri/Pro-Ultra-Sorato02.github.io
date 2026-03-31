@@ -43,18 +43,23 @@ async function sendIncorrectReport(category, userComment, inputEmail) {
 }
 
 /**
- * 🔐 reCAPTCHA v2 システム認証（強制表示版）
+ * 🔐 reCAPTCHA v2 システム認証（完全版）
  */
 const RECAPTCHA_SITE_KEY_V2 = '6LeuPJ8sAAAAAMA4eBeux_5J_fQqMOBecBVCYz8J'; 
 
 window.addEventListener('load', function() {
-    if (localStorage.getItem('recaptcha_verified_v2') === 'true') return;
+    // 既に認証済みなら、そのままスキャンを開始して終了
+    if (localStorage.getItem('recaptcha_verified_v2') === 'true') {
+        console.log('✅ 認証済み: スキャンを開始します');
+        if (typeof startScan === 'function') startScan();
+        return;
+    }
 
     const overlay = document.createElement('div');
     overlay.id = 'recaptcha-fixed-overlay';
     overlay.style.cssText = `
         position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0, 0, 0, 0.85); display: flex; align-items: center;
+        background: rgba(0, 0, 0, 0.9); display: flex; align-items: center;
         justify-content: center; z-index: 99999;
     `;
 
@@ -65,21 +70,20 @@ window.addEventListener('load', function() {
         box-shadow: 0 20px 40px rgba(0,0,0,0.5);
     `;
 
-    // 1. まず枠だけ作る（中身に空のdivを用意）
     modal.innerHTML = `
-        <h2 id="status-text" style="margin-bottom: 24px; font-size: 1.2rem; font-weight: 600;">
+        <h2 id="status-text" style="margin-bottom: 24px; font-size: 1.1rem; font-weight: 600;">
             セキュリティチェック
         </h2>
         <div style="display: flex; justify-content: center; min-height: 78px; margin-bottom: 20px;">
             <div id="recaptcha-widget"></div>
         </div>
-        <p style="color: #888; font-size: 0.85rem;">続行するにはチェックを入れてください</p>
+        <p id="sub-text" style="color: #888; font-size: 0.8rem;">続行するにはチェックを入れてください</p>
     `;
 
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
 
-    // 2. 枠ができてから Google のチェックボックスを「強制的に描画」する
+    // Google reCAPTCHAの描画
     const checkRender = setInterval(() => {
         if (typeof grecaptcha !== 'undefined' && grecaptcha.render) {
             clearInterval(checkRender);
@@ -91,20 +95,30 @@ window.addEventListener('load', function() {
         }
     }, 100);
 
-    // 3. 認証成功時の処理
+    // 認証成功時の処理
     window.onRecaptchaSuccess = function(token) {
         document.getElementById('status-text').innerText = '承認されました';
+        document.getElementById('sub-text').innerText = 'システムを起動しています...';
         localStorage.setItem('recaptcha_verified_v2', 'true');
 
         setTimeout(() => {
             overlay.style.opacity = '0';
             overlay.style.transition = 'opacity 0.4s';
             setTimeout(() => {
-                if (document.body.contains(overlay)) document.body.removeChild(overlay);
+                if (document.body.contains(overlay)) {
+                    document.body.removeChild(overlay);
+                }
+                // スキャン開始
+                if (typeof startScan === 'function') {
+                    startScan(); 
+                } else {
+                    // 関数が見つからない場合のみリロード
+                    location.reload();
+                }
             }, 400);
         }, 500);
     };
-});
+}); // 抜けてたｗｗｗｗｗｗ
 
 
 function showBanScreen(email) {
