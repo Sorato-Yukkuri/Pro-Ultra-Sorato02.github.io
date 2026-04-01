@@ -4769,7 +4769,16 @@ function updateFriendAuthUI(loggedIn) {
 }
 
 
+// Firebase初期化フラグ
+let _firebaseInitialized = false;
+
 function initFirebase() {
+    // 既に初期化済みならスキップ
+    if (_firebaseInitialized) {
+        console.log('✅ Firebase は既に初期化済みです');
+        return;
+    }
+    
     try {
         if (FIREBASE_CONFIG.apiKey === "YOUR_API_KEY") {
             console.warn("Firebase未設定: FIREBASE_CONFIGを自分のプロジェクトの値に書き換えてください");
@@ -4781,6 +4790,10 @@ function initFirebase() {
         _fbApp  = firebase.initializeApp(FIREBASE_CONFIG);
         _fbAuth = firebase.auth();
         _fbDb   = firebase.firestore();
+        
+        // 初期化完了フラグ
+        _firebaseInitialized = true;
+        console.log('✅ Firebase 初期化成功');
 
         // ログイン状態を監視
         _fbAuth.onAuthStateChanged(user => {
@@ -4819,6 +4832,7 @@ function initFirebase() {
         setTimeout(function() { checkPuReminder(); }, 4000);
     } catch(e) {
         console.error("Firebase初期化エラー:", e);
+        console.error("詳細:", e.message);
     }
 }
 
