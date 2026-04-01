@@ -36,17 +36,17 @@
      true  => 閉鎖モード
      false => 通常モード
   */
-  const isMaintenance = true; 
+  const isMaintenance = true1; 
 
   /* 
      【2. 見た目のカスタマイズ設定】
   */
   const config = {
-    fontSize:   "32px",          
+    fontSize:   "20px",          
     fontColor:  "#e0e0e0",       // ★文字色：少しグレーがかった白（目に優しい）
     bgColor:    "#121212",       // ★背景色：深いダークグレー（モダンな黒）
     fontWeight: "bold",          
-    message:    "申し訳ございません。<br>現在、診断がされないバグが発生しております。<br>現在調査していますので、原因特定次第<br>再開します。ご了承をお願いします。<br>|復旧には1〜2日掛かる可能性があります｡|<br><br>精密デバイス診断 ProUltra" 
+    message:    "申し訳ございません。<br>現在診断できないバグが発生しています。<br>バグ修正に3~4日かかります。<br>【お詫びコード】「proultraApology for access issues-7」<br>※このコードはサービス復帰後に入力するとお詫び特典が付与されます。<br><br>(旧バージョンで続行する)<br>ーURLを読み込めませんー<br>｜※このverでは診断/PNG保存のみのｾｰﾌﾓｰﾄﾞです｡｜"
   };
 
 
@@ -497,7 +497,6 @@
             <div style="display:flex;gap:8px;align-items:center;">
                 <button onclick="showAIConvManager()" style="background:rgba(99,102,241,0.2);border:1px solid rgba(99,102,241,0.4);color:#a78bfa;border-radius:10px;padding:6px 12px;font-size:0.82rem;font-weight:700;cursor:pointer;">📂 保存した会話</button>
                 <button onclick="(()=>{const n=document.getElementById('ai-save-name').value.trim();saveCurrentConv(n);document.getElementById('ai-save-name').value='';alert('保存しました！');})()" style="background:rgba(0,122,255,0.2);border:1px solid rgba(0,122,255,0.4);color:#6bb5ff;border-radius:10px;padding:6px 12px;font-size:0.82rem;font-weight:700;cursor:pointer;">💾 保存</button>
-                <button onclick="resetAPIKey()" style="background:rgba(255,59,48,0.15);border:1px solid rgba(255,59,48,0.3);color:#ff6b6b;border-radius:10px;padding:6px 10px;font-size:0.78rem;font-weight:700;cursor:pointer;" title="APIキーをリセット">🔑</button>
                 <button id="ai-close" onclick="closeAIChat()">✕</button>
             </div>
         </div>
@@ -575,62 +574,13 @@
         
         <!-- バージョンタイトル -->
         <h2 style="margin: 0 0 20px; font-size: 1.4rem; font-weight: 900; color: var(--text); border-bottom: 2px solid var(--border); padding-bottom: 15px;">
-            🚀 Update Beta 1.8
+            🚀 Update Beta 1.8.0.1
         </h2>
         
         <!-- 【自由記述エリア】ここを書き換えるだけでOK -->
         <div id="update-text-area" style="font-size: 1rem; color: var(--text); line-height: 1.8; max-height: 450px; overflow-y: auto; margin-bottom: 25px; padding-right: 10px;">
             
-            <strong>【Beta 1.8.0 ProUltraアカウント特典増大アップデート！】</strong><br><br>
-
-           <strong>🛡️ セキュリティの強化（NEW！）</strong><br>
-            ・<strong>アクセスブロック機能の導入</strong>：不適切なフィードバックの連投や悪質な利用に対して、管理者権限でアクセスを完全にブロック（BAN）するセキュリティシステムを実装しました。<br><br>
-
-            <strong>👑 ProUltraアカウントと限定特典（NEW！）</strong><br>
-            メールアドレスで「ProUltraアカウント」を作成できるようになりました！ProUltraユーザーには以下の強力な限定特典が適用されます。<br>
-            ・<strong>詳細モードの拡張（＋3項目）</strong>：診断項目がさらに3つ追加され、デバイスの深部までよりマニアックに解析できるようになります。<br>
-            ・<strong>リマインド機能</strong>：定期的なデバイスチェックを忘れないよう、リマインドを設定できるようになりました。<br>
-            ・<strong>限定スキン（着せ替え）機能</strong>：Aurora（オーロラ）、Diamond（ダイヤモンド）、Gold（ゴールド）などの特別で豪華なデザインテーマに変更できます。<br>
-            ・<strong>特別シェアカード</strong>：診断結果をSNS等でシェアする際、専用のプレミアムなデザインカードで共有できます。<br>
-            ・<strong>専用ステータスバッジ</strong>：画面上部にProUltraユーザーの証である専用バッジが表示されます。<br>
-            <span style="color:var(--accent); font-size:0.9em;">※新規登録時、認証メールが届かない場合は「迷惑メールフォルダ」をご確認ください。</span><br><br>
-
-            <strong>👤 ログイン機能の最適化</strong><br>
-            ・<strong>SNS連携の整理</strong>：Google / GitHub / Twitter / Discord ログインに最適化し、認証時のエラーを修正しました。<br>
-            ・<strong>匿名ログイン</strong>：アカウントを作らずに、現在のデバイス履歴を一時的に保護できます。<br><br>
-
-            <strong>🌓 ライトモードの完全修正</strong><br>
-            設定メニューから「Light」テーマを選択した際、背景色や文字色が即座に切り替わらないバグを修正しました。白を基調としたクリーンなデザインで快適にご利用いただけます。<br><br>
-
-            <strong>⚡ システムの軽量化と安定性向上</strong><br>
-            内部プログラムのエラーを完全に解消し、診断や設定の保存が確実に動作するよう安定化しました。また、不要な通知機能を削除しUIを整理しました。<br><br>
-
-            <strong>🆚 デバイス対戦</strong><br>
-            診断完了後に「🆚 デバイス対戦」ボタンが出現。友達と診断結果を比較して勝負できます！<br>
-            ・<strong>Firestoreコード方式</strong>：6桁コードを発行→友達が入力→対戦（有効期限20分）<br>
-            ・<strong>QR/URL方式</strong>：QR/URLシェアで、友達が診断後に自動で対戦開始<br>
-            ・項目ごとに勝ち負けを🟢🔴で色分け表示<br><br>
-
-            <strong>💬 フィードバック機能</strong><br>
-            画面下部の「💬 フィードバック」から、バグ報告・機能要望を匿名送信できます。（※節度あるご利用をお願いいたします）<br><br>
-
-            <strong>📈 スコア推移グラフ</strong><br>
-            「📊 過去の診断結果を見る」に、2件以上の履歴がある場合スコア推移グラフを表示します。<br><br>
-
-            <strong>📌 履歴の固定・保存件数（ログイン特典）</strong><br>
-            ログイン済みの方は、お気に入りの履歴の「固定」が可能になり、保存件数も <strong>5件</strong> に拡張されます。<br><br>
-
-            <strong>⚙️ 設定・書き出し機能の強化</strong><br>
-            ・<strong>フォント変更</strong>：システム標準・ゴシック・明朝・丸ゴシック・等幅から選択可能。<br>
-            ・<strong>サウンド</strong>：4種プリセット＋カスタム音声ファイル対応。試聴ボタン付き。<br>
-            ・<strong>CSV / PDF</strong>：Excel用や保存用として、診断結果をファイルで書き出せます。<br><br>
-
-            <strong>📋 利用規約の追加</strong><br>
-            画面下部の「📋 利用規約」から確認できます。11言語に対応しています。<br><br>
-
-            <strong>【今後の開発予定】</strong><br>
-            Beta 1.9では、正式版リリースに向けてバグ修正を行います。バグがありましたらフィードバックからお知らせください。
-
+            <strong>【Beta 1.8.0.1 超小型バグ1つ修正】</strong><br><br>・AIアシスタントに相談する機能に最古の機能｢APIキーを削除｣<br>　が残っていた問題のみを修正<br>・｢確認しました｣ボタンが<br>「確認しました                       　　　　　　　　　　　　　　　　　　　　　　　　　　　　　」とスペースが大量にあった問題を修正<br><br>【現状報告されているバグ】<br>バグ読み込み不能<br>
             <!-- 次のアプデ文はこの下に追加していくだけでOK -->
 
         </div>
@@ -645,7 +595,7 @@
 
 <script>
     // バージョン識別キー（アプデのたびに末尾の数字などを変えてください）
-    const CURRENT_UPDATE_ID = "Beta_1.8.0";
+    const CURRENT_UPDATE_ID = "Beta_1.8.0.1(r2.0.2/testNo,4.01)";
 
     // 読み込み時に表示を判定
     window.addEventListener('DOMContentLoaded', () => {
