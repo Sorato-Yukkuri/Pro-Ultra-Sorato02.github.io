@@ -2,7 +2,7 @@ let capturedDataUrl = null;
 
 // 🚫 永久追放ブラックリスト
 const PERMANENT_BAN_LIST = {
-    'gintc50veo3nu@yahoo.co.jpああ': '理由：不適切なフィードバック'
+    'gintc50veo3nu@yahoo.co.jp': '理由：開発者による不適切な言動'
     };
 
 /**
