@@ -570,7 +570,9 @@
 
 <!-- アップデート情報モーダル-->
 <div id="update-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.95); z-index: 999999; align-items: center; justify-content: center; padding: 20px;">
-    <div id="update-box" style="background: var(--card); border: 1px solid var(--border); border-radius: 24px; width: 100%; max-width: 500px; padding: 30px; box-shadow: 0 25px 70px rgba(0,0,0,0.9);">
+    <div id="update-box" style="background: var(--card); border: 1px solid var(--border); border-radius: 24px; width: 100%; max-width: 500px; padding: 30px; box-shadow: 0 25px 70px rgba(0,0,0,0.9); position: relative;">
+        <!-- 右上のクローズボタン -->
+        <button onclick="execUpdateClose()" style="position: absolute; top: 16px; right: 16px; width: 32px; height: 32px; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); border-radius: 8px; color: #999; font-size: 1.4rem; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.15)'; this.style.color='#fff';" onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.color='#999';">✕</button>
         
         <!-- バージョンタイトル -->
         <h2 style="margin: 0 0 20px; font-size: 1.4rem; font-weight: 900; color: var(--text); border-bottom: 2px solid var(--border); padding-bottom: 15px;">
@@ -580,7 +582,7 @@
         <!-- 【自由記述エリア】ここを書き換えるだけでOK -->
         <div id="update-text-area" style="font-size: 1rem; color: var(--text); line-height: 1.8; max-height: 450px; overflow-y: auto; margin-bottom: 25px; padding-right: 10px;">
             
-            <strong>【Beta 1.8.0.1 超小型バグ1つ修正】</strong><br><br>・AIアシスタントに相談する機能に最古の機能｢APIキーを削除｣<br>　が残っていた問題のみを修正<br>・｢確認しました｣ボタンが<br>「確認しました                       　　　　　　　　　　　　　　　　　　　　　　　　　　　　　」とスペースが大量にあった問題を修正<br><br>【現状報告されているバグ】<br>バグ読み込み不能<br>
+            <strong>【Beta 1.8.0.1 超小型バグ1つ修正】</strong><br><br>・AIアシスタントに相談する機能に最古の機能｢APIキーを削除｣<br>　が残っていた問題のみを修正<br>・｢確認しました｣ボタンが<br>「確認しました                       　　　　　　　　　　　　　　　　　　　　　　　　　　　　　」とスペースが大量にあった問題を修正<br><br>【現状報告されているバグ】<br>なし<br>
             <!-- 次のアプデ文はこの下に追加していくだけでOK -->
 
         </div>
@@ -595,7 +597,7 @@
 
 <script>
     // バージョン識別キー（アプデのたびに末尾の数字などを変えてください）
-    const CURRENT_UPDATE_ID = "Beta_1.8.0.1(r2.0.2/testNo,4.01)";
+    const CURRENT_UPDATE_ID = "Beta_1.8.0.1(r2.0.2/testNo,4.01.02)";
 
     // 読み込み時に表示を判定
     window.addEventListener('DOMContentLoaded', () => {
