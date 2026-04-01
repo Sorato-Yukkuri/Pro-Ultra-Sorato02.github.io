@@ -4773,67 +4773,91 @@ function updateFriendAuthUI(loggedIn) {
 let _firebaseInitialized = false;
 
 function initFirebase() {
-    // 既に初期化済みならスキップ
-    if (_firebaseInitialized) {
-        console.log('✅ Firebase は既に初期化済みです');
+    // Firebase が読み込まれるまで待つ
+    window.firebase_ready_promise = new Promise((resolve) => {
+        if (typeof firebase !== 'undefined') {
+            _fbAuth = firebase.auth();
+            _fbDb = firebase.firestore();
+            try { firebase.initializeApp(FIREBASE_CONFIG); } catch(e) {}
+            resolve();
+        } else {
+            setTimeout(() => {
+                _fbAuth = firebase.auth();
+                _fbDb = firebase.firestore();
+                try { firebase.initializeApp(FIREBASE_CONFIG); } catch(e) {}
+                resolve();
+            }, 100);
+        }
+    });
+    // Firebase SDK の確認
+    if (typeof firebase === 'undefined') {
+        console.error('❌ ERROR: Firebase SDK が読み込まれていません');
+        document.getElementById('auth-username').textContent = 'Firebase SDK未読み込み';
         return;
     }
-    
-    try {
-        if (FIREBASE_CONFIG.apiKey === "YOUR_API_KEY") {
-            console.warn("Firebase未設定: FIREBASE_CONFIGを自分のプロジェクトの値に書き換えてください");
-            document.getElementById('auth-bar').style.display = 'flex';
-            document.getElementById('auth-login-btn').style.display = 'none';
-            document.getElementById('auth-username').textContent = 'Firebase未設定';
-            return;
-        }
-        _fbApp  = firebase.initializeApp(FIREBASE_CONFIG);
-        _fbAuth = firebase.auth();
-        _fbDb   = firebase.firestore();
-        
-        // 初期化完了フラグ
-        _firebaseInitialized = true;
-        console.log('✅ Firebase 初期化成功');
 
-        // ログイン状態を監視
-        _fbAuth.onAuthStateChanged(user => {
-            _currentUser = user;
-            updateAuthUI(user);
-            if (user) {
-                syncHistoryFromCloud();
-                fetchUserPlan();
-                // Redirectログイン後にtui()が準備できてるか保証するため再適用
-                try { applyLanguage(); } catch(e) {}
-            } else {
-                // ログアウト時はProUltraフラグをリセット
-                _isProUltra = false;
-                document.body.removeAttribute('data-pu-skin');
-                const puBadge = document.getElementById('pu-header-badge');
-                if (puBadge) puBadge.style.display = 'none';
-                const notifBtn = document.getElementById('notif-btn');
-                if (notifBtn) notifBtn.style.display = 'none';
-                _showVerifyBanner(false);
-                _showVerifyBanner(false);
-            }
-        });
-
-        // Redirectログイン後の結果を受け取る
-        _fbAuth.getRedirectResult().then(result => {
-            if (result && result.user) {
-                // ログイン成功（onAuthStateChangedでも処理されるので特に何もしない）
-            }
-        }).catch(e => {
-            if (e.code) {
-                alert('ログインに失敗しました: ' + e.message);
-            }
-        });
-
-        document.getElementById('auth-bar').style.display = 'flex';
-        setTimeout(function() { checkPuReminder(); }, 4000);
-    } catch(e) {
-        console.error("Firebase初期化エラー:", e);
-        console.error("詳細:", e.message);
+    // 設定の確認
+    if (!FIREBASE_CONFIG || !FIREBASE_CONFIG.apiKey) {
+        console.error('❌ ERROR: FIREBASE_CONFIG が設定されていません');
+        document.getElementById('auth-username').textContent = 'Firebase設定エラー';
+        return;
     }
+
+    console.log('✅ Firebase SDK 確認OK');
+    
+    // 重複初期化を防ぐ
+    let fbApp;
+    try {
+        fbApp = firebase.app();
+        console.log('✅ Firebase は既に初期化済み');
+    } catch (e) {
+        console.log('🔄 Firebase を初期化中...');
+        fbApp = firebase.initializeApp(FIREBASE_CONFIG);
+        console.log('✅ Firebase 初期化完了');
+    }
+
+    // Auth と Firestore を取得
+    _fbAuth = firebase.auth();
+    _fbDb = firebase.firestore();
+
+    if (!_fbAuth) {
+        console.error('❌ ERROR: firebase.auth() が失敗しました');
+        document.getElementById('auth-username').textContent = 'Auth初期化エラー';
+        return;
+    }
+
+    console.log('✅✅✅ Firebase 完全初期化成功 ✅✅✅');
+    document.getElementById('auth-bar').style.display = 'flex';
+
+    // ログイン状態を監視
+    _fbAuth.onAuthStateChanged(user => {
+        _currentUser = user;
+        updateAuthUI(user);
+        if (user) {
+            syncHistoryFromCloud();
+            fetchUserPlan();
+            try { applyLanguage(); } catch(e) {}
+        } else {
+            _isProUltra = false;
+            document.body.removeAttribute('data-pu-skin');
+            const puBadge = document.getElementById('pu-header-badge');
+            if (puBadge) puBadge.style.display = 'none';
+            const notifBtn = document.getElementById('notif-btn');
+            if (notifBtn) notifBtn.style.display = 'none';
+            _showVerifyBanner(false);
+        }
+    });
+
+    // Redirect ログイン結果
+    _fbAuth.getRedirectResult().then(result => {
+        if (result && result.user) console.log('✅ Redirect ログイン成功');
+    }).catch(e => {
+        if (e.code !== 'auth/operation-not-supported-in-this-environment') {
+            console.error('Redirect エラー:', e);
+        }
+    });
+
+    setTimeout(function() { checkPuReminder(); }, 4000);
 }
 
 function updateAuthUI(user) {
