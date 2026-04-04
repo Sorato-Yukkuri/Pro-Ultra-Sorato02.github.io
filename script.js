@@ -257,9 +257,9 @@ function saveSettings() {
 
 // 診断項目ラベル（row-1〜row-34対応）
 const I18N_LABELS = {
-    'ja': ['CPU 論理コア数','システムメモリ容量','GPU レンダラー','GPU 最大テクスチャサイズ','実測 CPU ベンチスコア','実測 GPU 描画スコア','実測メモリ帯域スコア','実測最高フレームレート','実測 1% LOW フレームレート','画面リフレッシュレート(推定)','画面解像度 (物理ピクセル)','デバイスピクセル比 (DPR)','カラー深度 / HDR 対応','JS ヒープ上限','UIスレッド応答レイテンシ','ネットワーク速度 (実測)','回線種別 / API 実効帯域','バッテリー残量 / 充電状態','タッチポイント数','ダークモード / ハイコントラスト','セキュア通信 (HTTPS)','Cookie / IndexedDB','WebGL バージョン','WebGL 最大頂点属性数','WakeLock / 振動 API','PWA / Service Worker','自動操縦検知 (WebDriver)','FPS ジッタースコア','システム言語 / タイムゾーン','診断エンジンバージョン','IP アドレス (WebRTC)','ダークモード / ハイコントラスト','使用ブラウザ','デバイス機種'],
-    'ja-hira': ['CPUのこあすう','めもりようりょう','GPUのしゅるい','GPUさいだいてくすちゃ','CPUせいのうすこあ','GPUせいのうすこあ','めもりたいいきすこあ','へいきんFPS','1%LOWのFPS','がめんこうしんひんど(すいてい)','がめんかいぞうど','でばいすぴくせるひ','からーふかど/HDR','JSひーぷじょうげん','UIおうとうそくど','つうしんそくど(じっそく)','かいせんしゅるい','でんちざんりょう','たっちぽいんとすう','だーくもーど','あんごうつうしん','Cookieとほぞん','WebGLばーじょん','WebGLちょうてんぞくせい','WakeLock/しんどう','PWA/サービスワーカー','じどうそうじゅうけんち','FPSあんていせい','げんごとたいむぞーん','しんだんえんじんばーじょん','IPあどれす','だーくもーど','つかっているぶらうざ','でばいすのきしゅ'],
-    'en': ['CPU Logical Cores','System Memory','GPU Renderer','GPU Max Texture Size','CPU Bench Score','GPU Render Score','Memory Bandwidth Score','Avg Frame Rate','1% LOW Frame Rate','Screen Refresh Rate (est.)','Screen Resolution (Physical)','Device Pixel Ratio (DPR)','Color Depth / HDR','JS Heap Limit','UI Thread Latency','Network Speed (measured)','Connection Type / API Bandwidth','Battery / Charging Status','Touch Points','Dark Mode / High Contrast','Secure Connection (HTTPS)','Cookie / IndexedDB','WebGL Version','WebGL Max Vertex Attribs','WakeLock / Vibration API','PWA / Service Worker','Bot Detection (WebDriver)','FPS Jitter Score','System Language / Timezone','Diagnostic Engine Version','IP Address (WebRTC)','Dark Mode / High Contrast','Browser','Device Model'],
+    'ja': ['CPU 論理コア数','システムメモリ容量','GPU レンダラー','GPU 最大テクスチャサイズ','実測 CPU ベンチスコア','実測 GPU 描画スコア','実測メモリ帯域スコア','実測最高フレームレート','実測 1% LOW フレームレート','画面リフレッシュレート(推定)','画面解像度 (物理ピクセル)','デバイスピクセル比 (DPR)','カラー深度 / HDR 対応','JS ヒープ上限','UIスレッド応答レイテンシ','ゲーム向き判定 (Ping)','ビデオ通話向き判定','バッテリー残量 / 充電状態','タッチポイント数','ダークモード / ハイコントラスト','セキュア通信 (HTTPS)','Cookie / IndexedDB','WebGL バージョン','WebGL 最大頂点属性数','WakeLock / 振動 API','PWA / Service Worker','自動操縦検知 (WebDriver)','FPS ジッタースコア','システム言語 / タイムゾーン','診断エンジンバージョン','IP アドレス (WebRTC)','ダークモード / ハイコントラスト','使用ブラウザ','デバイス機種'],
+    'ja-hira': ['CPUのこあすう','めもりようりょう','GPUのしゅるい','GPUさいだいてくすちゃ','CPUせいのうすこあ','GPUせいのうすこあ','めもりたいいきすこあ','へいきんFPS','1%LOWのFPS','がめんこうしんひんど(すいてい)','がめんかいぞうど','でばいすぴくせるひ','からーふかど/HDR','JSひーぷじょうげん','UIおうとうそくど','げーむむきはんてい','びでおつうわむきはんてい','でんちざんりょう','たっちぽいんとすう','だーくもーど','あんごうつうしん','Cookieとほぞん','WebGLばーじょん','WebGLちょうてんぞくせい','WakeLock/しんどう','PWA/サービスワーカー','じどうそうじゅうけんち','FPSあんていせい','げんごとたいむぞーん','しんだんえんじんばーじょん','IPあどれす','だーくもーど','つかっているぶらうざ','でばいすのきしゅ'],
+    'en': ['CPU Logical Cores','System Memory','GPU Renderer','GPU Max Texture Size','CPU Bench Score','GPU Render Score','Memory Bandwidth Score','Avg Frame Rate','1% LOW Frame Rate','Screen Refresh Rate (est.)','Screen Resolution (Physical)','Device Pixel Ratio (DPR)','Color Depth / HDR','JS Heap Limit','UI Thread Latency','Game Suitability (Ping)','Video Call Suitability','Battery / Charging Status','Touch Points','Dark Mode / High Contrast','Secure Connection (HTTPS)','Cookie / IndexedDB','WebGL Version','WebGL Max Vertex Attribs','WakeLock / Vibration API','PWA / Service Worker','Bot Detection (WebDriver)','FPS Jitter Score','System Language / Timezone','Diagnostic Engine Version','IP Address (WebRTC)','Dark Mode / High Contrast','Browser','Device Model'],
     'zh-hans': ['CPU逻辑核心数','系统内存容量','GPU渲染器','GPU最大纹理尺寸','CPU基准分数','GPU渲染分数','内存带宽分数','平均帧率','1%低帧率','屏幕刷新率(估计)','屏幕分辨率(物理像素)','设备像素比(DPR)','色彩深度/HDR支持','JS堆内存上限','UI线程响应延迟','网络速度(实测)','网络类型/API带宽','电池余量/充电状态','触控点数量','深色模式/高对比度','安全连接(HTTPS)','Cookie/IndexedDB','WebGL版本','WebGL最大顶点属性数','WakeLock/振动API','PWA/Service Worker','自动化检测(WebDriver)','FPS抖动分数','系统语言/时区','诊断引擎版本','IP地址(WebRTC)','深色模式/高对比度','使用的浏览器','设备型号'],
     'zh-hant': ['CPU邏輯核心數','系統記憶體容量','GPU渲染器','GPU最大紋理尺寸','CPU基準分數','GPU渲染分數','記憶體頻寬分數','平均幀率','1%低幀率','螢幕更新率(估計)','螢幕解析度(實體像素)','裝置像素比(DPR)','色彩深度/HDR支援','JS堆記憶體上限','UI執行緒回應延遲','網路速度(實測)','網路類型/API頻寬','電池餘量/充電狀態','觸控點數量','深色模式/高對比度','安全連線(HTTPS)','Cookie/IndexedDB','WebGL版本','WebGL最大頂點屬性數','WakeLock/震動API','PWA/Service Worker','自動化偵測(WebDriver)','FPS抖動分數','系統語言/時區','診斷引擎版本','IP位址(WebRTC)','深色模式/高對比度','使用的瀏覽器','裝置型號'],
     'ko': ['CPU 논리 코어 수','시스템 메모리 용량','GPU 렌더러','GPU 최대 텍스처 크기','CPU 벤치 점수','GPU 렌더 점수','메모리 대역폭 점수','평균 프레임률','1% LOW 프레임률','화면 재생률(추정)','화면 해상도(물리 픽셀)','기기 픽셀 비율(DPR)','색심도/HDR 지원','JS 힙 한도','UI 스레드 응답 지연','네트워크 속도(실측)','연결 유형/API 대역폭','배터리/충전 상태','터치 포인트 수','다크 모드/고대비','보안 연결(HTTPS)','Cookie/IndexedDB','WebGL 버전','WebGL 최대 정점 속성 수','WakeLock/진동 API','PWA/Service Worker','봇 감지(WebDriver)','FPS 지터 점수','시스템 언어/시간대','진단 엔진 버전','IP 주소(WebRTC)','다크 모드/고대비','사용 중인 브라우저','기기 모델'],
@@ -286,7 +286,7 @@ const I18N = {
         speedBtnTxt:   '⚡ ページ読み込み速度テスト',
         retryBtnTxt:   '🔄 再診断する',
         rankMsgs: { S:'最高峰のフラッグシップ性能です', A:'非常に快適で強力な環境です', B:'一般的な標準デバイス性能です', C:'動作の遅延が目立ち、やや非力です', D:'性能が不足している旧型環境です' },
-        bench: ['CPU 演算性能を計測中...','素数計算・行列積・ビット演算を実行しています','GPU 描画性能を計測中...','WebGL シェーダー・Canvas 2D 合成描画を負荷試験中','メモリ帯域を計測中...','シーケンシャル・ストライド・ランダムアクセスを測定中','システムメモリを精密解析中...','5手法を統合中','ネットワーク速度を実測中...','実際にデータを取得して実効帯域を計算しています','バッテリー・UIレイテンシを計測中...','Battery API・UIスレッド応答遅延を同時取得しています','省電力モードを確認中...','タイマー精度を計測しています','フレームレート安定性を計測中...','rAF遅延ギャップ方式で15秒間精密計測中'],
+        bench: ['CPU 演算性能を計測中...','素数計算・行列積・ビット演算を実行しています','GPU 描画性能を計測中...','WebGL シェーダー・Canvas 2D 合成描画を負荷試験中','メモリ帯域を計測中...','シーケンシャル・ストライド・ランダムアクセスを測定中','システムメモリを精密解析中...','5手法を統合中','ゲーム・通話向き判定を計測中...','複数サーバーへのPingとジッターを計測しています','バッテリー・UIレイテンシを計測中...','Battery API・UIスレッド応答遅延を同時取得しています','省電力モードを確認中...','タイマー精度を計測しています','フレームレート安定性を計測中...','rAF遅延ギャップ方式で15秒間精密計測中'],
         val: { supported:'対応', unsupported:'非対応', running:'起動中', browser:'ブラウザ', secure:'安全 (HTTPS / TLS)', insecure:'非暗号 (HTTP)', detected:'⚠ 自動操縦を検知', normal:'正常 (手動操作)', hidden:'非表示', measuring:'計測不可', failed:'計測失敗 (オフライン?)', fast:'高速', medium:'普通', slow:'低速', charging:'⚡充電中', discharging:'🔋放電中', enabled:'有効', disabled:'無効', dark:'ダーク:ON', light:'ダーク:OFF', hiconOn:'ハイコン:ON', hiconOff:'ハイコン:OFF', estimated:'推定', highPrec:'高精度', midPrec:'精度中' },
         ui: { legendBtn:'🎨 色の基準を確認する', shareHint:'💡 プレビュー画面のダウンロードボタン下からXにシェアできます', speedDesc:'主要サイトへの接続時間を計測します。', speedNote:'※ブラウザ制限により参考値です。', fpsAvgDesc:'（1秒間に何回画面が更新されるか。高いほど滑らか）', fpsLowDesc:'(最も重い場面でのFPS。低いとカクつきを感じやすい)', uaDesc:'（OS・ブラウザなど環境情報をまとめた文字列）', remaining:'推定残り時間: 約 ', seconds:' 秒', fpsMeasuring:' 秒 (FPS計測中)', fpsCalc:'FPS集計中...', finalizing:'最終処理中...',
             scoreLabel:'総合スコア', memLabel:'MEM帯域', fpsLabel:'FPS安定', netLabel:'NET',
@@ -1106,8 +1106,7 @@ async function openSettings() {
         ${settingSection(ui.secData, [
             settingSelect(ui.labelExportFmt, 'exportFormat', [['png',ui.optPNG],['csv',ui.optCSV],['pdf',ui.optPDF||'PDF']], 'exportFormat'),
             settingSelect(ui.labelSpeedUnit, 'speedUnit', [['mbps','Mbps'],['mbs','MB/s']], 'speedUnit'),
-            // 🚀 自動チェック機能はProUltra限定
-            _isProUltra ? settingToggle(ui.labelAutoCheck, 'autoCheck', 'autoCheck') : `<div style="padding:14px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;opacity:0.5;"><div><div style="color:var(--text);font-size:0.9rem;font-weight:700;">${ui.labelAutoCheck}</div><div style="color:var(--sub-text);font-size:0.78rem;margin-top:2px;">👑 ProUltra限定</div></div><span style="color:#888;font-size:0.85rem;">ロック</span></div>`,
+
             settingToggle(ui.labelGuard, 'clumsiGuard', 'clumsiGuard'),
         ])}
 
@@ -2083,16 +2082,45 @@ function isPrivateIP(ip) {
 }
 
 /* ── ⑥ ネットワーク実測 ── */
-async function measureNetworkSpeed() {
-    const url='https://cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.21/lodash.min.js';
-    try {
-        const t0=performance.now();
-        const resp=await fetch(url+'?_='+Date.now(),{cache:'no-store',mode:'cors'});
-        const buf=await resp.arrayBuffer();
-        const ms=performance.now()-t0;
-        const mbps=(buf.byteLength/1024*8)/ms;
-        return Math.round(mbps*10)/10;
-    } catch(e){ return null; }
+async function measureGamePing() {
+    // Google・Cloudflare・Fastly の3つにHEADリクエストして平均Pingを計測
+    const targets = [
+        'https://www.google.com/generate_204',
+        'https://1.1.1.1/cdn-cgi/trace',
+        'https://www.cloudflare.com/cdn-cgi/trace',
+    ];
+    const results = [];
+    for (const url of targets) {
+        try {
+            const t0 = performance.now();
+            await fetch(url + '?_=' + Date.now(), { cache: 'no-store', mode: 'no-cors' });
+            results.push(Math.round(performance.now() - t0));
+        } catch(e) {}
+    }
+    if (results.length === 0) return null;
+    results.sort((a, b) => a - b);
+    const avg = Math.round(results.reduce((s, v) => s + v, 0) / results.length);
+    const jitter = results.length >= 2 ? Math.round(results[results.length-1] - results[0]) : 0;
+    return { avg, jitter, min: results[0], samples: results.length };
+}
+
+async function measureVideoPing() {
+    // 複数回計測してジッター（安定性）を測定
+    const url = 'https://www.google.com/generate_204';
+    const samples = [];
+    for (let i = 0; i < 5; i++) {
+        try {
+            const t0 = performance.now();
+            await fetch(url + '?_=' + Date.now() + '_' + i, { cache: 'no-store', mode: 'no-cors' });
+            samples.push(Math.round(performance.now() - t0));
+        } catch(e) {}
+        await new Promise(r => setTimeout(r, 100));
+    }
+    if (samples.length < 2) return null;
+    samples.sort((a, b) => a - b);
+    const avg = Math.round(samples.reduce((s, v) => s + v, 0) / samples.length);
+    const jitter = samples[samples.length-1] - samples[0];
+    return { avg, jitter, samples: samples.length };
 }
 
 /* ── ⑦ バッテリー情報 ── */
@@ -2173,6 +2201,7 @@ async function runBenchmark() {
                 timeEl.textContent = ui.remaining + remaining + ui.seconds;
             } else {
                 timeEl.textContent = ui.finalizing;
+                clearInterval(timerInterval);
             }
         }
     }, 1000);
@@ -2213,7 +2242,7 @@ scores.cpu = arr[1]; // 真ん中だけ採用（中央値）
 
     el.textContent=_tb()[8];
     msg.textContent=_tb()[9];
-    [diag.networkMbps, diag.publicIP] = await Promise.all([measureNetworkSpeed(), fetchPublicIP()]);
+    [diag.gamePing, diag.videoPing, diag.publicIP] = await Promise.all([measureGamePing(), measureVideoPing(), fetchPublicIP()]);
 
     el.textContent=_tb()[10];
     msg.textContent=_tb()[11];
@@ -2235,7 +2264,10 @@ scores.cpu = arr[1]; // 真ん中だけ採用（中央値）
     const fpsTimer = setInterval(() => {
         const rem = Math.max(0, Math.ceil(15 - (performance.now()-fpsStart)/1000));
         const ui = tui();
-        if (fpsTimerEl) fpsTimerEl.textContent = rem > 0 ? ui.remaining + rem + ui.fpsMeasuring : ui.fpsCalc;
+        if (fpsTimerEl) {
+            fpsTimerEl.textContent = rem > 0 ? ui.remaining + rem + ui.fpsMeasuring : ui.fpsCalc;
+            if (rem === 0) clearInterval(fpsTimer);
+        }
     }, 1000);
 
     runFPSBench((avgFps,lowFps,jitterScore,refreshRate,jank32,jank17) => {
@@ -2250,7 +2282,7 @@ scores.cpu = arr[1]; // 真ん中だけ採用（中央値）
 
 /* ── 全30項目の診断結果反映 ── */
 function processFinalReport() {
-    const {avgFps,lowFps,refreshRate,memResult,gpu,battery,storage,networkMbps}=diag;
+    const {avgFps,lowFps,refreshRate,memResult,gpu,battery,storage,gamePing,videoPing}=diag;
     document.getElementById('b-fps-avg').textContent=avgFps+' FPS';
     document.getElementById('b-fps-low').textContent=lowFps+' FPS';
 
@@ -2317,16 +2349,37 @@ function processFinalReport() {
     }
 
     // 16. ネットワーク実測
-    if(networkMbps!==null){
-        setRow(16,formatSpeed(networkMbps),st(networkMbps>=100,networkMbps>=20));
+    // 16. ゲーム向き判定（Ping + ジッター）
+    const gp = diag.gamePing;
+    if (gp) {
+        const pingOk = gp.avg <= 50;
+        const pingWarn = gp.avg <= 100;
+        const jitterOk = gp.jitter <= 30;
+        let gameLabel = '';
+        if (gp.avg <= 30 && jitterOk) gameLabel = '◎ 最適';
+        else if (pingOk && jitterOk) gameLabel = '○ 向き';
+        else if (pingWarn) gameLabel = '△ やや重い';
+        else gameLabel = '✕ 不向き';
+        setRow(16, `Ping: ${gp.avg}ms  ジッター: ${gp.jitter}ms  ${gameLabel}`, st(gp.avg<=30 && jitterOk, pingOk));
     } else {
-        setRow(16,_v.failed,'warn');
+        setRow(16, _v.failed, 'warn');
     }
 
-    // 17. 回線種別 / API 帯域
-    const effType=navigator.connection?.effectiveType?.toUpperCase()??'--';
-    const dlAPI=navigator.connection?.downlink??null;
-    setRow(17,effType+(dlAPI!==null?' / '+formatSpeed(dlAPI):''),st(effType==='4G',effType==='3G'));
+    // 17. ビデオ通話向き判定（遅延 + 安定性）
+    const vp = diag.videoPing;
+    if (vp) {
+        const latOk = vp.avg <= 60;
+        const latWarn = vp.avg <= 120;
+        const stableOk = vp.jitter <= 40;
+        let videoLabel = '';
+        if (latOk && stableOk) videoLabel = '◎ 最適';
+        else if (latWarn && stableOk) videoLabel = '○ 向き';
+        else if (latWarn) videoLabel = '△ 不安定';
+        else videoLabel = '✕ 不向き';
+        setRow(17, `遅延: ${vp.avg}ms  安定性: ${vp.jitter <= 40 ? '安定' : '不安定'}(${vp.jitter}ms)  ${videoLabel}`, st(latOk && stableOk, latWarn));
+    } else {
+        setRow(17, _v.failed, 'warn');
+    }
 
     // 18. バッテリー
     if(battery){
@@ -2419,7 +2472,7 @@ function processFinalReport() {
 
     // ── スコアリング（CPU32/GPU23/MEM帯域10/FPS15/RAM12/NET8） ──
     const ramScore=Math.min(100,Math.round((ramGB/64)*100));
-    const netScore=networkMbps!==null?Math.min(100,Math.round(networkMbps)):50;
+    const gping = diag.gamePing; const netScore = gping ? Math.max(0, Math.min(100, Math.round(100 - gping.avg))) : 50;
     const totalScore=Math.round(
         scores.cpu*0.32+scores.gpu*0.23+scores.mem*0.10+
         scores.fps*0.15+ramScore*0.12+netScore*0.08
@@ -2634,7 +2687,7 @@ function processFinalReport() {
     const _ui2 = tui();
     document.getElementById('status-title').textContent = _diagLang.rankMsgs[rank] || rank;
     document.getElementById('eval-msg').textContent =
-        `${_ui2.scoreLabel} ${totalScore}/100\nCPU:${scores.cpu}  GPU:${scores.gpu}  RAM:${ramGB}GB  ${_ui2.memLabel}:${scores.mem}  ${_ui2.fpsLabel}:${scores.fps}  ${_ui2.netLabel}:${networkMbps!=null?formatSpeed(networkMbps):'?'}`;
+        `${_ui2.scoreLabel} ${totalScore}/100\nCPU:${scores.cpu}  GPU:${scores.gpu}  RAM:${ramGB}GB  ${_ui2.memLabel}:${scores.mem}  ${_ui2.fpsLabel}:${scores.fps}  ${_ui2.netLabel}:${diag.gamePing ? diag.gamePing.avg+'ms' : '?'}`;
     document.getElementById('ai-btn').style.display='block';
     document.getElementById('save-btn').style.display='block';
     document.getElementById('share-hint').style.display='block';
@@ -2655,7 +2708,7 @@ function processFinalReport() {
     }, 2500);
 
     // ローカルストレージに結果を保存
-    saveResultToHistory(totalScore, rank, scores, ramGB, diag.avgFps, diag.lowFps, diag.networkMbps);
+    saveResultToHistory(totalScore, rank, scores, ramGB, diag.avgFps, diag.lowFps, diag.gamePing ? diag.gamePing.avg : null);
     updatePuLastDiag();
 
     // 設定に応じたフィードバック
@@ -2672,6 +2725,10 @@ function processFinalReport() {
             window._pendingBattleOpponent = null;
         }, 1000);
     }
+
+    // 最終処理中...テキストをクリア
+    const _timeEl = document.getElementById('time-remaining');
+    if (_timeEl) _timeEl.textContent = '';
 }
 
 /* ── キャプチャ ── */
@@ -3997,46 +4054,70 @@ async function _runDetailMode() {
         console.log('【詳細モード】ProUltraではないためスキップ');
         return;
     }
+    // row-35: ストレージ使用量
     try {
-        const cpuTempEst = Math.round(45 + (scores.cpu / 100) * 45);
-        const gpuTempEst = Math.round(40 + (scores.gpu / 100) * 50);
         const v35 = document.getElementById('v-35');
-        if (v35) v35.textContent = 'CPU: ~' + cpuTempEst + '°C / GPU: ~' + gpuTempEst + '°C (推定)';
         const r35 = document.getElementById('row-35');
-        if (r35) r35.className = 'spec-row st-' + (cpuTempEst < 70 ? 'ok' : cpuTempEst < 85 ? 'warn' : 'bad');
-        console.log('【詳細モード】温度推定 - CPU:', cpuTempEst, '°C, GPU:', gpuTempEst, '°C');
+        if (navigator.storage && navigator.storage.estimate) {
+            const est = await navigator.storage.estimate();
+            const usedMB = Math.round((est.usage || 0) / 1024 / 1024);
+            const quotaMB = Math.round((est.quota || 0) / 1024 / 1024);
+            const quotaLabel = quotaMB >= 1024 ? (quotaMB / 1024).toFixed(1) + ' GB' : quotaMB + ' MB';
+            const pct = quotaMB > 0 ? Math.round(usedMB / quotaMB * 100) : 0;
+            if (v35) v35.textContent = usedMB + ' MB 使用中 / ' + quotaLabel + ' (' + pct + '%)';
+            if (r35) r35.className = 'spec-row st-' + (pct < 50 ? 'ok' : pct < 80 ? 'warn' : 'bad');
+        } else {
+            if (v35) v35.textContent = '取得不可';
+            if (r35) r35.className = 'spec-row st-warn';
+        }
     } catch(e) {
-        console.error('【詳細モード】温度推定エラー:', e.message);
+        const v35 = document.getElementById('v-35');
+        if (v35) v35.textContent = '取得不可';
     }
+
+    // row-36: WebAssembly 対応・速度
     try {
         const v36 = document.getElementById('v-36');
-        if (v36 && performance.memory) {
-            const heapMB = Math.round(performance.memory.jsHeapSizeLimit / 1024 / 1024);
-            const estSlots = heapMB > 6000 ? '4スロット以上' : heapMB > 3000 ? '2〜4スロット' : '1〜2スロット';
-            v36.textContent = estSlots + ' (推定)';
-            console.log('【詳細モード】メモリスロット推定 - ヒープ:', heapMB, 'MB →', estSlots);
-        } else if (v36) {
-            v36.textContent = '取得不可';
-            console.log('【詳細モード】メモリスロット取得不可');
-        }
         const r36 = document.getElementById('row-36');
-        if (r36) r36.className = 'spec-row st-good';
+        if (typeof WebAssembly !== 'undefined') {
+            const t0 = performance.now();
+            // 小さなWasmモジュールをコンパイルして速度を測定
+            const wasmBytes = new Uint8Array([
+                0x00,0x61,0x73,0x6d,0x01,0x00,0x00,0x00,
+                0x01,0x05,0x01,0x60,0x00,0x01,0x7f,
+                0x03,0x02,0x01,0x00,
+                0x07,0x07,0x01,0x03,0x61,0x64,0x64,0x00,0x00,
+                0x0a,0x06,0x01,0x04,0x00,0x41,0x2a,0x0b
+            ]);
+            await WebAssembly.compile(wasmBytes);
+            const ms = Math.round((performance.now() - t0) * 10) / 10;
+            if (v36) v36.textContent = '対応  コンパイル: ' + ms + 'ms';
+            if (r36) r36.className = 'spec-row st-' + (ms < 5 ? 'ok' : ms < 20 ? 'warn' : 'bad');
+        } else {
+            if (v36) v36.textContent = '非対応';
+            if (r36) r36.className = 'spec-row st-bad';
+        }
     } catch(e) {
-        console.error('【詳細モード】メモリスロット推定エラー:', e.message);
+        const v36 = document.getElementById('v-36');
+        if (v36) v36.textContent = '取得不可';
     }
+
+    // row-37: 通知許可状態
     try {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const audioIn  = devices.filter(function(d){ return d.kind === 'audioinput'; }).length;
-        const audioOut = devices.filter(function(d){ return d.kind === 'audiooutput'; }).length;
         const v37 = document.getElementById('v-37');
-        if (v37) v37.textContent = '入力: ' + audioIn + '台 / 出力: ' + audioOut + '台';
         const r37 = document.getElementById('row-37');
-        if (r37) r37.className = 'spec-row st-' + (audioIn > 0 || audioOut > 0 ? 'ok' : 'warn');
-        console.log('【詳細モード】オーディオデバイス - 入力:', audioIn, '台, 出力:', audioOut, '台');
+        if ('Notification' in window) {
+            const perm = Notification.permission;
+            const label = perm === 'granted' ? '許可済み' : perm === 'denied' ? 'ブロック中' : '未設定';
+            if (v37) v37.textContent = label;
+            if (r37) r37.className = 'spec-row st-' + (perm === 'granted' ? 'ok' : perm === 'denied' ? 'bad' : 'warn');
+        } else {
+            if (v37) v37.textContent = '非対応';
+            if (r37) r37.className = 'spec-row st-warn';
+        }
     } catch(e) {
         const v37 = document.getElementById('v-37');
-        if (v37) v37.textContent = '取得不可（権限が必要）';
-        console.error('【詳細モード】オーディオデバイス取得エラー:', e.message);
+        if (v37) v37.textContent = '取得不可';
     }
 }
 
@@ -5307,7 +5388,7 @@ window.addEventListener('load',()=>{
     window.scrollTo({ top: 0, behavior: 'instant' });
     
     // 🔐 reCAPTCHA v3 チェック（初回ロード時）
-    showRecaptchaCheck();
+    try { showRecaptchaCheck(); } catch(e) { console.warn('showRecaptchaCheck error:', e); }
     
     // 設定読み込み・適用（エラーが起きても診断は必ず実行）
     try { loadSettings(); } catch(e) { console.warn('loadSettings error:', e); }
@@ -5925,7 +6006,7 @@ function _getBattleData() {
         mem:  scores.mem,
         fps:  scores.fps,
         ram:  diag.memResult?.gb || 0,
-        net:  diag.networkMbps  || 0,
+        net:  diag.gamePing ? diag.gamePing.avg : 0,
         avgFps: diag.avgFps    || 0,
         lowFps: diag.lowFps    || 0,
         device: diag.deviceName || '--',
@@ -6205,8 +6286,8 @@ const HELP_TEXT_I18N = {
         '色の表現力（ビット深度）とHDR対応の有無です。24bit以上・HDR対応が高品質の目安。',
         'JavaScriptが使用できる最大メモリ量です。大きいほど重い処理をこなせます。Firefoxは非対応。',
         'UIスレッドの応答遅延時間です。中央値が低いほどタップ・クリックへの反応が速いです。',
-        '実際にデータをダウンロードして計測した通信速度です。100Mbps以上が高速の目安。',
-        'ブラウザが認識している通信種別とAPI報告の帯域幅です。4G・WiFi等。参考値です。',
+        '複数サーバーへのPingと計測ブレ（ジッター）をもとにゲームに向いているか判定します。Ping30ms以下・ジッター30ms以下が最適です。',
+        '遅延とジッターをもとにビデオ通話（Zoom・Teamsなど）に向いているか判定します。遅延60ms以下・安定していると最適です。',
         '現在のバッテリー残量と充電状態です。残量20%未満・非充電の場合はランクが下がります。',
         '同時に認識できるタッチ点数です。10点以上がマルチタッチ対応の目安です。',
         'ダークモードとハイコントラストモードの設定状態です。OSの設定を反映しています。',
@@ -6224,6 +6305,9 @@ const HELP_TEXT_I18N = {
         'OSのダークモード設定とハイコントラスト設定の状態です。',
         '現在使用しているブラウザの種類です。',
         'UAから推定した端末の機種名です。Safariでは詳細なモデルが取得できない場合があります。',
+        'ブラウザが使用しているストレージ容量と残り容量です。使用率が高い場合は不要なデータを削除するとパフォーマンスが改善します。',
+        'WebAssemblyの対応状況とコンパイル速度です。対応していると重いゲームや処理が高速に動作します。',
+        'ブラウザの通知許可状態です。許可済みならアプリからの通知が届きます。ブロック中は設定から変更できます。',
     ],
     'en': [
         'Number of CPU logical cores. More cores allow more parallel processing. 4-8 cores is sufficient for general tasks.',
@@ -6241,8 +6325,8 @@ const HELP_TEXT_I18N = {
         'Color bit depth and HDR support. 24bit+ with HDR is high quality.',
         'Maximum JS heap memory. Larger = can handle heavier processing. Firefox unsupported.',
         'UI thread response latency. Lower median = faster tap/click response.',
-        'Network speed measured by actual download. 100Mbps+ is fast.',
-        'Connection type and API-reported bandwidth. 4G, WiFi, etc. Reference value.',
+        'Measures Ping and jitter to multiple servers to judge if your connection is suitable for gaming. Ping ≤30ms and jitter ≤30ms is ideal.',
+        'Judges suitability for video calls (Zoom, Teams, etc.) based on latency and stability. Latency ≤60ms and stable is ideal.',
         'Battery level and charging status. Below 20% uncharged lowers your rank.',
         'Number of simultaneous touch points. 10+ supports full multi-touch.',
         'Dark mode and high contrast mode state from OS settings.',
@@ -6260,6 +6344,9 @@ const HELP_TEXT_I18N = {
         'OS dark mode and high contrast settings.',
         'Current browser being used.',
         'Device model estimated from UA. Detailed model may not be available in Safari.',
+        'Storage space used by this browser. High usage may slow performance — clearing unused data can help.',
+        'WebAssembly support and compile speed. Supported = heavy games and apps run faster.',
+        'Browser notification permission status. Granted = notifications work. Denied = change in browser settings.',
     ],
     'zh-hans': [
         'CPU逻辑核心数。越多则可同时处理更多任务。日常使用4-8核已足够。',
