@@ -4773,22 +4773,6 @@ function updateFriendAuthUI(loggedIn) {
 let _firebaseInitialized = false;
 
 function initFirebase() {
-    // Firebase が読み込まれるまで待つ
-    window.firebase_ready_promise = new Promise((resolve) => {
-        if (typeof firebase !== 'undefined') {
-            _fbAuth = firebase.auth();
-            _fbDb = firebase.firestore();
-            try { firebase.initializeApp(FIREBASE_CONFIG); } catch(e) {}
-            resolve();
-        } else {
-            setTimeout(() => {
-                _fbAuth = firebase.auth();
-                _fbDb = firebase.firestore();
-                try { firebase.initializeApp(FIREBASE_CONFIG); } catch(e) {}
-                resolve();
-            }, 100);
-        }
-    });
     // Firebase SDK の確認
     if (typeof firebase === 'undefined') {
         console.error('❌ ERROR: Firebase SDK が読み込まれていません');
