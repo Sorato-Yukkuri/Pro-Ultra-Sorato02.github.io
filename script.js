@@ -2,7 +2,7 @@ let capturedDataUrl = null;
 
 // 🚫 永久追放ブラックリスト
 const PERMANENT_BAN_LIST = {
-    'gintc50veo3nu@yahoo.co.jp': '理由：開発者による不適切な言動×２'
+    'test：gintc50veo3nu@yahoo.co.jp': '理由：開発者による不適切な言動×２'
     };
 
 /**
@@ -179,12 +179,19 @@ function showBanScreen(email) {
 if (localStorage.getItem('sys_banned_user') === 'true') {
     const checkReady = setInterval(() => {
         if (document.body) {
+            // ✅ BAN解除チェック：リストから外れていたらフラグをクリア
+            const storedEmail = localStorage.getItem('sys_banned_email');
+            if (storedEmail && !PERMANENT_BAN_LIST[storedEmail]) {
+                localStorage.removeItem('sys_banned_user');
+                localStorage.removeItem('sys_banned_email');
+                clearInterval(checkReady);
+                return;
+            }
             showBanScreen('stored');
             clearInterval(checkReady);
         }
     }, 10);
 }
-
 // 2. Firebaseのログイン状態を監視して、ブラックリスト照合
 const banObserver = setInterval(() => {
     // _fbAuth が存在し、かつ currentUser が取れた瞬間を狙う
