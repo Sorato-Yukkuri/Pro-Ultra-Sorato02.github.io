@@ -2708,6 +2708,7 @@ function processFinalReport() {
     document.getElementById('history-btn').style.display='block';
     document.getElementById('speed-btn').style.display='block';
     document.getElementById('battle-btn').style.display='block';
+    if (_rankingEnabled) document.getElementById('ranking-btn').style.display='flex';
     document.getElementById('retry-btn').style.display='block';
 
     // 診断完了トースト
@@ -3823,6 +3824,7 @@ function retryDiagnostic() {
     document.getElementById('history-btn').style.display = 'none';
     document.getElementById('speed-btn').style.display   = 'none';
     document.getElementById('battle-btn').style.display  = 'none';
+    document.getElementById('ranking-btn').style.display = 'none';
     document.getElementById('retry-btn').style.display   = 'none';
     const trEl = document.getElementById('time-remaining');
     if (trEl) trEl.textContent = '';
@@ -4387,8 +4389,13 @@ function _applyPuPurchase(itemId) {
     if (itemId === 'ai_pro')         { _aiProEnabled = true; alert('✅ AIコメント強化版が有効になりました！'); }
     if (itemId === 'title_battler')  { _battlerTitleEnabled = true; alert('✅ バトル称号が有効になりました！'); }
     if (itemId === 'battle_watch')   { _battleWatchEnabled = true; alert('✅ バトル観戦モードが有効になりました！'); }
-    if (itemId === 'ranking_weekly') { _rankingEnabled = true; _openWeeklyRanking(); }
+    if (itemId === 'ranking_weekly') { _rankingEnabled = true; _openWeeklyRanking(); alert('✅ 週間ランキング参加権が有効になりました！'); }
     _checkAllPurchased();
+}
+
+function _openWeeklyRanking() {
+    const btn = document.getElementById('ranking-btn');
+    if (btn) btn.style.display = 'flex';
 }
 
 function _applyAllPuPurchases() {
@@ -4396,7 +4403,7 @@ function _applyAllPuPurchases() {
     if (_puPurchases.includes('ai_pro'))         _aiProEnabled = true;
     if (_puPurchases.includes('title_battler'))  _battlerTitleEnabled = true;
     if (_puPurchases.includes('battle_watch'))   _battleWatchEnabled = true;
-    if (_puPurchases.includes('ranking_weekly')) _rankingEnabled = true;
+    if (_puPurchases.includes('ranking_weekly')) { _rankingEnabled = true; _openWeeklyRanking(); }
     if (_puPurchases.includes('hidden_legend'))  _legendSkinUnlocked = true;
     if (_puPurchases.includes('hidden_custom'))  _colorCustomEnabled = true;
     if (_puPurchases.includes('hidden_2x'))      _pointDoubleEnabled = true;
@@ -4407,10 +4414,20 @@ let _maxHistory = 10;
 let _aiProEnabled = false;
 let _battlerTitleEnabled = false;
 let _battleWatchEnabled = false;
-let _rankingEnabled = false;
 let _legendSkinUnlocked = false;
 let _colorCustomEnabled = false;
 let _pointDoubleEnabled = false;
+
+// 🏆 ランキングボタン確実表示（ポーリング方式）
+// タイミング問題を根本解決：_rankingEnabledがtrueになった瞬間を確実に捕捉する
+let _rankingEnabled = false;
+const _rankingBtnPoller = setInterval(() => {
+    if (!_rankingEnabled) return;
+    const btn = document.getElementById('ranking-btn');
+    if (btn && btn.style.display === 'none') btn.style.display = 'flex';
+    clearInterval(_rankingBtnPoller);
+}, 300);
+setTimeout(() => clearInterval(_rankingBtnPoller), 60000); // 60秒後に終了
 
 function _checkAllPurchased() {
     const allIds = PU_SHOP_ITEMS.map(i => i.id);

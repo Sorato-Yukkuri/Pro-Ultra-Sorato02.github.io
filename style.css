@@ -147,6 +147,15 @@
             transition:transform 0.2s;
         }
         #battle-btn:active { transform:scale(0.98); }
+        #ranking-btn {
+            width:100%;padding:18px;border-radius:22px;
+            background:linear-gradient(135deg,#f59e0b,#f97316);color:#fff;border:none;
+            font-size:1.1rem;font-weight:800;cursor:pointer;
+            box-shadow:0 12px 35px rgba(245,158,11,0.3);
+            transition:transform 0.2s;
+            align-items:center;justify-content:center;gap:10px;
+        }
+        #ranking-btn:active { transform:scale(0.98); }
 
         /* 共通モーダル追加スタイル */
         .extra-modal {
