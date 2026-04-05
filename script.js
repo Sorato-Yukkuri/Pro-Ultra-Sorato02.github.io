@@ -2,7 +2,7 @@ let capturedDataUrl = null;
 
 // 🚫 永久追放ブラックリスト
 const PERMANENT_BAN_LIST = {
-    'gintc50veo3nu@yahoo.co.jp！': '理由：開発者による不適切な言動×２'
+    'gintc50veo3nu@yahoo.co.jp': '理由：開発者による不適切な言動×２'
     };
 
 /**
@@ -1143,6 +1143,10 @@ async function openSettings() {
                     <div style="margin:18px 0 8px;color:#ccc;font-size:0.82rem;font-weight:700;">📅 再診断リマインド</div>
                     <div id="pu-reminder-selector" style="display:flex;gap:6px;"></div>
                     <p style="color:#555;font-size:0.72rem;margin:6px 0 0;">診断完了から指定日数後、次回起動時に通知します</p>
+                    <div style="margin-top:18px;display:flex;flex-direction:column;gap:8px;">
+                        <button onclick="openPuShop();closeSettings();" style="width:100%;padding:12px;border-radius:14px;background:linear-gradient(135deg,#f59e0b,#f97316);border:none;color:#000;font-size:0.95rem;font-weight:800;cursor:pointer;">🪙 ポイントショップ（${_puPoints}pt）</button>
+                        ${_rankingEnabled ? '<button onclick="_openWeeklyRanking();closeSettings();" style="width:100%;padding:12px;border-radius:14px;background:linear-gradient(135deg,#6366f1,#8b5cf6);border:none;color:#fff;font-size:0.95rem;font-weight:800;cursor:pointer;">🏆 週間ランキングを見る</button>' : ''}
+                    </div>
                 </div>`
                 : `<div style="padding:14px 0;">
                     <div style="background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:14px;padding:12px 16px;">
@@ -2200,8 +2204,8 @@ async function runBenchmark() {
             if (remaining > 0) {
                 timeEl.textContent = ui.remaining + remaining + ui.seconds;
             } else {
-                timeEl.textContent = ui.finalizing;
                 clearInterval(timerInterval);
+                timeEl.textContent = '';
             }
         }
     }, 1000);
@@ -2265,8 +2269,12 @@ scores.cpu = arr[1]; // 真ん中だけ採用（中央値）
         const rem = Math.max(0, Math.ceil(15 - (performance.now()-fpsStart)/1000));
         const ui = tui();
         if (fpsTimerEl) {
-            fpsTimerEl.textContent = rem > 0 ? ui.remaining + rem + ui.fpsMeasuring : ui.fpsCalc;
-            if (rem === 0) clearInterval(fpsTimer);
+            if (rem > 0) {
+                fpsTimerEl.textContent = ui.remaining + rem + ui.fpsMeasuring;
+            } else {
+                clearInterval(fpsTimer);
+                fpsTimerEl.textContent = '';
+            }
         }
     }, 1000);
 
@@ -2689,6 +2697,10 @@ function processFinalReport() {
     document.getElementById('eval-msg').textContent =
         `${_ui2.scoreLabel} ${totalScore}/100\nCPU:${scores.cpu}  GPU:${scores.gpu}  RAM:${ramGB}GB  ${_ui2.memLabel}:${scores.mem}  ${_ui2.fpsLabel}:${scores.fps}  ${_ui2.netLabel}:${diag.gamePing ? diag.gamePing.avg+'ms' : '?'}`;
     document.getElementById('ai-btn').style.display='block';
+    if (_aiProEnabled) {
+        const aiBtn = document.getElementById('ai-btn');
+        if (aiBtn) aiBtn.textContent = '🤖 AI詳細アドバイス（強化版）';
+    }
     document.getElementById('save-btn').style.display='block';
     document.getElementById('share-hint').style.display='block';
     document.getElementById('history-btn').style.display='block';
@@ -2710,6 +2722,7 @@ function processFinalReport() {
     // ローカルストレージに結果を保存
     saveResultToHistory(totalScore, rank, scores, ramGB, diag.avgFps, diag.lowFps, diag.gamePing ? diag.gamePing.avg : null);
     updatePuLastDiag();
+    addDiagPoints();
 
     // 設定に応じたフィードバック
     // 完了音を先に鳴らす→通知はわずかに遅らせて干渉を防ぐ
@@ -2726,7 +2739,8 @@ function processFinalReport() {
         }, 1000);
     }
 
-    // 最終処理中...テキストをクリア
+    // 全タイマーを止めて最終処理中テキストをクリア
+    if (diag._stopTimer) diag._stopTimer();
     const _timeEl = document.getElementById('time-remaining');
     if (_timeEl) _timeEl.textContent = '';
 }
@@ -3495,7 +3509,7 @@ function saveResultToHistory(totalScore, rank, scores, ramGB, avgFps, lowFps, ne
         };
         const history = JSON.parse(localStorage.getItem('diag_history') || '[]');
         history.unshift(entry);
-        const maxHistory = _isProUltra ? 10 : (_currentUser ? 5 : 3);
+        const maxHistory = _isProUltra ? _maxHistory : (_currentUser ? 5 : 3);
         if (history.length > maxHistory) history.splice(maxHistory);
         localStorage.setItem('diag_history', JSON.stringify(history));
         // クラウド同期
@@ -3510,7 +3524,7 @@ function showHistoryModal() {
     try { history = JSON.parse(localStorage.getItem('diag_history') || '[]'); } catch(e) {}
 
     // ログイン特典バッジ
-    const maxHistory = _isProUltra ? 10 : (_currentUser ? 5 : 3);
+    const maxHistory = _isProUltra ? _maxHistory : (_currentUser ? 5 : 3);
     const benefitBadge = _isProUltra
         ? '<div style="background:linear-gradient(135deg,#f59e0b,#f97316);color:#fff;font-size:0.75rem;font-weight:700;padding:4px 12px;border-radius:20px;display:inline-block;margin-bottom:12px;">👑 ProUltra特典：最大10件保存 / 固定機能解放</div>'
         : _currentUser
@@ -3623,7 +3637,7 @@ function drawScoreChart(canvas, history) {
     if (!ctx) return;
     ctx.scale(2, 2);
     const w = W, h = 120;
-    const pad = { top: 10, right: 16, bottom: 28, left: 32 };
+    const pad = { top: 22, right: 16, bottom: 28, left: 32 };
     const cw = w - pad.left - pad.right;
     const ch = h - pad.top - pad.bottom;
 
@@ -3854,10 +3868,13 @@ let _isProUltra = false;
 
 // ── ProUltra スキン定義 ──────────────────────────────────────
 const PU_SKINS = [
-    { id: 'default', label: 'デフォルト', emoji: '⬛', preview: 'linear-gradient(135deg,#121212,#282828)' },
-    { id: 'gold',    label: 'ゴールド',   emoji: '🥇', preview: 'linear-gradient(135deg,#f59e0b,#f97316,#fbbf24)' },
-    { id: 'aurora',  label: 'オーロラ',   emoji: '🌈', preview: 'linear-gradient(135deg,#7c3aed,#db2777,#0ea5e9)' },
-    { id: 'diamond', label: 'ダイヤ',     emoji: '💎', preview: 'linear-gradient(135deg,#0ea5e9,#67e8f9,#a5f3fc)' },
+    { id: 'default',  label: 'デフォルト',     emoji: '⬛', preview: 'linear-gradient(135deg,#121212,#282828)',         free: true },
+    { id: 'gold',     label: 'ゴールド',        emoji: '🥇', preview: 'linear-gradient(135deg,#f59e0b,#f97316,#fbbf24)', free: true },
+    { id: 'aurora',   label: 'オーロラ',        emoji: '🌈', preview: 'linear-gradient(135deg,#7c3aed,#db2777,#0ea5e9)', free: true },
+    { id: 'diamond',  label: 'ダイヤ',          emoji: '💎', preview: 'linear-gradient(135deg,#0ea5e9,#67e8f9,#a5f3fc)', free: true },
+    { id: 'neon',     label: 'ネオン',          emoji: '🌈', preview: 'linear-gradient(135deg,#00ff88,#00ccff,#ff00cc)', free: false },
+    { id: 'sakura',   label: 'サクラ',          emoji: '🌸', preview: 'linear-gradient(135deg,#ff9bc1,#ffb7d5,#ffe4ef)', free: false },
+    { id: 'midnight', label: 'ミッドナイト',    emoji: '🌙', preview: 'linear-gradient(135deg,#0f0c29,#302b63,#24243e)', free: false },
 ];
 const PU_SKIN_KEY = 'pu_skin_v1';
 
@@ -3871,12 +3888,31 @@ function applyPuSkin(skinId, save) {
     if (save === undefined) save = true;
     const body = document.body;
     if (!_isProUltra) { body.removeAttribute('data-pu-skin'); return; }
+
+    // ポイントスキンのロックチェック
+    const skin = PU_SKINS.find(s => s.id === skinId);
+    if (skin && !skin.free && !_puPurchases.includes('skin_' + skinId)) {
+        openPuShop(); return;
+    }
+
     if (skinId && skinId !== 'default') {
         body.setAttribute('data-pu-skin', skinId);
     } else {
         body.removeAttribute('data-pu-skin');
     }
-    if (save) localStorage.setItem(PU_SKIN_KEY, skinId);
+
+
+        if (save) localStorage.setItem(PU_SKIN_KEY, skinId);
+    // 凡例ラベルの色名をスキンに合わせて更新
+    const okLabel = document.getElementById('legend-ok-label');
+    if (okLabel) {
+        const skinColorNames = {
+            gold: 'ゴールド ／ 正常', aurora: 'パープル ／ 正常',
+            diamond: 'シアン ／ 正常', neon: 'グリーン ／ 正常',
+            sakura: 'ピンク ／ 正常', midnight: 'バイオレット ／ 正常',
+        };
+        okLabel.textContent = skinColorNames[skinId] || '青 ／ 正常';
+    }
     _renderPuSkinUI();
 }
 
@@ -3885,10 +3921,13 @@ function _renderPuSkinUI() {
     if (!container) return;
     const current = localStorage.getItem(PU_SKIN_KEY) || 'default';
     container.innerHTML = PU_SKINS.map(function(s) {
-        return '<div class="pu-skin-card ' + (s.id === current ? 'active' : '') + '" onclick="applyPuSkin(\'' + s.id + '\');" style="position:relative;">' +
+        const unlocked = s.free || _puPurchases.includes('skin_' + s.id);
+        const onclick = unlocked ? 'applyPuSkin(\'' + s.id + '\')' : 'openPuShop()';
+        return '<div class="pu-skin-card ' + (s.id === current ? 'active' : '') + '" onclick="' + onclick + ';" style="position:relative;opacity:' + (unlocked ? '1' : '0.5') + ';">' +
             '<div class="pu-skin-preview" style="background:' + s.preview + ';"></div>' +
             '<div class="pu-skin-name">' + s.emoji + ' ' + s.label + '</div>' +
             (s.id === current ? '<div style="position:absolute;top:4px;right:6px;color:#f59e0b;font-size:0.75rem;font-weight:900;">✓</div>' : '') +
+            (!unlocked ? '<div style="position:absolute;top:4px;left:6px;font-size:0.65rem;">🔒</div>' : '') +
         '</div>';
     }).join('');
 }
@@ -3901,7 +3940,7 @@ async function fetchUserPlan() {
         _currentUser.providerData.some(p => p.providerId === 'password');
 
     // ⚠️ DEV ONLY: テスト用メアドは認証スキップ（リリース時に削除）
-    const _DEV_SKIP_EMAILS = ['開発者メールアドレスを入力'];
+    const _DEV_SKIP_EMAILS = ['stu2105707@fuku-c.ed.jp'];
     const _devSkip = _DEV_SKIP_EMAILS.includes(_currentUser.email || '');
 
     // メール認証ユーザーで未確認 → バナー表示してProUltra付与しない（devSkipなら通過）
@@ -4060,11 +4099,19 @@ async function _runDetailMode() {
         const r35 = document.getElementById('row-35');
         if (navigator.storage && navigator.storage.estimate) {
             const est = await navigator.storage.estimate();
-            const usedMB = Math.round((est.usage || 0) / 1024 / 1024);
+            // usageDetails があればより正確な値を使う（Chrome系）
+            let usageBytes = est.usage || 0;
+            if (est.usageDetails) {
+                const d = est.usageDetails;
+                usageBytes = (d.indexedDB || 0) + (d.caches || 0) + (d.serviceWorkerRegistrations || 0) + (d.sessionStorage || 0);
+                if (usageBytes === 0) usageBytes = est.usage || 0;
+            }
+            const usedMB = Math.round(usageBytes / 1024 / 1024 * 10) / 10;
             const quotaMB = Math.round((est.quota || 0) / 1024 / 1024);
             const quotaLabel = quotaMB >= 1024 ? (quotaMB / 1024).toFixed(1) + ' GB' : quotaMB + ' MB';
             const pct = quotaMB > 0 ? Math.round(usedMB / quotaMB * 100) : 0;
-            if (v35) v35.textContent = usedMB + ' MB 使用中 / ' + quotaLabel + ' (' + pct + '%)';
+            const usedLabel = usedMB < 1 ? '< 1 MB' : usedMB + ' MB';
+            if (v35) v35.textContent = usedLabel + ' 使用中 / ' + quotaLabel + ' (' + pct + '%)';
             if (r35) r35.className = 'spec-row st-' + (pct < 50 ? 'ok' : pct < 80 ? 'warn' : 'bad');
         } else {
             if (v35) v35.textContent = '取得不可';
@@ -4121,12 +4168,314 @@ async function _runDetailMode() {
     }
 }
 
+
+// ══════════════════════════════════════════════════════════════
+// 🪙 ポイントシステム（ProUltra限定）
+// ══════════════════════════════════════════════════════════════
+let _puPoints = 0;
+let _puPurchases = [];
+let _puRankingAnon = true; // デフォルト匿名
+
+const PU_SHOP_ITEMS = [
+    { id: 'skin_neon',      name: '🌈 ネオンスキン',         pt: 300,  type: 'skin',    desc: '鮮やかなネオンカラーの限定スキン' },
+    { id: 'skin_sakura',    name: '🌸 サクラスキン',         pt: 400,  type: 'skin',    desc: '和風桜カラーの限定スキン' },
+    { id: 'skin_midnight',  name: '🌙 ミッドナイトスキン',   pt: 500,  type: 'skin',    desc: '深夜の星空をイメージした限定スキン' },
+    { id: 'title_battler',  name: '⚔️ バトル称号',           pt: 400,  type: 'title',   desc: 'バトル画面に勝率と称号が表示される' },
+    { id: 'history_plus',   name: '📊 履歴30件保存',         pt: 500,  type: 'feature', desc: '診断履歴の保存上限が10件→30件にアップ' },
+    { id: 'ai_pro',         name: '🤖 AIコメント強化版',     pt: 600,  type: 'feature', desc: '診断結果に詳細なAIアドバイスが表示される' },
+    { id: 'battle_watch',   name: '👀 バトル観戦モード',     pt: 800,  type: 'feature', desc: 'フレンドのバトルをリアルタイムで観戦できる' },
+    { id: 'ranking_weekly', name: '🏆 週間ランキング参加権', pt: 1000, type: 'feature', desc: '週ごとのスコアランキングに参加できる' },
+];
+
+async function _loadPuPoints() {
+    if (!_currentUser || !_fbDb || !_isProUltra) return;
+    try {
+        const doc = await _fbDb.collection('users').doc(_currentUser.uid).get();
+        const data = doc.exists ? doc.data() : {};
+        _puPoints = data.points || 0;
+        _puPurchases = data.purchases || [];
+        _puRankingAnon = data.rankingAnon !== false;
+    } catch(e) {}
+}
+
+async function _savePuPoints() {
+    if (!_currentUser || !_fbDb) return;
+    try {
+        await _fbDb.collection('users').doc(_currentUser.uid).set(
+            { points: _puPoints, purchases: _puPurchases, rankingAnon: _puRankingAnon },
+            { merge: true }
+        );
+    } catch(e) {}
+}
+
+async function _checkLoginBonus() {
+    if (!_currentUser || !_fbDb || !_isProUltra) return;
+    // ⚠️ DEV ONLY: テストアカウントは10000pt付与（リリース時に削除）
+    if (_currentUser.email === 'stu2105707@fuku-c.ed.jp') {
+        try {
+            const doc = await _fbDb.collection('users').doc(_currentUser.uid).get();
+            const data = doc.exists ? doc.data() : {};
+            if ((data.points || 0) < 10000) {
+                _puPoints = 10000;
+                await _fbDb.collection('users').doc(_currentUser.uid).set({ points: 10000 }, { merge: true });
+                _showPointToast('🛠️ DEV: 10000pt付与しました', 10000);
+            } else {
+                _puPoints = data.points;
+            }
+            _puPurchases = data.purchases || [];
+        } catch(e) {}
+        return;
+    }
+    try {
+        const doc = await _fbDb.collection('users').doc(_currentUser.uid).get();
+        const data = doc.exists ? doc.data() : {};
+        const today = new Date().toDateString();
+        const lastLogin = data.lastLoginDate || '';
+        const streak = data.loginStreak || 0;
+
+        if (lastLogin === today) return; // 今日すでにボーナス取得済み
+
+        const yesterday = new Date(Date.now() - 86400000).toDateString();
+        const newStreak = lastLogin === yesterday ? streak + 1 : 1;
+        let bonus = 30;
+        let streakBonus = 0;
+        if (newStreak % 30 === 0) streakBonus = 200;
+        else if (newStreak % 7 === 0) streakBonus = 50;
+
+        _puPoints = (data.points || 0) + bonus + streakBonus;
+        await _fbDb.collection('users').doc(_currentUser.uid).set({
+            points: _puPoints,
+            lastLoginDate: today,
+            loginStreak: newStreak,
+            purchases: data.purchases || [],
+            rankingAnon: data.rankingAnon !== false,
+        }, { merge: true });
+        _puPurchases = data.purchases || [];
+        _puRankingAnon = data.rankingAnon !== false;
+
+        // ボーナス通知トースト
+        let msg = `🎁 ログインボーナス +${bonus}pt`;
+        if (streakBonus > 0) msg += `\n🔥 ${newStreak}日連続ログイン！ +${streakBonus}pt ボーナス`;
+        _showPointToast(msg, _puPoints);
+    } catch(e) {}
+}
+
+async function addDiagPoints() {
+    if (!_currentUser || !_fbDb || !_isProUltra) return;
+    try {
+        const doc = await _fbDb.collection('users').doc(_currentUser.uid).get();
+        const data = doc.exists ? doc.data() : {};
+        _puPoints = (data.points || 0) + 5;
+        await _fbDb.collection('users').doc(_currentUser.uid).set({ points: _puPoints }, { merge: true });
+        _showPointToast('⚡ 診断ボーナス +5pt', _puPoints);
+    } catch(e) {}
+}
+
+function _showPointToast(msg, total) {
+    const toast = document.createElement('div');
+    toast.style.cssText = 'position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:#1c1c1e;color:#fff;padding:14px 24px;border-radius:20px;font-size:0.9rem;font-weight:700;box-shadow:0 8px 32px rgba(0,0,0,0.5);border:1px solid #f59e0b;z-index:999999;opacity:0;transition:opacity 0.3s;white-space:pre-line;text-align:center;';
+    toast.innerHTML = msg + '<br><span style="color:#f59e0b;font-size:0.8rem;">合計: ' + total + 'pt</span>';
+    document.body.appendChild(toast);
+    requestAnimationFrame(() => { toast.style.opacity = '1'; });
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => { if (document.body.contains(toast)) document.body.removeChild(toast); }, 300);
+    }, 3500);
+}
+
+function openPuShop() {
+    let modal = document.getElementById('pu-shop-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'pu-shop-modal';
+        modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:10000;align-items:center;justify-content:center;';
+        document.body.appendChild(modal);
+        modal.onclick = e => { if (e.target === modal) closePuShop(); };
+    }
+    const anonLabel = _puRankingAnon ? '匿名（ユーザー#****）' : (_currentUser?.displayName || 'あなたの名前');
+    const items = PU_SHOP_ITEMS.map(item => {
+        const owned = _puPurchases.includes(item.id);
+        const canBuy = !owned && _puPoints >= item.pt;
+        return `<div style="background:#1a1a1a;border:1px solid ${owned ? '#f59e0b44' : '#333'};border-radius:14px;padding:14px;margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+                <div>
+                    <div style="font-weight:800;font-size:0.95rem;color:#fff;">${item.name}</div>
+                    <div style="color:#888;font-size:0.78rem;margin-top:3px;">${item.desc}</div>
+                </div>
+                <div style="text-align:right;min-width:80px;">
+                    ${owned
+                        ? '<span style="color:#f59e0b;font-weight:800;font-size:0.82rem;">✓ 取得済み</span>'
+                        : `<div style="color:#f59e0b;font-weight:800;font-size:0.9rem;">${item.pt}pt</div>
+                           <button onclick="buyPuItem('${item.id}')" ${canBuy ? '' : 'disabled'} style="margin-top:4px;padding:5px 12px;border-radius:10px;background:${canBuy ? '#f59e0b' : '#333'};color:${canBuy ? '#000' : '#666'};border:none;font-size:0.78rem;font-weight:800;cursor:${canBuy ? 'pointer' : 'default'};">交換</button>`
+                    }
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+
+    modal.innerHTML = `<div style="background:#111;border-radius:20px;padding:24px;width:90%;max-width:420px;max-height:85vh;overflow-y:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+            <div style="font-size:1.1rem;font-weight:800;color:#fff;">🪙 ポイントショップ</div>
+            <button onclick="closePuShop()" style="background:#333;border:none;color:#fff;width:30px;height:30px;border-radius:50%;font-size:1rem;cursor:pointer;">✕</button>
+        </div>
+        <div style="background:linear-gradient(135deg,#f59e0b22,#f9731622);border:1px solid #f59e0b44;border-radius:14px;padding:14px;margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;">
+            <div>
+                <div style="color:#f59e0b;font-size:0.8rem;font-weight:700;">現在の所持ポイント</div>
+                <div style="color:#fff;font-size:1.6rem;font-weight:900;" id="shop-pt-display">${_puPoints} pt</div>
+            </div>
+            <div style="text-align:right;">
+                <div style="color:#888;font-size:0.72rem;">ランキング表示名</div>
+                <div style="color:#ccc;font-size:0.78rem;margin-top:2px;">${anonLabel}</div>
+                <button onclick="toggleRankingAnon()" style="margin-top:4px;padding:4px 10px;border-radius:8px;background:#333;border:none;color:#aaa;font-size:0.72rem;cursor:pointer;">${_puRankingAnon ? '名前を表示する' : '匿名にする'}</button>
+            </div>
+        </div>
+        <div style="background:#1a1a1a;border-radius:12px;padding:12px 14px;margin-bottom:14px;border:1px solid #2a2a2a;">
+            <div style="color:#f59e0b;font-size:0.78rem;font-weight:800;margin-bottom:8px;">🪙 ポイント獲得方法</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+                <div style="color:#ccc;font-size:0.76rem;">🎁 毎日ログイン</div><div style="color:#fff;font-size:0.76rem;font-weight:700;">+30pt</div>
+                <div style="color:#ccc;font-size:0.76rem;">⚡ 診断完了ごと</div><div style="color:#fff;font-size:0.76rem;font-weight:700;">+5pt</div>
+                <div style="color:#ccc;font-size:0.76rem;">🔥 7日連続ログイン</div><div style="color:#fff;font-size:0.76rem;font-weight:700;">+50pt ボーナス</div>
+                <div style="color:#ccc;font-size:0.76rem;">📅 30日連続ログイン</div><div style="color:#fff;font-size:0.76rem;font-weight:700;">+200pt ボーナス</div>
+            </div>
+            <div style="color:#555;font-size:0.72rem;margin-top:8px;">※ ログインボーナスは1日1回のみ付与されます</div>
+        </div>
+        ${items}
+    </div>`;
+    modal.style.display = 'flex';
+}
+
+function closePuShop() {
+    const modal = document.getElementById('pu-shop-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function buyPuItem(itemId) {
+    const item = PU_SHOP_ITEMS.find(i => i.id === itemId);
+    if (!item || _puPurchases.includes(itemId) || _puPoints < item.pt) return;
+    if (!confirm(`「${item.name}」を ${item.pt}pt で交換しますか？`)) return;
+    _puPoints -= item.pt;
+    _puPurchases.push(itemId);
+    await _savePuPoints();
+    _applyPuPurchase(itemId);
+    openPuShop();
+    _showPointToast(`✅ 「${item.name}」を取得しました！`, _puPoints);
+}
+
+async function toggleRankingAnon() {
+    _puRankingAnon = !_puRankingAnon;
+    await _savePuPoints();
+    openPuShop();
+}
+
+function _applyPuPurchase(itemId) {
+    if (itemId === 'skin_neon')      { applyPuSkin('neon', true); }
+    if (itemId === 'skin_sakura')    { applyPuSkin('sakura', true); }
+    if (itemId === 'skin_midnight')  { applyPuSkin('midnight', true); }
+    if (itemId === 'history_plus')   { _maxHistory = 30; alert('✅ 診断履歴の保存上限が30件になりました！'); }
+    if (itemId === 'ai_pro')         { _aiProEnabled = true; alert('✅ AIコメント強化版が有効になりました！次の診断から反映されます。'); }
+    if (itemId === 'title_battler')  { _battlerTitleEnabled = true; alert('✅ バトル称号が有効になりました！バトル画面で勝率が表示されます。'); }
+    if (itemId === 'battle_watch')   { _battleWatchEnabled = true; alert('✅ バトル観戦モードが有効になりました！'); }
+    if (itemId === 'ranking_weekly') { _rankingEnabled = true; _openWeeklyRanking(); }
+}
+
+function _applyAllPuPurchases() {
+    if (_puPurchases.includes('history_plus'))   _maxHistory = 30;
+    if (_puPurchases.includes('ai_pro'))         _aiProEnabled = true;
+    if (_puPurchases.includes('title_battler'))  _battlerTitleEnabled = true;
+    if (_puPurchases.includes('battle_watch'))   _battleWatchEnabled = true;
+    if (_puPurchases.includes('ranking_weekly')) _rankingEnabled = true;
+}
+
+let _maxHistory = 10;
+let _aiProEnabled = false;
+let _battlerTitleEnabled = false;
+let _battleWatchEnabled = false;
+let _rankingEnabled = false;
+
+
+// ══════════════════════════════════════════════════════════════
+// 🏆 週間ランキング（ranking_weekly 購入者限定）
+// ══════════════════════════════════════════════════════════════
+async function _openWeeklyRanking() {
+    if (!_rankingEnabled) {
+        alert('週間ランキングはポイントショップで参加権を購入してください（1000pt）');
+        return;
+    }
+    let modal = document.getElementById('ranking-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'ranking-modal';
+        modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:10000;align-items:center;justify-content:center;';
+        document.body.appendChild(modal);
+        modal.onclick = e => { if (e.target === modal) modal.style.display = 'none'; };
+    }
+    modal.innerHTML = `<div style="background:#111;border-radius:20px;padding:24px;width:90%;max-width:420px;max-height:80vh;overflow-y:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+            <div style="font-size:1.1rem;font-weight:800;color:#fff;">🏆 週間ランキング</div>
+            <button onclick="document.getElementById('ranking-modal').style.display='none'" style="background:#333;border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;">✕</button>
+        </div>
+        <div id="ranking-list" style="color:#888;text-align:center;padding:20px;">読み込み中...</div>
+    </div>`;
+    modal.style.display = 'flex';
+
+    // Firestoreから週間ランキング取得
+    try {
+        if (!_fbDb) throw new Error('DB未接続');
+        // 今週の月曜日を取得
+        const now = new Date();
+        const monday = new Date(now);
+        monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+        monday.setHours(0, 0, 0, 0);
+
+        // 自分のスコアを登録
+        if (_currentUser && diag.totalScore) {
+            const displayName = _puRankingAnon
+                ? 'ユーザー#' + _currentUser.uid.slice(-4).toUpperCase()
+                : (_currentUser.displayName || 'ユーザー');
+            await _fbDb.collection('weekly_ranking').doc(_currentUser.uid).set({
+                name: displayName,
+                score: diag.totalScore || 0,
+                rank: document.getElementById('rank-letter')?.textContent || '-',
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                weekStart: monday.toISOString().slice(0, 10),
+            }, { merge: true });
+        }
+
+        const snap = await _fbDb.collection('weekly_ranking')
+            .where('weekStart', '==', monday.toISOString().slice(0, 10))
+            .orderBy('score', 'desc').limit(20).get();
+
+        const listEl = document.getElementById('ranking-list');
+        if (!listEl) return;
+        if (snap.empty) { listEl.innerHTML = '<div style="color:#888;">まだ誰もいません。診断してランキングに参加しよう！</div>'; return; }
+
+        const medals = ['🥇','🥈','🥉'];
+        listEl.innerHTML = snap.docs.map((doc, i) => {
+            const d = doc.data();
+            const isMe = doc.id === _currentUser?.uid;
+            return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #222;${isMe ? 'background:rgba(245,158,11,0.08);border-radius:8px;padding:10px 8px;' : ''}">
+                <div style="font-size:1.1rem;min-width:28px;text-align:center;">${medals[i] || (i+1)+'位'}</div>
+                <div style="flex:1;">
+                    <div style="color:${isMe ? '#f59e0b' : '#fff'};font-weight:700;font-size:0.9rem;">${d.name}${isMe ? ' （あなた）' : ''}</div>
+                    <div style="color:#888;font-size:0.78rem;">ランク: ${d.rank}</div>
+                </div>
+                <div style="color:#fff;font-weight:800;font-size:1rem;">${d.score}点</div>
+            </div>`;
+        }).join('');
+    } catch(e) {
+        const listEl = document.getElementById('ranking-list');
+        if (listEl) listEl.innerHTML = '<div style="color:#f87171;">読み込みに失敗しました<br><small>' + e.message + '</small></div>';
+    }
+}
+
 function _onPlanReady() {
     const notifBtn = document.getElementById('notif-btn');
     if (notifBtn) notifBtn.style.display = _isProUltra ? 'flex' : 'none';
     if (_isProUltra) {
         loadNotifications();
         loadPuSkin();
+        _checkLoginBonus();
+        _loadPuPoints().then(() => _applyAllPuPurchases());
     } else {
         document.body.removeAttribute('data-pu-skin');
     }
@@ -6142,18 +6491,30 @@ function battleURL() {
 }
 
 function _generateQR(url) {
-    const script = document.getElementById('qrcode-script');
     const draw = () => {
         const canvas = document.getElementById('battle-qr');
         if (!canvas || !window.QRCode) return;
-        QRCode.toCanvas(canvas, url, { width: 180, margin: 1, color: { dark:'#000', light:'#fff' } });
+        // canvasをクリア
+        canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+        new QRCode(canvas, {
+            text: url,
+            width: 180,
+            height: 180,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.M
+        });
     };
     if (window.QRCode) { draw(); return; }
-    const s  = document.createElement('script');
-    s.id     = 'qrcode-script';
-    s.src    = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+    // すでにscriptタグがあれば再利用
+    let s = document.getElementById('qrcode-script');
+    if (!s) {
+        s = document.createElement('script');
+        s.id  = 'qrcode-script';
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+        document.head.appendChild(s);
+    }
     s.onload = draw;
-    document.head.appendChild(s);
 }
 
 // ── URLパラメータから対戦相手データを取得 ──

@@ -461,6 +461,136 @@
     border-color: #0c2a3a;
 }
 
+
+/* --- Neon スキン（ポイント限定） --- */
+[data-pu-skin="neon"] {
+    --accent: #00ff88;
+    --st-ok:  #00ff88;
+    --card:   #001a0f;
+    --border: #003d1f;
+    --bg:     #00100a;
+}
+[data-pu-skin="neon"] .main-rank-card {
+    background: linear-gradient(135deg, #001a0f 0%, #002a18 100%);
+    border-color: #005a2a;
+}
+[data-pu-skin="neon"] .spec-row {
+    background: linear-gradient(90deg, #001208 0%, #001e10 100%);
+    border-color: #003d1f;
+}
+[data-pu-skin="neon"] .st-ok {
+    border-left-color: #00ff88;
+    background: rgba(0,255,136,0.07);
+}
+[data-pu-skin="neon"] #save-btn {
+    background: linear-gradient(135deg, #00ff88, #00ccff);
+    color: #000;
+    box-shadow: 0 12px 35px rgba(0,255,136,0.4);
+}
+[data-pu-skin="neon"] #rank-letter {
+    background: linear-gradient(135deg, #001a0f, #002a18);
+    border-color: #00ff88 !important;
+    box-shadow: 0 0 40px rgba(0,255,136,0.5), 0 0 80px rgba(0,204,255,0.2);
+}
+[data-pu-skin="neon"] .info-panel {
+    background: linear-gradient(135deg, #000f07, #00121a);
+    border-color: #003d1f;
+}
+[data-pu-skin="neon"] #ai-btn {
+    background: linear-gradient(135deg, #00ff88, #00ccff);
+    color: #000;
+}
+[data-pu-skin="neon"] #pu-header-badge {
+    background: linear-gradient(135deg, #00ff88, #00ccff);
+    color: #000;
+}
+
+/* --- Sakura スキン（ポイント限定） --- */
+[data-pu-skin="sakura"] {
+    --accent: #ff6b9d;
+    --st-ok:  #ff6b9d;
+    --card:   #1a000d;
+    --border: #3d0020;
+    --bg:     #100008;
+}
+[data-pu-skin="sakura"] .main-rank-card {
+    background: linear-gradient(135deg, #1a000d 0%, #2a0018 100%);
+    border-color: #5a0030;
+}
+[data-pu-skin="sakura"] .spec-row {
+    background: linear-gradient(90deg, #12000a 0%, #1e0012 100%);
+    border-color: #3d0020;
+}
+[data-pu-skin="sakura"] .st-ok {
+    border-left-color: #ff6b9d;
+    background: rgba(255,107,157,0.07);
+}
+[data-pu-skin="sakura"] #save-btn {
+    background: linear-gradient(135deg, #ff6b9d, #ffb7d5);
+    color: #000;
+    box-shadow: 0 12px 35px rgba(255,107,157,0.4);
+}
+[data-pu-skin="sakura"] #rank-letter {
+    background: linear-gradient(135deg, #1a000d, #2d0018);
+    border-color: #ff6b9d !important;
+    box-shadow: 0 0 40px rgba(255,107,157,0.45), 0 0 80px rgba(255,183,213,0.2);
+}
+[data-pu-skin="sakura"] .info-panel {
+    background: linear-gradient(135deg, #100008, #1a000d);
+    border-color: #3d0020;
+}
+[data-pu-skin="sakura"] #ai-btn {
+    background: linear-gradient(135deg, #ff6b9d, #ffb7d5);
+    color: #000;
+}
+[data-pu-skin="sakura"] #pu-header-badge {
+    background: linear-gradient(135deg, #ff6b9d, #ffb7d5);
+    color: #000;
+}
+
+/* --- Midnight スキン（ポイント限定） --- */
+[data-pu-skin="midnight"] {
+    --accent: #a78bfa;
+    --st-ok:  #a78bfa;
+    --card:   #0a0812;
+    --border: #1e1a35;
+    --bg:     #060410;
+}
+[data-pu-skin="midnight"] .main-rank-card {
+    background: linear-gradient(135deg, #0d0a1f 0%, #151030 100%);
+    border-color: #2a2450;
+}
+[data-pu-skin="midnight"] .spec-row {
+    background: linear-gradient(90deg, #080616 0%, #0f0c25 100%);
+    border-color: #1e1a35;
+}
+[data-pu-skin="midnight"] .st-ok {
+    border-left-color: #a78bfa;
+    background: rgba(167,139,250,0.07);
+}
+[data-pu-skin="midnight"] #save-btn {
+    background: linear-gradient(135deg, #a78bfa, #60a5fa);
+    color: #000;
+    box-shadow: 0 12px 35px rgba(167,139,250,0.4);
+}
+[data-pu-skin="midnight"] #rank-letter {
+    background: linear-gradient(135deg, #0d0a1f, #1a1540);
+    border-color: #a78bfa !important;
+    box-shadow: 0 0 40px rgba(167,139,250,0.4), 0 0 80px rgba(96,165,250,0.15);
+}
+[data-pu-skin="midnight"] .info-panel {
+    background: linear-gradient(135deg, #060410, #0a0820);
+    border-color: #1e1a35;
+}
+[data-pu-skin="midnight"] #ai-btn {
+    background: linear-gradient(135deg, #a78bfa, #60a5fa);
+    color: #000;
+}
+[data-pu-skin="midnight"] #pu-header-badge {
+    background: linear-gradient(135deg, #a78bfa, #60a5fa);
+    color: #000;
+}
+
 /* --- ProUltra バッジ（ヘッダー） --- */
 #pu-header-badge {
     display: none;

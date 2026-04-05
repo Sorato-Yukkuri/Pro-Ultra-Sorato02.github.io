@@ -546,7 +546,7 @@
         <h2>🎨 インジケーターの色の基準</h2>
         <div class="legend-row">
             <div class="legend-dot ok"></div>
-            <div class="legend-label">青 ／ 正常</div>
+            <div class="legend-label" id="legend-ok-label">青 ／ 正常</div>
             <div class="legend-desc">推奨水準を満たしています。高性能・最適な状態です。</div>
         </div>
         <div class="legend-row">
@@ -576,13 +576,13 @@
         
         <!-- バージョンタイトル -->
         <h2 style="margin: 0 0 20px; font-size: 1.4rem; font-weight: 900; color: var(--text); border-bottom: 2px solid var(--border); padding-bottom: 15px;">
-            🚀 Update Beta 1.8.0.1
+            🚀 Update Beta 1.9.0
         </h2>
         
         <!-- 【自由記述エリア】ここを書き換えるだけでOK -->
         <div id="update-text-area" style="font-size: 1rem; color: var(--text); line-height: 1.8; max-height: 450px; overflow-y: auto; margin-bottom: 25px; padding-right: 10px;">
             
-            <strong>【Beta 1.8.0.1 超小型バグ1つ修正】</strong><br><br>・AIアシスタントに相談する機能に最古の機能｢APIキーを削除｣<br>　が残っていた問題のみを修正<br>・｢確認しました｣ボタンが<br>「確認しました                       　　　　　　　　　　　　　　　　　　　　　　　　　　　　　」とスペースが大量にあった問題を修正<br><br>【現状報告されているバグ】<br>なし<br>
+            <strong>【Beta 1.9.0 ログイン特典強化アップデート】</strong><br><br>・ログインボーナスなどのボーナスで限定スキンや限定機能を購入できる機能を実装(ProUltraアカウント特典)<br>（限定スキン、AI強化、ランキング解放など）<br>・モバイル端末での過去診断表示グラフの表示ズレを修正
             <!-- 次のアプデ文はこの下に追加していくだけでOK -->
 
         </div>
@@ -597,7 +597,7 @@
 
 <script>
     // バージョン識別キー（アプデのたびに末尾の数字などを変えてください）
-    const CURRENT_UPDATE_ID = "Beta_1.8.0.1(r2.0.2/testNo,4.01.02)";
+    const CURRENT_UPDATE_ID = "Beta_1.9.0(t2)";
 
     // 読み込み時に表示を判定
     window.addEventListener('DOMContentLoaded', () => {
