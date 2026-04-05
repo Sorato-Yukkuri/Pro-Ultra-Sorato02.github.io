@@ -3940,7 +3940,7 @@ async function fetchUserPlan() {
         _currentUser.providerData.some(p => p.providerId === 'password');
 
     // ⚠️ DEV ONLY: テスト用メアドは認証スキップ（リリース時に削除）
-    const _DEV_SKIP_EMAILS = ['stu2105707@fuku-c.ed.jp'];
+    const _DEV_SKIP_EMAILS = ['開発用メールアドレス'];
     const _devSkip = _DEV_SKIP_EMAILS.includes(_currentUser.email || '');
 
     // メール認証ユーザーで未確認 → バナー表示してProUltra付与しない（devSkipなら通過）
@@ -4211,7 +4211,7 @@ async function _savePuPoints() {
 async function _checkLoginBonus() {
     if (!_currentUser || !_fbDb || !_isProUltra) return;
     // ⚠️ DEV ONLY: テストアカウントは10000pt付与（リリース時に削除）
-    if (_currentUser.email === 'stu2105707@fuku-c.ed.jp') {
+    if (_currentUser.email === '開発用メールアドレス') {
         try {
             const doc = await _fbDb.collection('users').doc(_currentUser.uid).get();
             const data = doc.exists ? doc.data() : {};
