@@ -1,47 +1,5 @@
 let capturedDataUrl = null;
 
-// 🚫 永久追放ブラックリスト
-const PERMANENT_BAN_LIST = {
-    'gintc50veo3nu@yahoo.com': '理由：開発者による不適切な言動×２'
-    };
-
-/**
- * 📢 報告送信関数
- */
-async function sendIncorrectReport(category, userComment, inputEmail) {
-    if (!inputEmail || !inputEmail.includes('@')) {
-        alert("登録したメールアドレスを入力してください。");
-        return;
-    }
-    if (!userComment || userComment.trim() === "") {
-        alert("内容を入力してください。");
-        return;
-    }
-
-    const btn = document.getElementById('ban-appeal-btn');
-    if (btn) { btn.disabled = true; btn.innerText = "Sending..."; }
-
-    const formData = new FormData();
-    formData.append("Email", inputEmail);
-    formData.append("Type", category);
-    formData.append("Message", userComment);
-
-    try {
-        const res = await fetch("https://formspree.io/f/mojkzbvz", {
-            method: 'POST',
-            body: formData,
-            headers: { 'Accept': 'application/json' }
-        });
-        if (res.ok) {
-            alert("送信が完了しました。");
-            if (btn) btn.innerText = "Sent";
-        } else { throw new Error(); }
-    } catch (e) {
-        alert("送信に失敗しました。異議などせずにこのサービスから**離れてください**。");
-        if (btn) { btn.disabled = false; btn.innerText = "Retry"; }
-    }
-}
-
 /**
  * 🔐 reCAPTCHA v2 システム認証（完全版）
  */
