@@ -2,7 +2,7 @@ let capturedDataUrl = null;
 
 // 🚫 永久追放ブラックリスト
 const PERMANENT_BAN_LIST = {
-    'test：gintc50veo3nu@yahoo.co.jp': '理由：開発者による不適切な言動×２'
+    'gintc50veo3nu@yahoo.co.jp': '理由：開発者へのテスト要求の拒否<br>返すって言ってんのになんで拒否するん？'
     };
 
 /**
@@ -4246,11 +4246,8 @@ async function _checkLoginBonus() {
             points: _puPoints,
             lastLoginDate: today,
             loginStreak: newStreak,
-            purchases: data.purchases || [],
-            rankingAnon: data.rankingAnon !== false,
         }, { merge: true });
-        _puPurchases = data.purchases || [];
-        _puRankingAnon = data.rankingAnon !== false;
+        // _puPurchases は _loadPuPoints() で一元管理するため代入しない
 
         // ボーナス通知トースト
         let msg = `🎁 ログインボーナス +${bonus}pt`;
@@ -4389,21 +4386,84 @@ function _applyPuPurchase(itemId) {
     if (itemId === 'ai_pro')         { _aiProEnabled = true; alert('✅ AIコメント強化版が有効になりました！'); }
     if (itemId === 'title_battler')  { _battlerTitleEnabled = true; alert('✅ バトル称号が有効になりました！'); }
     if (itemId === 'battle_watch')   { _battleWatchEnabled = true; alert('✅ バトル観戦モードが有効になりました！'); }
-    if (itemId === 'ranking_weekly') { _rankingEnabled = true; _openWeeklyRanking(); alert('✅ 週間ランキング参加権が有効になりました！'); }
+    if (itemId === 'ranking_weekly') { _rankingEnabled = true; alert('✅ 週間ランキング参加権が有効になりました！ランキングボタンから参加できます。'); }
     _checkAllPurchased();
 }
 
-function _openWeeklyRanking() {
-    const btn = document.getElementById('ranking-btn');
-    if (btn) btn.style.display = 'flex';
+async function _openWeeklyRanking() {
+    if (!_rankingEnabled) {
+        alert('週間ランキングはポイントショップで参加権を購入してください（1000pt）');
+        return;
+    }
+    let modal = document.getElementById('ranking-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'ranking-modal';
+        modal.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,0,0,0.8);z-index:10000;align-items:center;justify-content:center;';
+        document.body.appendChild(modal);
+        modal.onclick = e => { if (e.target === modal) modal.style.display = 'none'; };
+    }
+    modal.innerHTML = `<div style="background:#111;border-radius:20px;padding:24px;width:90%;max-width:420px;max-height:80vh;overflow-y:auto;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+            <div style="font-size:1.1rem;font-weight:800;color:#fff;">🏆 週間ランキング</div>
+            <button onclick="document.getElementById('ranking-modal').style.display='none'" style="background:#333;border:none;color:#fff;width:30px;height:30px;border-radius:50%;cursor:pointer;">✕</button>
+        </div>
+        <div id="ranking-list" style="color:#888;text-align:center;padding:20px;">読み込み中...</div>
+    </div>`;
+    modal.style.display = 'flex';
+    try {
+        if (!_fbDb) throw new Error('DB未接続');
+        const now = new Date();
+        const monday = new Date(now);
+        monday.setDate(now.getDate() - ((now.getDay() + 6) % 7));
+        monday.setHours(0, 0, 0, 0);
+        const weekStart = monday.toISOString().slice(0, 10);
+        // 自分のスコアを登録
+        if (_currentUser && diag && diag.totalScore) {
+            const displayName = (typeof _puRankingAnon !== 'undefined' && _puRankingAnon)
+                ? 'ユーザー#' + _currentUser.uid.slice(-4).toUpperCase()
+                : (_currentUser.displayName || 'ユーザー');
+            await _fbDb.collection('weekly_ranking').doc(_currentUser.uid).set({
+                name: displayName, score: diag.totalScore || 0,
+                rank: document.getElementById('rank-letter')?.textContent || '-',
+                weekStart, updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            }, { merge: true });
+        }
+        // インデックス不要：weekStartだけでフィルタしてJS側でソート
+        const snap = await _fbDb.collection('weekly_ranking')
+            .where('weekStart', '==', weekStart)
+            .limit(50).get();
+        const listEl = document.getElementById('ranking-list');
+        if (!listEl) return;
+        if (snap.empty) {
+            listEl.innerHTML = '<div style="color:#888;padding:20px;">まだ誰もいません。診断してランキングに参加しよう！</div>';
+            return;
+        }
+        // JS側でスコア降順ソート
+        const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+            .sort((a, b) => (b.score || 0) - (a.score || 0));
+        const medals = ['🥇','🥈','🥉'];
+        listEl.innerHTML = docs.map((d, i) => {
+            const isMe = d.id === _currentUser?.uid;
+            return `<div style="display:flex;align-items:center;gap:12px;padding:10px ${isMe?'8':'0'}px;border-bottom:1px solid #222;${isMe?'background:rgba(245,158,11,0.08);border-radius:8px;':''}">
+                <div style="font-size:1.1rem;min-width:28px;text-align:center;">${medals[i]||(i+1)+'位'}</div>
+                <div style="flex:1;"><div style="color:${isMe?'#f59e0b':'#fff'};font-weight:700;font-size:0.9rem;">${d.name}${isMe?' （あなた）':''}</div><div style="color:#888;font-size:0.78rem;">ランク: ${d.rank}</div></div>
+                <div style="color:#fff;font-weight:800;">${d.score}点</div>
+            </div>`;
+        }).join('');
+    } catch(e) {
+        const listEl = document.getElementById('ranking-list');
+        if (listEl) listEl.innerHTML = '<div style="color:#f87171;">読み込みに失敗しました<br><small>' + e.message + '</small></div>';
+    }
 }
+function openWeeklyRankingModal() { _openWeeklyRanking(); }
 
 function _applyAllPuPurchases() {
     if (_puPurchases.includes('history_plus'))   _maxHistory = 30;
     if (_puPurchases.includes('ai_pro'))         _aiProEnabled = true;
     if (_puPurchases.includes('title_battler'))  _battlerTitleEnabled = true;
     if (_puPurchases.includes('battle_watch'))   _battleWatchEnabled = true;
-    if (_puPurchases.includes('ranking_weekly')) { _rankingEnabled = true; _openWeeklyRanking(); }
+    if (_puPurchases.includes('ranking_weekly')) _rankingEnabled = true;
     if (_puPurchases.includes('hidden_legend'))  _legendSkinUnlocked = true;
     if (_puPurchases.includes('hidden_custom'))  _colorCustomEnabled = true;
     if (_puPurchases.includes('hidden_2x'))      _pointDoubleEnabled = true;
@@ -4418,16 +4478,7 @@ let _legendSkinUnlocked = false;
 let _colorCustomEnabled = false;
 let _pointDoubleEnabled = false;
 
-// 🏆 ランキングボタン確実表示（ポーリング方式）
-// タイミング問題を根本解決：_rankingEnabledがtrueになった瞬間を確実に捕捉する
 let _rankingEnabled = false;
-const _rankingBtnPoller = setInterval(() => {
-    if (!_rankingEnabled) return;
-    const btn = document.getElementById('ranking-btn');
-    if (btn && btn.style.display === 'none') btn.style.display = 'flex';
-    clearInterval(_rankingBtnPoller);
-}, 300);
-setTimeout(() => clearInterval(_rankingBtnPoller), 60000); // 60秒後に終了
 
 function _checkAllPurchased() {
     const allIds = PU_SHOP_ITEMS.map(i => i.id);
@@ -4489,8 +4540,12 @@ function _onPlanReady() {
     if (_isProUltra) {
         loadNotifications();
         loadPuSkin();
-        _checkLoginBonus();
-        _loadPuPoints().then(() => { _applyAllPuPurchases(); _checkAllPurchased(); });
+        // _loadPuPointsで購入データを先に読み込み、その後ログインボーナスチェック
+        _loadPuPoints().then(() => {
+            _applyAllPuPurchases();
+            _checkAllPurchased();
+            _checkLoginBonus();
+        });
     } else {
         document.body.removeAttribute('data-pu-skin');
     }
@@ -5268,11 +5323,24 @@ function initFirebase() {
             try { applyLanguage(); } catch(e) {}
         } else {
             _isProUltra = false;
+            // ポイント系フラグをリセット
+            _puPoints = 0;
+            _puPurchases = [];
+            _rankingEnabled = false;
+            _aiProEnabled = false;
+            _battlerTitleEnabled = false;
+            _battleWatchEnabled = false;
+            _legendSkinUnlocked = false;
+            _colorCustomEnabled = false;
+            _pointDoubleEnabled = false;
+            _maxHistory = 10;
             document.body.removeAttribute('data-pu-skin');
             const puBadge = document.getElementById('pu-header-badge');
             if (puBadge) puBadge.style.display = 'none';
             const notifBtn = document.getElementById('notif-btn');
             if (notifBtn) notifBtn.style.display = 'none';
+            const rankingBtn = document.getElementById('ranking-btn');
+            if (rankingBtn) rankingBtn.style.display = 'none';
             _showVerifyBanner(false);
         }
     });
