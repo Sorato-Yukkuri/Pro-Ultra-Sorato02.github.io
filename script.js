@@ -837,6 +837,10 @@ function applyLanguage() {
         const fbLabel = document.getElementById('footer-feedback-label');
         const fbD = FB_I18N[lang] || FB_I18N['ja'];
         if (fbLabel) fbLabel.textContent = fbD.title.replace('💬 ', '');
+        const dmLabel = document.getElementById('footer-datamgmt-label');
+        if (dmLabel) dmLabel.textContent = (lang === 'en') ? 'Data Mgmt' : 'データ管理';
+        const rgLabel = document.getElementById('footer-restoreguide-label');
+        if (rgLabel) rgLabel.textContent = (lang === 'en') ? 'Restore Guide' : '復元ガイド';
     } catch(e) {}
 
     } catch(e) { console.warn('applyLanguage error:', e); }
@@ -5888,6 +5892,9 @@ window.addEventListener('load',()=>{
     });
     window.addEventListener('focus', () => { try { clearBadge(); } catch(e) {} });
     window.addEventListener('pageshow', () => { try { clearBadge(); } catch(e) {} });
+    
+    // 🚨 ドメイン移行通知を初期化
+    initMigrationNotices();
 });
 
 function initHelpIcons() {
@@ -7159,3 +7166,306 @@ document.addEventListener('click', e => {
     const texts = HELP_TEXT_I18N[lang] || HELP_TEXT_I18N['ja'];
     alert(texts[idx] || '説明は準備中です。');
 });
+
+/**
+ * 🔄 LocalStorageデータ管理システム
+ * ドメイン移行時のデータ永続化用
+ */
+
+// 管理するキーのホワイトリスト（安全なデータのみ）
+// ⚠️ システム状態（BAN情報・認証状態）は除外
+const MANAGED_STORAGE_KEYS = [
+    'diag_history',           // 診断履歴
+    'ai_conversations',       // AI会話履歴
+    'custom_bad_color',       // カスタムカラー設定 - 悪い
+    'custom_ok_color',        // カスタムカラー設定 - 良い
+    'custom_warn_color',      // カスタムカラー設定 - 警告
+    'pu_skin_v1'              // Pro Ultra スキン設定
+];
+
+// ⚠️ リセット対象キー（復元時にクリア）
+const RESET_STORAGE_KEYS = [
+    'pu_upd_banner_v1',       // アップデートバナー表示フラグ（リセット対象）
+    'recaptcha_verified_v2',  // reCAPTCHA認証状態（リセット対象）
+    'sys_banned_user',        // ユーザーBANフラグ（リセット対象）
+    'sys_banned_email'        // BAN対象メールアドレス（リセット対象）
+];
+
+/**
+ * LocalStorageデータをJSONファイルでダウンロード
+ */
+function downloadStorageData() {
+    try {
+        const backup = {};
+        let hasData = false;
+        
+        // ホワイトリストのキーのみ抽出
+        for (const key of MANAGED_STORAGE_KEYS) {
+            const value = localStorage.getItem(key);
+            if (value !== null) {
+                backup[key] = value;
+                hasData = true;
+            }
+        }
+        
+        if (!hasData) {
+            alert('保存されたデータがありません。');
+            return;
+        }
+        
+        // JSONファイル作成
+        const json = JSON.stringify(backup, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        
+        // ダウンロード実行
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `pro-ultra-backup-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        alert('✅ データをダウンロードしました。');
+    } catch (e) {
+        console.error('ダウンロードエラー:', e);
+        alert('❌ ダウンロードに失敗しました。');
+    }
+}
+
+/**
+ * JSONファイルからLocalStorageにデータを読み込む
+ */
+function uploadStorageData() {
+    try {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'application/json';
+        
+        input.onchange = async (e) => {
+            const file = e.target.files?.[0];
+            if (!file) return;
+            
+            try {
+                const text = await file.text();
+                const data = JSON.parse(text);
+                
+                if (typeof data !== 'object' || data === null) {
+                    alert('❌ 無効なJSONファイルです。');
+                    return;
+                }
+                
+                // JSONに含まれているキーを検出
+                const jsonKeys = Object.keys(data);
+                if (jsonKeys.length === 0) {
+                    alert('❌ JSONファイルが空です。');
+                    return;
+                }
+                
+                // ホワイトリスト以外のキーも許可（ただし値がnullでない）
+                const validKeys = jsonKeys.filter(k => {
+                    return data[k] !== null && data[k] !== undefined && data[k] !== '';
+                });
+                
+                if (validKeys.length === 0) {
+                    alert('❌ 復元可能なデータがありません。\nJSONファイルが正しいか確認してください。');
+                    console.log('JSONの内容:', data);
+                    return;
+                }
+                
+                const confirmMsg = `以下のデータを復元します:\n${validKeys.join('\n')}\n\n既存のデータは上書きされます。よろしいですか？`;
+                if (!confirm(confirmMsg)) {
+                    return;
+                }
+                
+                // 復元実行
+                let restored = 0;
+                for (const key of validKeys) {
+                    try {
+                        localStorage.setItem(key, String(data[key]));
+                        restored++;
+                    } catch (storageErr) {
+                        console.error(`Key '${key}' の復元に失敗:`, storageErr);
+                    }
+                }
+                
+                if (restored > 0) {
+                    // ✅ システムキーをリセット（新ドメイン用に初期化）
+                    resetSystemKeys();
+                    
+                    alert(`✅ ${restored}個のデータを復元しました。`);
+                    
+                    // 🔄 ページを自動で再読み込み
+                    setTimeout(() => {
+                        location.reload();
+                    }, 500);
+                } else {
+                    alert('❌ データの復元に失敗しました。');
+                }
+                
+            } catch (parseErr) {
+                console.error('ファイル読み込みエラー:', parseErr);
+                alert('❌ ファイルの読み込みに失敗しました。\nJSON形式のファイルを選択してください。');
+            }
+        };
+        
+        input.click();
+    } catch (e) {
+        console.error('ファイル選択エラー:', e);
+        alert('❌ ファイル選択に失敗しました。');
+    }
+}
+
+/**
+ * LocalStorageデータをクリア（確認付き）
+ */
+function clearStorageData() {
+    if (!confirm('⚠️ すべての保存データをクリアします。\nこの操作は取り消せません。本当によろしいですか?')) {
+        return;
+    }
+    
+    try {
+        // 管理対象キーをすべてクリア
+        for (const key of MANAGED_STORAGE_KEYS) {
+            localStorage.removeItem(key);
+        }
+        alert('✅ データをクリアしました。');
+    } catch (e) {
+        console.error('クリアエラー:', e);
+        alert('❌ データのクリアに失敗しました。');
+    }
+}
+
+/**
+ * LocalStorageのシステムキーをリセット（復元時に自動実行）
+ * セキュリティとUI状態を新しいドメイン用に初期化
+ */
+function resetSystemKeys() {
+    try {
+        for (const key of RESET_STORAGE_KEYS) {
+            localStorage.removeItem(key);
+        }
+        console.log('✅ システムキーをリセットしました');
+    } catch (e) {
+        console.error('システムキーリセットエラー:', e);
+    }
+}
+
+/**
+ * 🚨 ドメイン移行通知を表示
+ */
+function showMigrationNotice() {
+    // 既に非表示にされたなら表示しない
+    if (localStorage.getItem('pu_migration_v1') === '1') {
+        return;
+    }
+    
+    const banner = document.getElementById('migration-banner');
+    if (banner) {
+        banner.style.display = 'flex';
+    }
+}
+
+/**
+ * 📖 データ移行ガイドを表示
+ */
+/**
+ * 🎨 共通モーダル生成関数
+ */
+function createProModal(title, content) {
+    // 既存のモーダルがあれば削除
+    const existing = document.getElementById('pro-migration-modal');
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = 'pro-migration-modal';
+    
+    // スタイル（Pro Ultraらしい黒×黄のデザイン）
+    Object.assign(modal.style, {
+        position: 'fixed', top: '0', left: '0', width: '100%', height: '100%',
+        backgroundColor: 'rgba(0,0,0,0.85)', zIndex: '9999',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: '20px', boxSizing: 'border-box', backdropFilter: 'blur(5px)'
+    });
+
+    const body = document.createElement('div');
+    Object.assign(body.style, {
+        backgroundColor: '#1a1a1a', color: '#fff', border: '1px solid #ffd700',
+        borderRadius: '12px', width: '100%', maxWidth: '500px',
+        maxHeight: '90vh', overflowY: 'auto', padding: '24px',
+        boxShadow: '0 10px 30px rgba(0,0,0,0.5)', fontFamily: 'sans-serif'
+    });
+
+    body.innerHTML = `
+        <h2 style="color:#ffd700; margin-top:0; border-bottom:1px solid #333; padding-bottom:10px;">${title}</h2>
+        <div style="white-space:pre-wrap; line-height:1.6; font-size:14px; color:#ddd;">${content}</div>
+        <button onclick="document.getElementById('pro-migration-modal').remove()" 
+            style="width:100%; margin-top:20px; padding:12px; background:#ffd700; color:#000; 
+            border:none; border-radius:6px; font-weight:bold; cursor:pointer;">
+            閉じる
+        </button>
+    `;
+
+    modal.appendChild(body);
+    document.body.appendChild(modal);
+}
+
+/**
+ * 📋 移行ガイド（旧ドメイン用）
+ */
+function openDataMigrationGuide() {
+    const text = `🚨 重要な変更:
+新しいドメインに移行しました。
+👉 <a href="https://pro-ultra.pages.dev/" style="color:#ffd700;">https://pro-ultra.pages.dev/</a>
+
+━━━━━━━━━━━━━━━━━━━━━━━━━
+📌 診断履歴・AI会話をバックアップする:
+
+【手順】
+1️⃣ フッター下部の「💾 データ管理」をタップ
+2️⃣ 「📥 データをダウンロード」をタップ
+   → JSONファイルが保存されます
+3️⃣ ファイルを安全な場所に保管
+
+━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 新ドメインでデータを復元する:
+
+【手順】
+1️⃣ 新サイトにアクセス
+2️⃣ 「💾 データ管理」→「📤 データをアップロード」
+3️⃣ 保存したJSONファイルを選択で完了！ ✅`;
+
+    createProModal('📋 Pro Ultra ドメイン移行ガイド', text.replace(/\n/g, '<br>'));
+}
+
+/**
+ * 📖 復元ガイド（新ドメイン用）
+ */
+function openDataRestoreGuide() {
+    const text = `前のドメインで保存したデータを復元する方法です。
+
+【復元手順】
+1️⃣ 保存したJSONファイルを用意
+2️⃣ フッター下部「💾 データ管理」をタップ
+3️⃣ 「📤 データをアップロード」をタップ
+4️⃣ ファイルを選択して「OK」
+
+✅ 復元完了！
+ページが自動でリロードされます。
+
+🔐 購入情報はログインするだけで自動的に有効になります。`;
+
+    createProModal('📖 データ復元方法', text.replace(/\n/g, '<br>'));
+}
+
+
+/**
+ * 📢 アプリ起動時の通知管理
+ */
+function initMigrationNotices() {
+    // ドメイン移行通知を表示
+    setTimeout(() => {
+        showMigrationNotice();
+    }, 1000);
+}
