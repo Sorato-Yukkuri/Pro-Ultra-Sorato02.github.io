@@ -2,7 +2,7 @@ let capturedDataUrl = null;
 
 // 🚫 永久追放ブラックリスト
 const PERMANENT_BAN_LIST = {
-    'gintc50veo3nu@yahoo.co.jp': '理由：開発者へのテスト要求の拒否<br>返すって言ってんのになんで拒否するん？'
+    'ーーーー': '理由：ー'
     };
 
 /**
